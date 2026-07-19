@@ -940,6 +940,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      conciliar_wellhub: {
+        Args: {
+          p_mes: string
+          p_valor_total_centavos: number
+          p_data_caixa?: string
+        }
+        Returns: number
+      }
       gerar_followups: { Args: never; Returns: number }
       is_socia: { Args: never; Returns: boolean }
       matricular: {

@@ -4,6 +4,7 @@ import { EntradasTab } from './components/EntradasTab'
 import { ResumoCards } from './components/ResumoCards'
 import { ReservaTab } from './components/ReservaTab'
 import { SaidasTab } from './components/SaidasTab'
+import { WellhubTab } from './components/WellhubTab'
 import {
   useConfigFinanceiro,
   useEntradas,
@@ -12,7 +13,7 @@ import {
   useSaldoCaixa,
 } from './hooks/useFinanceiro'
 
-type Aba = 'entradas' | 'saidas' | 'reserva'
+type Aba = 'entradas' | 'saidas' | 'reserva' | 'wellhub'
 
 export function FinanceiroPage() {
   const hoje = new Date()
@@ -52,6 +53,9 @@ export function FinanceiroPage() {
             <button className={abaCls(aba === 'reserva')} onClick={() => setAba('reserva')}>
               Reserva
             </button>
+            <button className={abaCls(aba === 'wellhub')} onClick={() => setAba('wellhub')}>
+              Wellhub
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -82,6 +86,7 @@ export function FinanceiroPage() {
       {aba === 'entradas' && <EntradasTab mes={mes} />}
       {aba === 'saidas' && <SaidasTab mes={mes} />}
       {aba === 'reserva' && <ReservaTab recebidoMes={recebidoMes} />}
+      {aba === 'wellhub' && <WellhubTab />}
 
       {configAberta && config && (
         <ConfigModal config={config} onFechar={() => setConfigAberta(false)} />
