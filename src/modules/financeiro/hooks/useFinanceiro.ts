@@ -1,0 +1,119 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  atualizarConfig,
+  atualizarEntrada,
+  criarCategoriaSaida,
+  criarEntrada,
+  criarReservaMovimento,
+  criarSaida,
+  excluirEntrada,
+  excluirSaida,
+  listarCategoriasSaida,
+  listarEntradas,
+  listarReserva,
+  listarSaidas,
+  obterConfig,
+  obterMei,
+  obterSaldoCaixa,
+} from '../api/financeiro'
+import type { ConfigFinanceiroUpdate, EntradaInsert, EntradaUpdate } from '../types'
+
+// invalidações em bloco: qualquer lançamento mexe em MEI e resumo
+function useInvalidarFinanceiro() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['entradas'] })
+    qc.invalidateQueries({ queryKey: ['saidas'] })
+    qc.invalidateQueries({ queryKey: ['mei'] })
+    qc.invalidateQueries({ queryKey: ['reserva'] })
+    qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+  }
+}
+
+export function useSaldoCaixa() {
+  return useQuery({ queryKey: ['saldo-caixa'], queryFn: obterSaldoCaixa })
+}
+
+export function useEntradas(mes: string) {
+  return useQuery({ queryKey: ['entradas', mes], queryFn: () => listarEntradas(mes) })
+}
+
+export function useSaidas(mes: string) {
+  return useQuery({ queryKey: ['saidas', mes], queryFn: () => listarSaidas(mes) })
+}
+
+export function useCategoriasSaida() {
+  return useQuery({ queryKey: ['categorias-saida'], queryFn: listarCategoriasSaida })
+}
+
+export function useConfigFinanceiro() {
+  return useQuery({ queryKey: ['config-financeiro'], queryFn: obterConfig })
+}
+
+export function useMei() {
+  return useQuery({ queryKey: ['mei'], queryFn: obterMei })
+}
+
+export function useReserva() {
+  return useQuery({ queryKey: ['reserva'], queryFn: listarReserva })
+}
+
+export function useCriarEntrada() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({
+    mutationFn: (input: EntradaInsert) => criarEntrada(input),
+    onSuccess: invalidar,
+  })
+}
+
+export function useAtualizarEntrada() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: EntradaUpdate }) =>
+      atualizarEntrada(id, patch),
+    onSuccess: invalidar,
+  })
+}
+
+export function useExcluirEntrada() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({ mutationFn: excluirEntrada, onSuccess: invalidar })
+}
+
+export function useCriarSaida() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({ mutationFn: criarSaida, onSuccess: invalidar })
+}
+
+export function useExcluirSaida() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({ mutationFn: excluirSaida, onSuccess: invalidar })
+}
+
+export function useCriarCategoriaSaida() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: criarCategoriaSaida,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categorias-saida'] }),
+  })
+}
+
+export function useAtualizarConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: ConfigFinanceiroUpdate) => atualizarConfig(patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['config-financeiro'] })
+      qc.invalidateQueries({ queryKey: ['mei'] })
+      qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+    },
+  })
+}
+
+export function useCriarReservaMovimento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: criarReservaMovimento,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reserva'] }),
+  })
+}

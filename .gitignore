@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.local
+*.local
+.DS_Store
+
+# Material estratégico interno — não publicar no repo público
+docs/marketing/
+definicoes.txt
+scripts/ig/
+
+# Config local da máquina / artefatos de build
+.claude/settings.local.json
+*.tsbuildinfo

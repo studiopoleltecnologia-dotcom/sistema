@@ -1,0 +1,167 @@
+import { requireSupabase } from '../../../lib/supabase'
+import type {
+  ConfigFinanceiroUpdate,
+  EntradaInsert,
+  EntradaUpdate,
+  ReservaMovimentoInsert,
+  SaidaInsert,
+} from '../types'
+
+/** Primeiro e último dia (ISO) do mês de referência. */
+export function limitesDoMes(mes: string) {
+  const [ano, m] = mes.split('-').map(Number)
+  const inicio = `${mes}-01`
+  const fim = new Date(ano, m, 0).getDate()
+  return { inicio, fim: `${mes}-${String(fim).padStart(2, '0')}` }
+}
+
+/** Entradas do mês (por data_caixa) + todas as previstas em aberto. */
+export async function listarEntradas(mes: string) {
+  const { inicio, fim } = limitesDoMes(mes)
+  const { data, error } = await requireSupabase()
+    .from('entradas_financeiras')
+    .select('*')
+    .or(
+      `and(data_caixa.gte.${inicio},data_caixa.lte.${fim}),status.eq.prevista`,
+    )
+    .order('data_caixa', { ascending: false, nullsFirst: true })
+  if (error) throw error
+  return data
+}
+
+export async function criarEntrada(input: EntradaInsert) {
+  const { data, error } = await requireSupabase()
+    .from('entradas_financeiras')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function atualizarEntrada(id: string, patch: EntradaUpdate) {
+  const { data, error } = await requireSupabase()
+    .from('entradas_financeiras')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function excluirEntrada(id: string) {
+  const { error } = await requireSupabase()
+    .from('entradas_financeiras')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function listarSaidas(mes: string) {
+  const { inicio, fim } = limitesDoMes(mes)
+  const { data, error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .select('*, categoria:categorias_saida(*)')
+    .gte('data_caixa', inicio)
+    .lte('data_caixa', fim)
+    .order('data_caixa', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function criarSaida(input: SaidaInsert) {
+  const { data, error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function excluirSaida(id: string) {
+  const { error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function listarCategoriasSaida() {
+  const { data, error } = await requireSupabase()
+    .from('categorias_saida')
+    .select('*')
+    .eq('ativa', true)
+    .order('tipo')
+    .order('nome')
+  if (error) throw error
+  return data
+}
+
+export async function criarCategoriaSaida(input: { nome: string; tipo: 'fixa' | 'variavel' }) {
+  const { data, error } = await requireSupabase()
+    .from('categorias_saida')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function obterConfig() {
+  const { data, error } = await requireSupabase()
+    .from('config_financeiro')
+    .select('*')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function atualizarConfig(patch: ConfigFinanceiroUpdate) {
+  const { data, error } = await requireSupabase()
+    .from('config_financeiro')
+    .update(patch)
+    .eq('id', true)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function obterMei() {
+  const { data, error } = await requireSupabase()
+    .from('vw_mei_acumulado')
+    .select('*')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function obterSaldoCaixa() {
+  const { data, error } = await requireSupabase()
+    .from('vw_saldo_caixa')
+    .select('*')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function listarReserva() {
+  const { data, error } = await requireSupabase()
+    .from('reserva_movimentos')
+    .select('*')
+    .order('data', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function criarReservaMovimento(input: ReservaMovimentoInsert) {
+  const { data, error } = await requireSupabase()
+    .from('reserva_movimentos')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}

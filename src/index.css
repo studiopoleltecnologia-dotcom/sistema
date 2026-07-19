@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — Studio Pole L
+ * Filosofia: minimalista, poucas cores, muito espaço em branco.
+ * Uma cor de marca (ameixa) usada com parcimônia; o resto é neutro.
+ */
+@theme {
+  --color-brand-50: #faf5fa;
+  --color-brand-100: #f5e8f4;
+  --color-brand-500: #8e4585;
+  --color-brand-600: #7a3a72;
+  --color-brand-700: #653060;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  @apply bg-white text-neutral-800 antialiased;
+}
