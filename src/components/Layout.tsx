@@ -10,6 +10,7 @@ const NAV: NavItem[] = [
   { to: '/financeiro', label: 'Financeiro' },
   { to: '/followup', label: 'Follow-up' },
   { to: '/agenda', label: 'Agenda' },
+  { to: '/planos', label: 'Planos' },
   { to: '/professoras', label: 'Professoras' },
   { to: '/conteudo', label: 'Conteúdo' },
   { to: '/tarefas', label: 'Tarefas' },

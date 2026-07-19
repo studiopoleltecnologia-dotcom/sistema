@@ -18,6 +18,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      agendamentos: {
+        Row: {
+          atualizada_em: string
+          cancelado_em: string | null
+          canal: Database["public"]["Enums"]["canal_aula"]
+          cliente_id: string
+          criado_em: string
+          data: string
+          id: string
+          matricula_id: string | null
+          origem_cancelamento: Database["public"]["Enums"]["origem_cancelamento"] | null
+          status: Database["public"]["Enums"]["status_agendamento"]
+          turma_id: string
+        }
+        Insert: {
+          atualizada_em?: string
+          cancelado_em?: string | null
+          canal: Database["public"]["Enums"]["canal_aula"]
+          cliente_id: string
+          criado_em?: string
+          data: string
+          id?: string
+          matricula_id?: string | null
+          origem_cancelamento?: Database["public"]["Enums"]["origem_cancelamento"] | null
+          status?: Database["public"]["Enums"]["status_agendamento"]
+          turma_id: string
+        }
+        Update: {
+          atualizada_em?: string
+          cancelado_em?: string | null
+          canal?: Database["public"]["Enums"]["canal_aula"]
+          cliente_id?: string
+          criado_em?: string
+          data?: string
+          id?: string
+          matricula_id?: string | null
+          origem_cancelamento?: Database["public"]["Enums"]["origem_cancelamento"] | null
+          status?: Database["public"]["Enums"]["status_agendamento"]
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agendamentos_eventos: {
+        Row: {
+          agendamento_id: string
+          criado_em: string
+          criado_por: string | null
+          detalhe: string | null
+          evento: Database["public"]["Enums"]["tipo_evento_agendamento"]
+          id: string
+        }
+        Insert: {
+          agendamento_id: string
+          criado_em?: string
+          criado_por?: string | null
+          detalhe?: string | null
+          evento: Database["public"]["Enums"]["tipo_evento_agendamento"]
+          id?: string
+        }
+        Update: {
+          agendamento_id?: string
+          criado_em?: string
+          criado_por?: string | null
+          detalhe?: string | null
+          evento?: Database["public"]["Enums"]["tipo_evento_agendamento"]
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_eventos_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_eventos_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "socias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias_saida: {
         Row: {
           ativa: boolean
@@ -110,6 +216,30 @@ export type Database = {
           },
         ]
       }
+      config_agendamento: {
+        Row: {
+          atualizada_em: string
+          horas_cancelamento: number
+          id: boolean
+          max_reposicoes_por_matricula: number
+          valor_checkin_wellhub_centavos: number
+        }
+        Insert: {
+          atualizada_em?: string
+          horas_cancelamento?: number
+          id?: boolean
+          max_reposicoes_por_matricula?: number
+          valor_checkin_wellhub_centavos?: number
+        }
+        Update: {
+          atualizada_em?: string
+          horas_cancelamento?: number
+          id?: boolean
+          max_reposicoes_por_matricula?: number
+          valor_checkin_wellhub_centavos?: number
+        }
+        Relationships: []
+      }
       config_financeiro: {
         Row: {
           atualizada_em: string
@@ -140,6 +270,61 @@ export type Database = {
         }
         Relationships: []
       }
+      creditos_eventos: {
+        Row: {
+          agendamento_id: string | null
+          criado_em: string
+          criado_por: string | null
+          delta: number
+          detalhe: string | null
+          id: string
+          matricula_id: string
+          motivo: Database["public"]["Enums"]["motivo_credito"]
+        }
+        Insert: {
+          agendamento_id?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          delta: number
+          detalhe?: string | null
+          id?: string
+          matricula_id: string
+          motivo: Database["public"]["Enums"]["motivo_credito"]
+        }
+        Update: {
+          agendamento_id?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          delta?: number
+          detalhe?: string | null
+          id?: string
+          matricula_id?: string
+          motivo?: Database["public"]["Enums"]["motivo_credito"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creditos_eventos_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_eventos_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "socias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_eventos_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entradas_financeiras: {
         Row: {
           atualizada_em: string
@@ -151,6 +336,7 @@ export type Database = {
           data_prevista: string | null
           descricao: string | null
           id: string
+          presenca_id: string | null
           status: Database["public"]["Enums"]["status_entrada"]
           valor_centavos: number
         }
@@ -164,6 +350,7 @@ export type Database = {
           data_prevista?: string | null
           descricao?: string | null
           id?: string
+          presenca_id?: string | null
           status?: Database["public"]["Enums"]["status_entrada"]
           valor_centavos: number
         }
@@ -177,6 +364,7 @@ export type Database = {
           data_prevista?: string | null
           descricao?: string | null
           id?: string
+          presenca_id?: string | null
           status?: Database["public"]["Enums"]["status_entrada"]
           valor_centavos?: number
         }
@@ -186,6 +374,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_presenca_id_fkey"
+            columns: ["presenca_id"]
+            isOneToOne: false
+            referencedRelation: "presencas"
             referencedColumns: ["id"]
           },
         ]
@@ -311,6 +506,60 @@ export type Database = {
           },
         ]
       }
+      matriculas: {
+        Row: {
+          atualizada_em: string
+          cliente_id: string
+          criada_em: string
+          creditos_total: number
+          data_fim: string
+          data_inicio: string
+          id: string
+          motivo_cancelamento: string | null
+          plano_id: string
+          status: Database["public"]["Enums"]["status_matricula"]
+        }
+        Insert: {
+          atualizada_em?: string
+          cliente_id: string
+          criada_em?: string
+          creditos_total: number
+          data_fim: string
+          data_inicio?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          plano_id: string
+          status?: Database["public"]["Enums"]["status_matricula"]
+        }
+        Update: {
+          atualizada_em?: string
+          cliente_id?: string
+          criada_em?: string
+          creditos_total?: number
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          plano_id?: string
+          status?: Database["public"]["Enums"]["status_matricula"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes_funil: {
         Row: {
           cliente_id: string
@@ -355,6 +604,140 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      planos: {
+        Row: {
+          ativo: boolean
+          atualizada_em: string
+          criada_em: string
+          id: string
+          nome: string
+          preco_centavos: number
+          quantidade: number
+          tipo: Database["public"]["Enums"]["plano_tipo"]
+          vigencia_dias: number
+        }
+        Insert: {
+          ativo?: boolean
+          atualizada_em?: string
+          criada_em?: string
+          id?: string
+          nome: string
+          preco_centavos: number
+          quantidade: number
+          tipo: Database["public"]["Enums"]["plano_tipo"]
+          vigencia_dias: number
+        }
+        Update: {
+          ativo?: boolean
+          atualizada_em?: string
+          criada_em?: string
+          id?: string
+          nome?: string
+          preco_centavos?: number
+          quantidade?: number
+          tipo?: Database["public"]["Enums"]["plano_tipo"]
+          vigencia_dias?: number
+        }
+        Relationships: []
+      }
+      presencas: {
+        Row: {
+          agendamento_id: string | null
+          atualizada_em: string
+          canal: Database["public"]["Enums"]["canal_aula"]
+          cliente_id: string
+          criado_em: string
+          data_aula: string
+          id: string
+          presente: boolean
+          professora_id: string
+          turma_id: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          atualizada_em?: string
+          canal: Database["public"]["Enums"]["canal_aula"]
+          cliente_id: string
+          criado_em?: string
+          data_aula: string
+          id?: string
+          presente: boolean
+          professora_id: string
+          turma_id: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          atualizada_em?: string
+          canal?: Database["public"]["Enums"]["canal_aula"]
+          cliente_id?: string
+          criado_em?: string
+          data_aula?: string
+          id?: string
+          presente?: boolean
+          professora_id?: string
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presencas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professoras: {
+        Row: {
+          ativa: boolean
+          atualizada_em: string
+          criada_em: string
+          id: string
+          nome: string
+          telefone: string | null
+          valor_por_aluna_centavos: number
+        }
+        Insert: {
+          ativa?: boolean
+          atualizada_em?: string
+          criada_em?: string
+          id?: string
+          nome: string
+          telefone?: string | null
+          valor_por_aluna_centavos: number
+        }
+        Update: {
+          ativa?: boolean
+          atualizada_em?: string
+          criada_em?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          valor_por_aluna_centavos?: number
+        }
+        Relationships: []
       }
       reserva_movimentos: {
         Row: {
@@ -439,6 +822,53 @@ export type Database = {
         }
         Relationships: []
       }
+      turmas: {
+        Row: {
+          ativa: boolean
+          atualizada_em: string
+          capacidade: number
+          criada_em: string
+          dia_semana: number
+          duracao_minutos: number
+          horario: string
+          id: string
+          modalidade: string
+          professora_id: string
+        }
+        Insert: {
+          ativa?: boolean
+          atualizada_em?: string
+          capacidade: number
+          criada_em?: string
+          dia_semana: number
+          duracao_minutos?: number
+          horario: string
+          id?: string
+          modalidade?: string
+          professora_id: string
+        }
+        Update: {
+          ativa?: boolean
+          atualizada_em?: string
+          capacidade?: number
+          criada_em?: string
+          dia_semana?: number
+          duracao_minutos?: number
+          horario?: string
+          id?: string
+          modalidade?: string
+          professora_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       vw_mei_acumulado: {
@@ -460,6 +890,17 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_pagamento_professoras: {
+        Row: {
+          alunas_presentes: number | null
+          aulas: number | null
+          mes: string | null
+          professora: string | null
+          professora_id: string | null
+          total_centavos: number | null
+        }
+        Relationships: []
+      }
       vw_saldo_caixa: {
         Row: {
           previsto_em_aberto_centavos: number | null
@@ -468,12 +909,56 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_saldo_creditos: {
+        Row: {
+          cliente_id: string | null
+          creditos_total: number | null
+          data_fim: string | null
+          data_inicio: string | null
+          matricula_id: string | null
+          plano_id: string | null
+          saldo: number | null
+          status: Database["public"]["Enums"]["status_matricula"] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      agendar_aula: {
+        Args: {
+          p_cliente: string
+          p_turma: string
+          p_data: string
+          p_canal: Database["public"]["Enums"]["canal_aula"]
+        }
+        Returns: string
+      }
+      cancelar_agendamento: {
+        Args: {
+          p_agendamento: string
+          p_origem: Database["public"]["Enums"]["origem_cancelamento"]
+        }
+        Returns: boolean
+      }
       gerar_followups: { Args: never; Returns: number }
       is_socia: { Args: never; Returns: boolean }
+      matricular: {
+        Args: { p_cliente: string; p_plano: string }
+        Returns: string
+      }
+      registrar_presenca: {
+        Args: {
+          p_turma: string
+          p_data: string
+          p_cliente: string
+          p_presente: boolean
+          p_canal?: Database["public"]["Enums"]["canal_aula"]
+        }
+        Returns: string
+      }
     }
     Enums: {
+      canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
       categoria_entrada:
         | "mensalista"
         | "wellhub"
@@ -491,6 +976,13 @@ export type Database = {
         | "inativa"
         | "em_retorno"
         | "ex_aluna"
+      motivo_credito:
+        | "compra"
+        | "agendamento"
+        | "cancelamento"
+        | "reposicao"
+        | "ajuste"
+      origem_cancelamento: "aluna" | "socia" | "professora" | "sistema"
       origem_cliente:
         | "whatsapp"
         | "instagram"
@@ -499,8 +991,12 @@ export type Database = {
         | "indicacao"
         | "passou_na_porta"
         | "outros"
+      plano_tipo: "creditos" | "semanal"
+      status_agendamento: "agendado" | "cancelado"
       status_entrada: "prevista" | "recebida"
       status_followup: "pendente" | "concluido" | "dispensado"
+      status_matricula: "ativa" | "pausada" | "cancelada"
+      tipo_evento_agendamento: "agendado" | "cancelado" | "presenca" | "falta"
       tipo_followup:
         | "lead_sumido"
         | "experimental_sem_retorno"
@@ -637,6 +1133,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      canal_aula: ["mensalista", "wellhub", "classpass", "avulsa"],
       categoria_entrada: [
         "mensalista",
         "wellhub",
@@ -656,6 +1153,14 @@ export const Constants = {
         "em_retorno",
         "ex_aluna",
       ],
+      motivo_credito: [
+        "compra",
+        "agendamento",
+        "cancelamento",
+        "reposicao",
+        "ajuste",
+      ],
+      origem_cancelamento: ["aluna", "socia", "professora", "sistema"],
       origem_cliente: [
         "whatsapp",
         "instagram",
@@ -665,8 +1170,12 @@ export const Constants = {
         "passou_na_porta",
         "outros",
       ],
+      plano_tipo: ["creditos", "semanal"],
+      status_agendamento: ["agendado", "cancelado"],
       status_entrada: ["prevista", "recebida"],
       status_followup: ["pendente", "concluido", "dispensado"],
+      status_matricula: ["ativa", "pausada", "cancelada"],
+      tipo_evento_agendamento: ["agendado", "cancelado", "presenca", "falta"],
       tipo_followup: [
         "lead_sumido",
         "experimental_sem_retorno",
