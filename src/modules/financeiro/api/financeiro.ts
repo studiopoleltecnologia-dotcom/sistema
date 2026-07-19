@@ -88,6 +88,66 @@ export async function excluirSaida(id: string) {
   if (error) throw error
 }
 
+export async function listarRecorrentes() {
+  const { data, error } = await requireSupabase()
+    .from('despesas_recorrentes')
+    .select('*, categoria:categorias_saida(*)')
+    .eq('ativa', true)
+    .order('dia_vencimento')
+  if (error) throw error
+  return data
+}
+
+export async function criarRecorrente(input: {
+  descricao: string
+  valor_centavos: number
+  categoria_id: string
+  dia_vencimento: number
+}) {
+  const { data, error } = await requireSupabase()
+    .from('despesas_recorrentes')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function desativarRecorrente(id: string) {
+  const { error } = await requireSupabase()
+    .from('despesas_recorrentes')
+    .update({ ativa: false })
+    .eq('id', id)
+  if (error) throw error
+}
+
+/** Lança a recorrente como saída do mês de referência (1 clique). */
+export async function lancarRecorrente(args: {
+  recorrente: {
+    id: string
+    descricao: string
+    valor_centavos: number
+    categoria_id: string
+    dia_vencimento: number
+  }
+  mes: string
+}) {
+  const dia = String(args.recorrente.dia_vencimento).padStart(2, '0')
+  const { data, error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .insert({
+      descricao: args.recorrente.descricao,
+      valor_centavos: args.recorrente.valor_centavos,
+      categoria_id: args.recorrente.categoria_id,
+      data_caixa: `${args.mes}-${dia}`,
+      recorrente_id: args.recorrente.id,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function listarCategoriasSaida() {
   const { data, error } = await requireSupabase()
     .from('categorias_saida')

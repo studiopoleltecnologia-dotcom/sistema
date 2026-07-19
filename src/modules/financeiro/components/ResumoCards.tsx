@@ -23,12 +23,14 @@ export function ResumoCards({
   mei,
   saldoAtual,
   previstoAberto,
+  recorrentesPendentes,
 }: {
   recebidoMes: number
   saidasMes: number
   mei: MeiAcumulado | undefined
   saldoAtual: number | null | undefined
   previstoAberto: number | null | undefined
+  recorrentesPendentes: number | null | undefined
 }) {
   const resultado = recebidoMes - saidasMes
   const pct = mei?.percentual_limite ?? 0
@@ -64,6 +66,9 @@ export function ResumoCards({
         </div>
         <div className="mt-0.5 text-[11px] text-neutral-400">
           + {fmtCentavos(previstoAberto ?? 0)} previsto
+          {(recorrentesPendentes ?? 0) > 0 && (
+            <> · − {fmtCentavos(recorrentesPendentes)} recorrentes</>
+          )}
         </div>
       </Card>
 

@@ -4,12 +4,16 @@ import {
   atualizarEntrada,
   criarCategoriaSaida,
   criarEntrada,
+  criarRecorrente,
   criarReservaMovimento,
   criarSaida,
+  desativarRecorrente,
   excluirEntrada,
   excluirSaida,
+  lancarRecorrente,
   listarCategoriasSaida,
   listarEntradas,
+  listarRecorrentes,
   listarReserva,
   listarSaidas,
   obterConfig,
@@ -88,6 +92,44 @@ export function useCriarSaida() {
 export function useExcluirSaida() {
   const invalidar = useInvalidarFinanceiro()
   return useMutation({ mutationFn: excluirSaida, onSuccess: invalidar })
+}
+
+export function useRecorrentes() {
+  return useQuery({ queryKey: ['recorrentes'], queryFn: listarRecorrentes })
+}
+
+export function useCriarRecorrente() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: criarRecorrente,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recorrentes'] })
+      qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+    },
+  })
+}
+
+export function useDesativarRecorrente() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: desativarRecorrente,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recorrentes'] })
+      qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+    },
+  })
+}
+
+export function useLancarRecorrente() {
+  const invalidar = useInvalidarFinanceiro()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: lancarRecorrente,
+    onSuccess: () => {
+      invalidar()
+      qc.invalidateQueries({ queryKey: ['recorrentes'] })
+    },
+  })
 }
 
 export function useCriarCategoriaSaida() {

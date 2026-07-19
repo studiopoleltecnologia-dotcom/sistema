@@ -325,6 +325,47 @@ export type Database = {
           },
         ]
       }
+      despesas_recorrentes: {
+        Row: {
+          ativa: boolean
+          atualizada_em: string
+          categoria_id: string
+          criada_em: string
+          descricao: string
+          dia_vencimento: number
+          id: string
+          valor_centavos: number
+        }
+        Insert: {
+          ativa?: boolean
+          atualizada_em?: string
+          categoria_id: string
+          criada_em?: string
+          descricao: string
+          dia_vencimento?: number
+          id?: string
+          valor_centavos: number
+        }
+        Update: {
+          ativa?: boolean
+          atualizada_em?: string
+          categoria_id?: string
+          criada_em?: string
+          descricao?: string
+          dia_vencimento?: number
+          id?: string
+          valor_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "despesas_recorrentes_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_saida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entradas_financeiras: {
         Row: {
           atualizada_em: string
@@ -774,6 +815,7 @@ export type Database = {
           data_caixa: string
           descricao: string | null
           id: string
+          recorrente_id: string | null
           valor_centavos: number
         }
         Insert: {
@@ -783,6 +825,7 @@ export type Database = {
           data_caixa?: string
           descricao?: string | null
           id?: string
+          recorrente_id?: string | null
           valor_centavos: number
         }
         Update: {
@@ -792,6 +835,7 @@ export type Database = {
           data_caixa?: string
           descricao?: string | null
           id?: string
+          recorrente_id?: string | null
           valor_centavos?: number
         }
         Relationships: [
@@ -800,6 +844,13 @@ export type Database = {
             columns: ["categoria_id"]
             isOneToOne: false
             referencedRelation: "categorias_saida"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_financeiras_recorrente_id_fkey"
+            columns: ["recorrente_id"]
+            isOneToOne: false
+            referencedRelation: "despesas_recorrentes"
             referencedColumns: ["id"]
           },
         ]
@@ -904,6 +955,7 @@ export type Database = {
       vw_saldo_caixa: {
         Row: {
           previsto_em_aberto_centavos: number | null
+          recorrentes_pendentes_mes_centavos: number | null
           saldo_atual_centavos: number | null
           saldo_projetado_centavos: number | null
         }

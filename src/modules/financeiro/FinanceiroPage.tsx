@@ -81,6 +81,7 @@ export function FinanceiroPage() {
         mei={mei}
         saldoAtual={saldo?.saldo_atual_centavos}
         previstoAberto={saldo?.previsto_em_aberto_centavos}
+        recorrentesPendentes={saldo?.recorrentes_pendentes_mes_centavos}
       />
 
       {aba === 'entradas' && <EntradasTab mes={mes} />}
