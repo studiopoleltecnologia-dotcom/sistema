@@ -2,17 +2,73 @@
 
 /*
  * Design tokens — Studio Pole L
- * Filosofia: minimalista, poucas cores, muito espaço em branco.
- * Uma cor de marca (ameixa) usada com parcimônia; o resto é neutro.
+ * Fonte: Guia de Marca 2026 (PDF) — paleta principal (roxo/ameixa
+ * acinzentado, preto azulado, laranja terracota, turquesa, vermelho
+ * tijolo) + paleta secundária (verde limão, azul marinho, marsala,
+ * magenta profundo), reservada a gráficos/acentos raros.
+ * Cores estimadas visualmente do PDF — se a Caroline trouxer os hex
+ * exatos do Canva, só ajustar aqui, nada mais no app depende de valor
+ * fixo de cor.
+ * Tipografia: Nunito (corpo/UI) + League Spartan (títulos/cabeçalhos)
+ * — as duas fontes do guia disponíveis grátis no Google Fonts.
  */
 @theme {
-  --color-brand-50: #faf5fa;
-  --color-brand-100: #f5e8f4;
-  --color-brand-500: #8e4585;
-  --color-brand-600: #7a3a72;
-  --color-brand-700: #653060;
+  --color-brand-50: #f6f5fa;
+  --color-brand-100: #ebe9f3;
+  --color-brand-200: #d3cfe6;
+  --color-brand-300: #b3acd1;
+  --color-brand-400: #8d84b3;
+  --color-brand-500: #6b6193;
+  --color-brand-600: #5a5080;
+  --color-brand-700: #443a66;
+  --color-brand-800: #332c4d;
+  --color-brand-900: #241f37;
 
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* preto azulado do guia — texto de alto contraste e sombras */
+  --color-ink: #1b1822;
+
+  /* turquesa do guia — sucesso/positivo */
+  --color-success-50: #eaf9f8;
+  --color-success-100: #d1f0ee;
+  --color-success-500: #2fa9a6;
+  --color-success-600: #278f8c;
+  --color-success-700: #1f726f;
+
+  /* laranja terracota do guia — atenção (mesma família já usada no alerta de MEI) */
+  --color-warning-50: #fcf1e6;
+  --color-warning-100: #f8e1c7;
+  --color-warning-500: #db8735;
+  --color-warning-600: #c1721f;
+  --color-warning-700: #9c5a18;
+
+  /* vermelho tijolo do guia — erro/perigo */
+  --color-danger-50: #fbecec;
+  --color-danger-100: #f5d3d3;
+  --color-danger-500: #c93a3a;
+  --color-danger-600: #ac2e2e;
+  --color-danger-700: #872424;
+
+  /* paleta de gráficos — as 5 cores principais + 4 secundárias do guia */
+  --color-chart-1: #6b6193;
+  --color-chart-2: #db8735;
+  --color-chart-3: #2fa9a6;
+  --color-chart-4: #c93a3a;
+  --color-chart-5: #a8dc3c;
+  --color-chart-6: #17293d;
+  --color-chart-7: #7e1420;
+  --color-chart-8: #591a49;
+
+  --font-sans: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "League Spartan", "Nunito", system-ui, sans-serif;
+
+  /* cards com um pouco mais de respiro que o padrão do Tailwind */
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* sombras suaves tingidas de ink, em vez de preto puro */
+  --shadow-sm: 0 1px 2px 0 rgb(27 24 34 / 0.05);
+  --shadow-md: 0 2px 8px -2px rgb(27 24 34 / 0.08), 0 1px 2px -1px rgb(27 24 34 / 0.04);
+  --shadow-lg: 0 8px 24px -6px rgb(27 24 34 / 0.12), 0 2px 6px -2px rgb(27 24 34 / 0.06);
 }
 
 body {

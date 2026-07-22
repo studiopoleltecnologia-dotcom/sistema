@@ -11,6 +11,10 @@ export type ConfigFinanceiroUpdate = TablesUpdate<'config_financeiro'>
 export type ReservaMovimento = Tables<'reserva_movimentos'>
 export type ReservaMovimentoInsert = TablesInsert<'reserva_movimentos'>
 export type MeiAcumulado = Tables<'vw_mei_acumulado'>
+export type SaldoCaixa = Tables<'vw_saldo_caixa'>
+export type MixReceitaMensal = Tables<'vw_mix_receita_mensal'>
+export type SaidasMensal = Tables<'vw_saidas_mensal'>
+export type DespesaRecorrente = Tables<'despesas_recorrentes'>
 
 export type CategoriaEntrada = Enums<'categoria_entrada'>
 export type StatusEntrada = Enums<'status_entrada'>
@@ -31,9 +35,19 @@ export const CATEGORIA_ENTRADA_LABEL = Object.fromEntries(
 ) as Record<CategoriaEntrada, string>
 
 export const TIPO_SAIDA_LABEL: Record<TipoSaida, string> = {
-  fixa: 'Fixa',
+  fixa: 'Fixo recorrente',
+  fixa_planejada: 'Fixo planejado',
   variavel: 'Variável',
 }
+
+export const TIPO_SAIDA_DESCRICAO: Record<TipoSaida, string> = {
+  fixa: 'Todo mês, o custo de manter as portas abertas',
+  fixa_planejada: 'Previsto, mas não mensal — manutenção, marketing, eventos',
+  variavel: 'Depende da operação — professoras, comissões, materiais',
+}
+
+/** Ordem de exibição: do mais previsível ao mais variável. */
+export const ORDEM_TIPO_SAIDA: TipoSaida[] = ['fixa', 'fixa_planejada', 'variavel']
 
 /** Alertas MEI nos degraus do CLAUDE.md seção 8. */
 export function nivelAlertaMei(percentual: number): 'ok' | 'atencao' | 'alerta' | 'critico' {

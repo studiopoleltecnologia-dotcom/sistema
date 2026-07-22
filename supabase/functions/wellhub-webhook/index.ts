@@ -1,17 +1,27 @@
 // ============================================================
 // Webhook de check-in Wellhub — modelo Automated Trigger
-// (CLAUDE.md 12.3/12.4). PRONTO PARA ATIVAR, ainda não deployado:
-// depende das credenciais do time Wellhub (integrations@gympass.com).
+// (CLAUDE.md 12.3/12.4). PRONTO PARA ATIVAR, ainda não deployado.
 //
-// Quando as credenciais chegarem:
-//   1. supabase secrets set WELLHUB_WEBHOOK_SECRET=<segredo combinado>
-//   2. supabase secrets set WELLHUB_CLIENT_ID=... WELLHUB_CLIENT_SECRET=...
+// Credenciais de SANDBOX recebidas (jul/2026): gym_id 548 + api_key (Bearer
+// de teste). IP fixo NÃO é necessário. A Wellhub recomenda UMA única URL de
+// webhook para todos os eventos (checkin + booking). Autenticação da chamada
+// à Access Control API no sandbox: usar o api_key como `Authorization: Bearer`
+// (em produção, trocar pelo OAuth client-credentials → token curto).
+//
+// Ativação do webhook (fluxo confirmado pela Wellhub):
+//   desenvolve local → Wellhub envia o Bearer de acesso às APIs → o parceiro
+//   responde com a URL do webhook + o secret do X-Gympass-Signature.
+//
+//   1. supabase secrets set WELLHUB_WEBHOOK_SECRET=<secret gerado por nós>
+//      (esse é o secret que assina o X-Gympass-Signature; nós o informamos
+//       à Wellhub — NÃO é fornecido por eles)
+//   2. supabase secrets set WELLHUB_API_TOKEN=<Bearer sandbox/produção>
 //   3. supabase functions deploy wellhub-webhook --no-verify-jwt
 //   4. Registrar a URL no Portal/time Wellhub:
 //      https://fgvxhwpqsxohqrccrlfn.supabase.co/functions/v1/wellhub-webhook
-//   5. Ajustar a validação de assinatura e o mapeamento de campos
-//      conforme a documentação oficial recebida (o payload real é
-//      logado integralmente para facilitar esse mapeamento).
+//   5. Trocar a validação abaixo por HMAC de X-Gympass-Signature conforme a
+//      doc oficial (algoritmo/encoding a confirmar na homologação — o payload
+//      real é logado integralmente para facilitar o mapeamento de campos).
 // ============================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -20,8 +30,9 @@ Deno.serve(async (req) => {
     return new Response('method not allowed', { status: 405 })
   }
 
-  // Validação de origem: segredo compartilhado no header até termos a
-  // especificação oficial de assinatura da Wellhub.
+  // Validação de origem (PLACEHOLDER): comparação de segredo em header até a
+  // homologação. A mecânica oficial é HMAC no header X-Gympass-Signature com o
+  // WELLHUB_WEBHOOK_SECRET — trocar por verificação de assinatura antes do go-live.
   const segredo = Deno.env.get('WELLHUB_WEBHOOK_SECRET')
   if (!segredo || req.headers.get('x-webhook-secret') !== segredo) {
     return new Response('unauthorized', { status: 401 })

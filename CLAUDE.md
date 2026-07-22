@@ -1,8 +1,11 @@
 # CLAUDE.md — Studio Pole L (ERP interno)
 
 Guia para desenvolvimento assistido por IA neste projeto. Leia antes de codar.
-Documentos de contexto: [docs/01-NEGOCIO.md](docs/01-NEGOCIO.md) (negócio) e
-[docs/02-ARQUITETURA.md](docs/02-ARQUITETURA.md) (arquitetura/roadmap).
+Documentos de contexto: [docs/01-NEGOCIO.md](docs/01-NEGOCIO.md) (negócio),
+[docs/02-ARQUITETURA.md](docs/02-ARQUITETURA.md) (arquitetura/roadmap),
+[docs/04-PORTAL-ALUNA.md](docs/04-PORTAL-ALUNA.md) (especificação do módulo
+Portal da Aluna) e [docs/05-BACKLOG.md](docs/05-BACKLOG.md) (**tudo que está
+pendente** — ler antes de decidir o que fazer a seguir).
 
 ---
 
@@ -65,6 +68,58 @@ Camadas (detalhe em [docs/02-ARQUITETURA.md](docs/02-ARQUITETURA.md)):
 - **Financeiro:** Entradas, Saídas, Fluxo de Caixa, Reserva, MEI, Pró-labore 🔒
 - **Gestão & Conteúdo:** Conteúdo, Social Media, Tarefas, Investimentos
 - **Visão:** Dashboard Executivo
+
+### 5.1 Os três portais e os papéis de acesso
+
+Um único projeto Vite e um único Supabase servem **três jornadas separadas**,
+escolhidas pelo hash da URL em [src/App.tsx](src/App.tsx) (cada uma com router e
+porteiro próprios):
+
+| Portal | Rota | Papel | Vínculo com `auth.users` | Função de RLS |
+|---|---|---|---|---|
+| Interno (equipe) | `#/` | equipe | `socias` | `is_socia()` |
+| Aluna | `#/portal` | cliente | `contas_aluna` | `is_cliente()` / `cliente_atual()` |
+| Professora | `#/prof` | professora | `contas_professora` | `is_professora()` / `professora_atual()` |
+
+- `#/prof` e não `#/professoras`: o admin já usa `/professoras` para o módulo de
+  gestão. O teste de rota é por **segmento exato**, senão `#/professoras` cairia
+  no portal da professora.
+- **Aluna e professora são mutuamente exclusivas** (trigger
+  `validar_papel_exclusivo`). Equipe + professora é permitido de propósito —
+  sócia que também dá aula é caso real.
+- **Nenhum papel se concede sozinho.** `handle_new_user()` só cria vínculo de
+  professora, e só quando o e-mail do signup casa com um e-mail já cadastrado em
+  `professoras` pela equipe (é isso que faz o "convite"). Equipe entra apenas por
+  `promover_a_equipe()`, chamada por quem já é equipe. Metadata do signUp
+  (`raw_user_meta_data`) é escolhida por quem cria a conta e **nunca** decide
+  privilégio.
+- ⚠️ **Pré-requisito de deploy:** confirmação de e-mail ATIVA no Supabase Auth.
+  Sem ela, quem souber o e-mail de uma professora cria a conta dela.
+### 5.2 Funções dentro da equipe interna (M8, 21/07/2026)
+
+A equipe interna **não é um bloco único**. `socias.funcao` (enum
+`funcao_interna`) define o recorte de cada conta:
+
+| Função | Quem | Vê |
+|---|---|---|
+| **gestao** | Carol + 3 sócias | tudo, inclusive Financeiro, saldos, MEI, pagamento de professoras |
+| **secretaria** | secretária | operação inteira (Agenda, CRM, Follow-up, Matrículas) **sem nenhum valor financeiro** |
+| **social** | conteúdo | só o módulo Conteúdo (papel definido; conta ainda não criada) |
+
+- **Financeiro trancado no banco por `is_gestao()`** — não é menu escondido, é o
+  Postgres recusando. Tabelas `entradas/saidas/reserva/config_financeiro/
+  categorias_saida/despesas_recorrentes`. As views financeiras são
+  `security_invoker`, então param de devolver dado para não-gestão sozinhas.
+- **`professoras` virou gestão-only** (esconde `valor_por_aluna_centavos`). A
+  operação (Agenda) lê o nome pela view `vw_professoras_nomes` (só id/nome/ativa).
+- Funções de papel: `is_gestao()`, `is_operacional()` (gestao|secretaria),
+  `minha_funcao()`. No front, `useMinhaFuncao()` filtra o menu e o painel;
+  `RotaFuncao` barra a URL direta.
+- **MFA** (`aal2`) continua uma ideia de reforço **extra** sobre o Financeiro da
+  gestão — opcional, não bloqueia, não implementado.
+- ⚠️ **Pendência:** as policies operacionais ainda usam `is_socia()`. Antes de
+  criar a 1ª conta `social`, migrar para `is_operacional()` (senão social herda
+  a operação). Sem conta social, não há vazamento hoje. Ver docs/05-BACKLOG.md.
 
 **Regras de integração que todo módulo respeita:**
 - Um **check-in** alimenta: pagamento da professora, ocupação da turma, "última
@@ -165,17 +220,33 @@ plataformas parceiras) — referência de comparação, não de cópia de interf
 - **Mensalista:** prazo de cancelamento é em **horas de antecedência**,
   **parametrizável a qualquer momento pelas administradoras** (sócias) — é
   configuração de sistema, não constante de código.
+  **Valor vigente: 3h** (definido em 21/07/2026, em `config_agendamento.horas_cancelamento`).
+  Dentro do prazo o crédito volta e ela pode remarcar; fora, o crédito é
+  consumido.
 
 ### 9.4 Jornada Mensalista — pacotes e créditos
 
 - Cliente não-Wellhub enxerga a **mesma grade de aulas** que a aluna Wellhub.
 - **Pacotes são cadastráveis e personalizáveis pelas administradoras** a
-  qualquer momento — não é uma lista fixa no código. Dimensões variáveis de um
-  pacote:
-  - **Tipo:** pacote de **créditos** (N aulas para usar como quiser) ou pacote
-    de **aulas semanais fixas** (ex: 2x/semana).
-  - **Vigência:** mensal, trimestral ou semestral (modelar como parametrizável,
-    não como enum fechado, para admitir novas vigências no futuro).
+  qualquer momento — não é uma lista fixa no código.
+- **Todo plano é por crédito** (decisão de 21/07/2026 — o tipo "aulas por
+  semana" foi abandonado e há `check (tipo = 'creditos')` na tabela). O que
+  varia é só:
+  - **Quantos créditos por mês:** 4, 8, 12…
+  - **Quantos ciclos de compromisso:** `ciclos = 1` (mensal, sem compromisso)
+    ou `ciclos = 6` (semestral). O semestral é a **mesma mensalidade cobrada 6
+    vezes**, não um pagamento à vista.
+- **Ciclos, não um balde único.** `planos.preco_centavos` é o preço de UM
+  ciclo e `matriculas.data_inicio/data_fim` delimitam o **ciclo corrente**.
+  Cada pagamento confirmado chama `renovar_ciclo()`, que libera os créditos do
+  mês seguinte. Um semestral **nunca** entrega os 6 meses de crédito de uma vez
+  — senão a aluna queima tudo no primeiro mês e o bloqueio por falta de
+  pagamento perde o sentido.
+- **Crédito não usado expira no fim do ciclo** (registrado no livro-razão com
+  motivo `expiracao`, para a aluna conseguir ver o que houve com o saldo).
+- **Inadimplência:** ciclo não pago → `marcar_inadimplente()` → a matrícula sai
+  de `ativa` e `agendar_aula()` recusa com mensagem própria. Não apaga crédito
+  nem cancela a matrícula: os créditos do ciclo já pago valem até expirarem.
 - Fluxo: cliente adquire o pacote (app) → créditos/aulas liberados no perfil →
   cliente agenda o horário → agendamento consome 1 crédito (regra 9.1).
 - **Cancelamento dentro do prazo configurado (9.3):** crédito **volta** para o
@@ -188,6 +259,14 @@ plataformas parceiras) — referência de comparação, não de cópia de interf
 - **Reposição de aulas:** regra própria (quando/quantas aulas podem ser
   repostas fora do ciclo normal), também **configurável pelas
   administradoras** — tratar como política separada da regra de cancelamento.
+- **Duas aulas no mesmo dia:** permitido, consumindo dois créditos (decisão de
+  21/07/2026). O banco nunca restringiu isso — é para continuar assim.
+- **Lista de espera:** quando a aula lota, a aluna entra na fila (FIFO). Ao
+  vagar, o sistema avisa **só a primeira** por e-mail e **segura a vaga para
+  ela** por `config_agendamento.minutos_reserva_espera` (30 min); passado o
+  prazo, chama a próxima. A reserva é enforçada em
+  `validar_vaga_agendamento()` — conta como vaga ocupada para as demais —,
+  não só escondida na tela, senão outra aluna passaria na frente.
 
 ### 9.5 Contas de acesso
 
@@ -208,6 +287,19 @@ Acesso restrito e específico, sem acesso ao restante do sistema:
 - **Nenhum outro acesso** (sem financeiro, sem CRM, sem outras turmas, sem
   configurações). Modelar como policy de RLS própria por `professora_id` +
   `turma_id` do dia, não como variação de permissão de admin.
+
+**Implementado** em `20260721110000_portal_professora.sql` (portal em `#/prof`,
+ver 5.1). Como ficou, para não reimplementar por engano:
+- Incluir aluna que chegou sem agendar **não cria agendamento retroativo** — é
+  uma presença com `agendamento_id null` (caso já previsto no comentário da
+  tabela `presencas`). Se criasse agendamento, o trigger de capacidade recusaria
+  justamente a aluna que já está fisicamente na sala.
+- O nome da aluna chega pela view `vw_alunas_da_aula`, que é *definer* e se
+  autofiltra no `WHERE` — expõe só o nome, nunca telefone ou funil. Para buscar
+  quem incluir, `buscar_aluna()` devolve apenas `id` + `nome`.
+- Presença de aula futura é recusada no banco, não só escondida na tela.
+- Ela vê o próprio `valor_por_aluna_centavos` e a própria linha de
+  `vw_pagamento_professoras` (aulas dadas + valor previsto) — nunca o das colegas.
 
 ---
 
@@ -260,16 +352,26 @@ Financeiro (Fase 2) e Agenda & Presença (Fase 4) chegarem a essa integração.
 - **Mesma regra da seção 3:** `client_secret` da Wellhub nunca vai para o repo
   nem para o front. Guardar como secret de Edge Function do Supabase
   (`supabase secrets set`), chamada feita **server-side**.
-- Wellhub valida o IP de origem das chamadas (bloqueio 403 se IP não liberado) —
-  como o backend roda em Supabase Edge Functions (IP dinâmico), validar com o
-  time Wellhub se aceitam range dinâmico ou se será necessário IP fixo/proxy.
+- **IP fixo NÃO é necessário** (confirmado pelo time Wellhub, jul/2026) — o
+  backend em Supabase Edge Functions (IP dinâmico) atende sem allowlist de IP.
+- **Assinatura do webhook:** a Wellhub assina cada requisição no header
+  `X-Gympass-Signature`, validado com um **secret gerado pelo parceiro** e
+  informado à Wellhub na ativação (não é um segredo que a Wellhub fornece). Fluxo
+  de ativação: desenvolve local → Wellhub envia o **Bearer token** de acesso às
+  APIs deles → o parceiro responde com a(s) URL(s) de webhook + o secret do
+  `X-Gympass-Signature`. Recomendação da Wellhub: **uma única URL** para todos os
+  eventos (checkin + booking).
+- **Sandbox disponível** (jul/2026): `gym_id` 548 + `api_key` (Bearer de teste)
+  recebidos por e-mail. Guardar como secret do Supabase (`supabase secrets set`),
+  **nunca** no repo/front — repo é público (seção 3). Docs Postman de sandbox:
+  Access Control API e Booking API (links no e-mail do Techsales).
 
 ### 12.3 APIs relevantes
 
 | API | Uso no Studio Pole L | Observação |
 |---|---|---|
 | **Access Control API** | Validar check-in de aluna Wellhub na hora da aula | Endpoint produção: `POST https://api.partners.gympass.com/access/v1/validate` com `gympass_id`. Essa chamada é o que gera a transação que origina o repasse. |
-| **Check-in Webhook** | Receber notificação quando a aluna faz check-in pelo app Wellhub | Wellhub faz `POST` numa URL registrada pelo parceiro a cada check-in. |
+| **Check-in Webhook** | Receber notificação quando a aluna faz check-in pelo app Wellhub | Wellhub faz `POST` na URL registrada pelo parceiro a cada check-in (assinado em `X-Gympass-Signature`). Fluxo esperado: recebe webhook → pré-registra a usuária → chama `validate` p/ confirmar ticket válido no dia → se positivo, libera. |
 | **Booking API** (opcional/futuro) | Sincronizar a agenda de turmas para reserva direta pelo app Wellhub | Evento de booking/cancelamento chega por webhook; parceiro tem **15 min** para responder com `PATCH` confirmando/recusando, senão é auto-rejeitado. Só faz sentido junto com Agenda & Turmas (Fase 4) — não é pré-requisito do check-in. |
 
 ### 12.4 Modelo de implementação recomendado
@@ -299,11 +401,10 @@ no app, o sistema recebe o webhook e valida sozinho, sem clique manual
 - Wellhub paga por check-ins validados; transferência todo dia **15** de cada
   mês, referente ao mês anterior (regime de caixa — compatível com a regra MEI
   da seção 8).
-- Relatórios de repasse ficam na aba **Financeiro** do Portal do Parceiro. Não
-  há confirmação de API pública de download automático desse relatório — pode
-  depender de export manual ou SFTP (usado hoje para elegibilidade/payroll, não
-  necessariamente para repasse). Validar com o time Wellhub antes de prometer
-  conciliação 100% automática.
+- **A Wellhub NÃO expõe dados financeiros/repasse por API** (confirmado pelo
+  time Wellhub, jul/2026). O repasse é consultado no Portal do Parceiro (aba
+  **Financeiro**) e importado manualmente para o sistema — não há conciliação
+  100% automática. Isso valida o MVP já implementado (`conciliar_wellhub`).
 - MVP realista: import manual/CSV do relatório do Portal + comparação contra os
   check-ins "a reconciliar" já registrados via Access Control API.
 

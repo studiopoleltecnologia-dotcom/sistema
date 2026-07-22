@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { PartyPopper } from 'lucide-react'
+import { Button } from '../../../components/ui/Button'
+import { Card, CardHeader } from '../../../components/ui/Card'
+import { EmptyState } from '../../../components/ui/EmptyState'
+import { Input } from '../../../components/ui/Input'
 import { requireSupabase } from '../../../lib/supabase'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import type { Entrada } from '../types'
-
-const inputCls =
-  'rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500'
 
 function usePendentesWellhub() {
   return useQuery({
@@ -81,27 +83,24 @@ export function WellhubTab() {
         é distribuído entre os check-ins do mês e tudo vira entrada recebida.
       </p>
 
-      {erro && <p className="mb-3 text-sm text-red-600">{erro}</p>}
+      {erro && <p className="mb-3 text-sm text-danger-600">{erro}</p>}
 
       {meses.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-400">
-          Nenhum check-in Wellhub a reconciliar. 🎉
-        </div>
+        <EmptyState
+          icon={PartyPopper}
+          title="Nenhum check-in Wellhub a reconciliar"
+          description="Tudo em dia por aqui."
+        />
       ) : (
         <div className="flex flex-col gap-4">
           {meses.map(([mes, entradas]) => {
             const estimado = entradas.reduce((s, e) => s + e.valor_centavos, 0)
             return (
-              <div key={mes} className="rounded-lg border border-neutral-100 p-4">
-                <div className="mb-2 flex items-baseline justify-between">
-                  <span className="text-sm font-semibold text-neutral-900">
-                    Competência {fmtMes(mes)}
-                  </span>
-                  <span className="text-xs text-neutral-400">
-                    {entradas.length} check-in{entradas.length === 1 ? '' : 's'} · estimado{' '}
-                    {fmtCentavos(estimado)}
-                  </span>
-                </div>
+              <Card key={mes}>
+                <CardHeader
+                  title={`Competência ${fmtMes(mes)}`}
+                  subtitle={`${entradas.length} check-in${entradas.length === 1 ? '' : 's'} · estimado ${fmtCentavos(estimado)}`}
+                />
 
                 <ul className="mb-3 flex flex-col gap-1">
                   {entradas.map((e) => (
@@ -113,21 +112,21 @@ export function WellhubTab() {
                   ))}
                 </ul>
 
-                <div className="flex items-end gap-2">
-                  <input
+                <div className="flex flex-wrap items-end gap-2">
+                  <Input
                     value={valores[mes] ?? ''}
                     onChange={(e) => setValores((v) => ({ ...v, [mes]: e.target.value }))}
                     placeholder="R$ valor real do repasse"
-                    className={`${inputCls} w-44`}
+                    className="w-44"
                   />
-                  <input
+                  <Input
                     type="date"
                     value={datas[mes] ?? new Date().toISOString().slice(0, 10)}
                     onChange={(e) => setDatas((d) => ({ ...d, [mes]: e.target.value }))}
                     title="Data em que o repasse caiu na conta"
-                    className={inputCls}
+                    className="w-40"
                   />
-                  <button
+                  <Button
                     onClick={() => {
                       const centavos = parseCentavos(valores[mes] ?? '')
                       if (!centavos) return
@@ -137,13 +136,13 @@ export function WellhubTab() {
                         data: datas[mes] ?? new Date().toISOString().slice(0, 10),
                       })
                     }}
-                    disabled={conciliar.isPending || !parseCentavos(valores[mes] ?? '')}
-                    className="rounded-md bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-40"
+                    disabled={!parseCentavos(valores[mes] ?? '')}
+                    loading={conciliar.isPending}
                   >
                     Conciliar mês
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             )
           })}
         </div>

@@ -1,4 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import { CheckCircle2, Plus, X } from 'lucide-react'
+import { Badge } from '../../../components/ui/Badge'
+import { Button } from '../../../components/ui/Button'
+import { EmptyState } from '../../../components/ui/EmptyState'
+import { Input } from '../../../components/ui/Input'
+import { Select } from '../../../components/ui/Select'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import {
@@ -13,9 +19,6 @@ import {
   type CategoriaEntrada,
   type Entrada,
 } from '../types'
-
-const inputCls =
-  'rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500'
 
 /** Dia 15 do mês seguinte à competência — regra de repasse Wellhub (CLAUDE.md 12.6). */
 function previsaoWellhub(competencia: string): string {
@@ -74,36 +77,31 @@ export function EntradasTab({ mes }: { mes: string }) {
   return (
     <div>
       <form onSubmit={lancar} className="mb-5 flex flex-wrap items-end gap-2">
-        <input
+        <Input
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
           placeholder="Descrição (opcional)"
-          className={`${inputCls} w-44`}
+          className="w-44"
         />
-        <input
+        <Input
           value={valor}
           onChange={(e) => setValor(e.target.value)}
           placeholder="R$ 0,00"
           required
-          className={`${inputCls} w-24`}
+          className="w-24"
         />
-        <select
+        <Select
           value={categoria}
           onChange={(e) => setCategoria(e.target.value as CategoriaEntrada)}
-          className={inputCls}
+          className="w-40"
         >
           {CATEGORIAS_ENTRADA.map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
             </option>
           ))}
-        </select>
-        <input
-          type="date"
-          value={data}
-          onChange={(e) => setData(e.target.value)}
-          className={inputCls}
-        />
+        </Select>
+        <Input type="date" value={data} onChange={(e) => setData(e.target.value)} className="w-40" />
         <label className="flex items-center gap-1.5 px-1 text-sm text-neutral-600">
           <input
             type="checkbox"
@@ -113,13 +111,10 @@ export function EntradasTab({ mes }: { mes: string }) {
           />
           já recebido
         </label>
-        <button
-          type="submit"
-          disabled={criar.isPending}
-          className="rounded-md bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
-        >
+        <Button type="submit" loading={criar.isPending}>
+          <Plus className="size-4" />
           Lançar
-        </button>
+        </Button>
       </form>
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
@@ -133,29 +128,25 @@ export function EntradasTab({ mes }: { mes: string }) {
             {previstas.map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-3 rounded-md border border-dashed border-neutral-200 px-3 py-2 text-sm"
+                className="flex items-center gap-3 rounded-md border border-dashed border-neutral-200 bg-white px-3 py-2.5 text-sm"
               >
                 <span className="w-24 font-medium text-neutral-900">
                   {fmtCentavos(e.valor_centavos)}
                 </span>
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500">
-                  {CATEGORIA_ENTRADA_LABEL[e.categoria]}
-                </span>
+                <Badge variant="brand">{CATEGORIA_ENTRADA_LABEL[e.categoria]}</Badge>
                 <span className="flex-1 truncate text-neutral-500">{e.descricao}</span>
                 <span className="text-xs text-neutral-400">
                   previsto {fmtData(e.data_prevista)}
                 </span>
-                <button
-                  onClick={() => marcarRecebida(e)}
-                  className="rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-100"
-                >
+                <Button size="sm" variant="secondary" onClick={() => marcarRecebida(e)}>
+                  <CheckCircle2 className="size-3.5" />
                   Recebi
-                </button>
+                </Button>
                 <button
                   onClick={() => excluir.mutate(e.id)}
-                  className="text-xs text-neutral-300 transition hover:text-red-500"
+                  className="rounded p-0.5 text-neutral-300 transition hover:text-danger-600"
                 >
-                  ×
+                  <X className="size-3.5" />
                 </button>
               </li>
             ))}
@@ -166,32 +157,31 @@ export function EntradasTab({ mes }: { mes: string }) {
       <h3 className="mb-2 text-xs font-semibold tracking-wide text-neutral-500">
         RECEBIDAS NO MÊS
       </h3>
-      <ul className="flex flex-col gap-1.5">
-        {recebidas.map((e) => (
-          <li
-            key={e.id}
-            className="flex items-center gap-3 rounded-md border border-neutral-100 px-3 py-2 text-sm"
-          >
-            <span className="w-24 font-medium text-neutral-900">
-              {fmtCentavos(e.valor_centavos)}
-            </span>
-            <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500">
-              {CATEGORIA_ENTRADA_LABEL[e.categoria]}
-            </span>
-            <span className="flex-1 truncate text-neutral-500">{e.descricao}</span>
-            <span className="text-xs text-neutral-400">{fmtData(e.data_caixa)}</span>
-            <button
-              onClick={() => excluir.mutate(e.id)}
-              className="text-xs text-neutral-300 transition hover:text-red-500"
+      {!isLoading && recebidas.length === 0 ? (
+        <EmptyState title="Nenhuma entrada recebida no mês." />
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {recebidas.map((e) => (
+            <li
+              key={e.id}
+              className="flex items-center gap-3 rounded-md border border-neutral-100 bg-white px-3 py-2.5 text-sm"
             >
-              ×
-            </button>
-          </li>
-        ))}
-        {!isLoading && recebidas.length === 0 && (
-          <li className="py-2 text-sm text-neutral-300">Nenhuma entrada recebida no mês.</li>
-        )}
-      </ul>
+              <span className="w-24 font-medium text-neutral-900">
+                {fmtCentavos(e.valor_centavos)}
+              </span>
+              <Badge variant="success">{CATEGORIA_ENTRADA_LABEL[e.categoria]}</Badge>
+              <span className="flex-1 truncate text-neutral-500">{e.descricao}</span>
+              <span className="text-xs text-neutral-400">{fmtData(e.data_caixa)}</span>
+              <button
+                onClick={() => excluir.mutate(e.id)}
+                className="rounded p-0.5 text-neutral-300 transition hover:text-danger-600"
+              >
+                <X className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

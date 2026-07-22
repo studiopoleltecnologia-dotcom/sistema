@@ -9,7 +9,12 @@ export type Presenca = Tables<'presencas'>
 export type CanalAula = Enums<'canal_aula'>
 export type ConfigAgendamento = Tables<'config_agendamento'>
 
-export type TurmaComProfessora = Turma & { professora: Professora }
+/**
+ * A professora aqui é só o recorte de nome (vw_professoras_nomes), não a
+ * linha inteira — o valor pago a ela é gestão-only e não passa pela Agenda.
+ */
+export type ProfessoraNome = { id: string | null; nome: string | null; ativa: boolean | null }
+export type TurmaComProfessora = Turma & { professora: ProfessoraNome }
 export type AgendamentoComCliente = Agendamento & { cliente: Cliente }
 
 export const DIAS_SEMANA = [

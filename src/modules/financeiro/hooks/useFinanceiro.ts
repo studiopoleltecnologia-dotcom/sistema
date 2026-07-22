@@ -13,9 +13,11 @@ import {
   lancarRecorrente,
   listarCategoriasSaida,
   listarEntradas,
+  listarMixReceitaMensal,
   listarRecorrentes,
   listarReserva,
   listarSaidas,
+  listarSaidasMensal,
   obterConfig,
   obterMei,
   obterSaldoCaixa,
@@ -60,6 +62,20 @@ export function useMei() {
 
 export function useReserva() {
   return useQuery({ queryKey: ['reserva'], queryFn: listarReserva })
+}
+
+export function useMixReceitaMensal(meses = 6) {
+  return useQuery({
+    queryKey: ['mix-receita-mensal', meses],
+    queryFn: () => listarMixReceitaMensal(meses),
+  })
+}
+
+export function useSaidasMensal(meses = 6) {
+  return useQuery({
+    queryKey: ['saidas-mensal', meses],
+    queryFn: () => listarSaidasMensal(meses),
+  })
 }
 
 export function useCriarEntrada() {

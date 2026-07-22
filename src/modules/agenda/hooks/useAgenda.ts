@@ -6,6 +6,7 @@ import {
   criarTurma,
   desativarTurma,
   listarDia,
+  listarNomesProfessoras,
   listarTurmas,
   obterConfigAgendamento,
   registrarPresenca,
@@ -13,6 +14,10 @@ import {
 
 export function useTurmas() {
   return useQuery({ queryKey: ['turmas'], queryFn: listarTurmas })
+}
+
+export function useNomesProfessoras() {
+  return useQuery({ queryKey: ['nomes-professoras'], queryFn: listarNomesProfessoras })
 }
 
 export function useDia(data: string) {

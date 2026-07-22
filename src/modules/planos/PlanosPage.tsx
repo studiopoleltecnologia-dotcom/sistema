@@ -4,10 +4,9 @@ import { requireSupabase } from '../../lib/supabase'
 import { fmtCentavos, parseCentavos } from '../../lib/dinheiro'
 import { fmtData } from '../../lib/datas'
 import { useClientes } from '../clientes/hooks/useClientes'
-import type { Enums, Tables } from '../../lib/database.types'
+import type { Tables } from '../../lib/database.types'
 
 type Plano = Tables<'planos'>
-type PlanoTipo = Enums<'plano_tipo'>
 type SaldoCredito = Tables<'vw_saldo_creditos'>
 
 const inputCls =
@@ -35,7 +34,9 @@ function useSaldos() {
       const { data, error } = await requireSupabase()
         .from('vw_saldo_creditos')
         .select('*')
-        .eq('status', 'ativa')
+        // inadimplente também aparece: é justamente quem a equipe
+        // precisa ver para cobrar e depois renovar o ciclo
+        .in('status', ['ativa', 'inadimplente'])
         .order('data_fim')
       if (error) throw error
       return data
@@ -50,9 +51,10 @@ export function PlanosPage() {
   const { data: clientes } = useClientes()
 
   const [nome, setNome] = useState('')
-  const [tipo, setTipo] = useState<PlanoTipo>('semanal')
-  const [quantidade, setQuantidade] = useState('2')
-  const [vigencia, setVigencia] = useState('30')
+  // Todo plano é por crédito desde 21/07/2026; o que varia é quantos
+  // créditos por mês e por quantos meses vai o compromisso.
+  const [quantidade, setQuantidade] = useState('4')
+  const [ciclos, setCiclos] = useState('1')
   const [preco, setPreco] = useState('')
 
   const [matriculaCliente, setMatriculaCliente] = useState('')
@@ -64,10 +66,11 @@ export function PlanosPage() {
       if (!nome.trim() || !precoCentavos) throw new Error('dados incompletos')
       const { error } = await requireSupabase().from('planos').insert({
         nome: nome.trim(),
-        tipo,
-        quantidade: Number(quantidade),
-        vigencia_dias: Number(vigencia),
-        preco_centavos: precoCentavos,
+        tipo: 'creditos',
+        quantidade: Number(quantidade), // créditos por ciclo
+        vigencia_dias: 30, // um ciclo = um mês
+        ciclos: Number(ciclos), // 1 = mensal · 6 = semestral
+        preco_centavos: precoCentavos, // preço de UM ciclo
       })
       if (error) throw error
     },
@@ -120,6 +123,32 @@ export function PlanosPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['saldo-creditos'] }),
   })
 
+  // Enquanto não existe gateway, a renovação é manual: a equipe
+  // confirma que a mensalidade entrou e libera o ciclo seguinte.
+  // Quando o Asaas entrar, quem chama isto é o webhook de pagamento.
+  const renovar = useMutation({
+    mutationFn: async (matriculaId: string) => {
+      const { error } = await requireSupabase().rpc('renovar_ciclo', {
+        p_matricula: matriculaId,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['saldo-creditos'] })
+      qc.invalidateQueries({ queryKey: ['entradas'] })
+    },
+  })
+
+  const inadimplir = useMutation({
+    mutationFn: async (matriculaId: string) => {
+      const { error } = await requireSupabase().rpc('marcar_inadimplente', {
+        p_matricula: matriculaId,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['saldo-creditos'] }),
+  })
+
   function submitPlano(e: FormEvent) {
     e.preventDefault()
     criarPlano.mutate()
@@ -130,14 +159,12 @@ export function PlanosPage() {
   const nomePlano = (id: string | null) =>
     (planos ?? []).find((p) => p.id === id)?.nome ?? '—'
   const descricaoPlano = (p: Plano) =>
-    p.tipo === 'creditos'
-      ? `${p.quantidade} créditos · ${p.vigencia_dias} dias`
-      : `${p.quantidade}x/semana · ${p.vigencia_dias} dias`
+    p.ciclos > 1
+      ? `${p.quantidade} créditos/mês · semestral (${p.ciclos}x)`
+      : `${p.quantidade} créditos/mês · mensal`
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold text-neutral-900">Planos</h1>
-
       <form onSubmit={submitPlano} className="mb-5 flex flex-wrap items-end gap-2">
         <input
           value={nome}
@@ -146,36 +173,30 @@ export function PlanosPage() {
           required
           className={`${inputCls} w-44`}
         />
-        <select
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value as PlanoTipo)}
-          className={inputCls}
-        >
-          <option value="semanal">Aulas por semana</option>
-          <option value="creditos">Pacote de créditos</option>
-        </select>
         <input
           type="number"
           min={1}
           value={quantidade}
           onChange={(e) => setQuantidade(e.target.value)}
-          title={tipo === 'creditos' ? 'Total de créditos' : 'Aulas por semana'}
-          className={`${inputCls} w-16`}
-        />
-        <input
-          type="number"
-          min={1}
-          value={vigencia}
-          onChange={(e) => setVigencia(e.target.value)}
-          title="Vigência (dias)"
+          title="Créditos por mês"
           className={`${inputCls} w-20`}
         />
+        <span className="pb-1.5 text-xs text-neutral-400">créditos/mês</span>
+        <select
+          value={ciclos}
+          onChange={(e) => setCiclos(e.target.value)}
+          title="Duração do compromisso"
+          className={inputCls}
+        >
+          <option value="1">Mensal (sem compromisso)</option>
+          <option value="6">Semestral (6 mensalidades)</option>
+        </select>
         <input
           value={preco}
           onChange={(e) => setPreco(e.target.value)}
-          placeholder="R$ preço"
+          placeholder="R$ por mês"
           required
-          className={`${inputCls} w-24`}
+          className={`${inputCls} w-28`}
         />
         <button
           type="submit"
@@ -257,8 +278,18 @@ export function PlanosPage() {
           >
             <span className="flex-1 font-medium text-neutral-900">
               {nomeCliente(s.cliente_id)}
+              {s.status === 'inadimplente' && (
+                <span className="ml-2 rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-600">
+                  em aberto
+                </span>
+              )}
             </span>
             <span className="text-xs text-neutral-400">{nomePlano(s.plano_id)}</span>
+            {(s.ciclos_total ?? 1) > 1 && (
+              <span className="text-xs text-neutral-400">
+                mês {s.ciclo_atual}/{s.ciclos_total}
+              </span>
+            )}
             <span className="text-xs text-neutral-400">até {fmtData(s.data_fim)}</span>
             <span
               className={`font-semibold ${
@@ -275,6 +306,26 @@ export function PlanosPage() {
             >
               + reposição
             </button>
+            {(s.ciclo_atual ?? 1) < (s.ciclos_total ?? 1) && (
+              <button
+                onClick={() => s.matricula_id && renovar.mutate(s.matricula_id)}
+                disabled={renovar.isPending}
+                title="Mensalidade entrou: libera os créditos do próximo mês (o saldo que sobrou expira)"
+                className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-medium text-success-700 transition hover:bg-success-100 disabled:opacity-40"
+              >
+                pagou · renovar
+              </button>
+            )}
+            {s.status === 'ativa' && (
+              <button
+                onClick={() => s.matricula_id && inadimplir.mutate(s.matricula_id)}
+                disabled={inadimplir.isPending}
+                title="Mensalidade não entrou: bloqueia novos agendamentos até regularizar"
+                className="rounded-md px-2 py-0.5 text-xs font-medium text-neutral-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+              >
+                não pagou
+              </button>
+            )}
           </li>
         ))}
         {(saldos ?? []).length === 0 && (

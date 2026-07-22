@@ -37,7 +37,6 @@ export function FollowupPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold text-neutral-900">Follow-up</h1>
           <span className="text-sm text-neutral-400">
             {pendencias?.length ?? 0} pendente{(pendencias?.length ?? 0) === 1 ? '' : 's'}
           </span>
@@ -94,7 +93,7 @@ export function FollowupPage() {
                     {wellhub && (
                       <span
                         className="rounded bg-amber-50 px-1.5 text-[10px] font-semibold text-amber-700"
-                        title="Aluna Wellhub: mensagem sem oferta, desconto, aula grátis ou benefício de indicação (regra da parceria)."
+                        title="Aluno Wellhub: mensagem sem oferta, desconto, aula grátis ou benefício de indicação (regra da parceria)."
                       >
                         Wellhub — sem oferta
                       </span>

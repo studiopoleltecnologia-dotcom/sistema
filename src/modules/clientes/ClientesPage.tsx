@@ -73,7 +73,6 @@ export function ClientesPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-neutral-900">Clientes</h1>
           <div className="flex gap-1">
             <button className={abaCls(visao === 'funil')} onClick={() => setVisao('funil')}>
               Funil

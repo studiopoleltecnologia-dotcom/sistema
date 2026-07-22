@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import { Settings2 } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
+import { Tabs } from '../../components/ui/Tabs'
 import { ConfigModal } from './components/ConfigModal'
 import { EntradasTab } from './components/EntradasTab'
-import { ResumoCards } from './components/ResumoCards'
+import { GraficosFinanceiro } from './components/GraficosFinanceiro'
+import { PainelFinanceiro } from './components/PainelFinanceiro'
 import { ReservaTab } from './components/ReservaTab'
 import { SaidasTab } from './components/SaidasTab'
 import { WellhubTab } from './components/WellhubTab'
@@ -9,11 +13,20 @@ import {
   useConfigFinanceiro,
   useEntradas,
   useMei,
+  useMixReceitaMensal,
   useSaidas,
+  useSaidasMensal,
   useSaldoCaixa,
 } from './hooks/useFinanceiro'
 
 type Aba = 'entradas' | 'saidas' | 'reserva' | 'wellhub'
+
+const ABAS: { value: Aba; label: string }[] = [
+  { value: 'entradas', label: 'Entradas' },
+  { value: 'saidas', label: 'Saídas' },
+  { value: 'reserva', label: 'Reserva' },
+  { value: 'wellhub', label: 'Wellhub' },
+]
 
 export function FinanceiroPage() {
   const hoje = new Date()
@@ -27,66 +40,46 @@ export function FinanceiroPage() {
   const { data: mei } = useMei()
   const { data: saldo } = useSaldoCaixa()
   const { data: config } = useConfigFinanceiro()
-
-  const recebidoMes = (entradas ?? [])
-    .filter((e) => e.status === 'recebida')
-    .reduce((s, e) => s + e.valor_centavos, 0)
-  const saidasMes = (saidas ?? []).reduce((s, x) => s + x.valor_centavos, 0)
-
-  const abaCls = (ativa: boolean) =>
-    `rounded-md px-2.5 py-1 text-xs font-medium transition ${
-      ativa ? 'bg-brand-50 text-brand-700' : 'text-neutral-400 hover:text-neutral-700'
-    }`
+  const { data: mixMensal } = useMixReceitaMensal(6)
+  const { data: saidasMensal } = useSaidasMensal(6)
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-neutral-900">Financeiro</h1>
-          <div className="flex gap-1">
-            <button className={abaCls(aba === 'entradas')} onClick={() => setAba('entradas')}>
-              Entradas
-            </button>
-            <button className={abaCls(aba === 'saidas')} onClick={() => setAba('saidas')}>
-              Saídas
-            </button>
-            <button className={abaCls(aba === 'reserva')} onClick={() => setAba('reserva')}>
-              Reserva
-            </button>
-            <button className={abaCls(aba === 'wellhub')} onClick={() => setAba('wellhub')}>
-              Wellhub
-            </button>
-          </div>
-        </div>
+        <Tabs value={aba} onChange={setAba} items={ABAS} />
         <div className="flex items-center gap-2">
           <input
             type="month"
             value={mes}
             onChange={(e) => setMes(e.target.value)}
-            className="rounded-md border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500"
+            className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
-          <button
-            onClick={() => setConfigAberta(true)}
-            className="rounded-md px-2.5 py-1.5 text-sm text-neutral-400 transition hover:bg-neutral-50 hover:text-neutral-700"
-            title="Configurações financeiras"
-          >
+          <Button variant="ghost" size="sm" onClick={() => setConfigAberta(true)}>
+            <Settings2 className="size-4" />
             Config
-          </button>
+          </Button>
         </div>
       </div>
 
-      <ResumoCards
-        recebidoMes={recebidoMes}
-        saidasMes={saidasMes}
+      <PainelFinanceiro
+        entradas={entradas ?? []}
+        saidas={saidas ?? []}
         mei={mei}
-        saldoAtual={saldo?.saldo_atual_centavos}
-        previstoAberto={saldo?.previsto_em_aberto_centavos}
-        recorrentesPendentes={saldo?.recorrentes_pendentes_mes_centavos}
+        saldo={saldo}
+        mes={mes}
+      />
+
+      <GraficosFinanceiro
+        entradas={entradas ?? []}
+        saidas={saidas ?? []}
+        mes={mes}
+        mixMensal={mixMensal ?? []}
+        saidasMensal={saidasMensal ?? []}
       />
 
       {aba === 'entradas' && <EntradasTab mes={mes} />}
       {aba === 'saidas' && <SaidasTab mes={mes} />}
-      {aba === 'reserva' && <ReservaTab recebidoMes={recebidoMes} />}
+      {aba === 'reserva' && <ReservaTab recebidoMes={(entradas ?? []).filter((e) => e.status === 'recebida').reduce((s, e) => s + e.valor_centavos, 0)} />}
       {aba === 'wellhub' && <WellhubTab />}
 
       {configAberta && config && (

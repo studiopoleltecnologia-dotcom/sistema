@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { useCriarTurma, useDesativarTurma, useTurmas } from '../hooks/useAgenda'
-import { useProfessoras } from '../../professoras/hooks/useProfessoras'
+import {
+  useCriarTurma,
+  useDesativarTurma,
+  useNomesProfessoras,
+  useTurmas,
+} from '../hooks/useAgenda'
 import { DIAS_SEMANA, fmtHora } from '../types'
 
 const inputCls =
@@ -9,7 +13,7 @@ const inputCls =
 /** Grade semanal: turmas por dia + cadastro de nova turma. */
 export function GradeView() {
   const { data: turmas, isLoading } = useTurmas()
-  const { data: professoras } = useProfessoras()
+  const { data: professoras } = useNomesProfessoras()
   const criar = useCriarTurma()
   const desativar = useDesativarTurma()
 
@@ -48,7 +52,7 @@ export function GradeView() {
         >
           <option value="">Professora…</option>
           {(professoras ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
+            <option key={p.id} value={p.id ?? ''}>
               {p.nome}
             </option>
           ))}

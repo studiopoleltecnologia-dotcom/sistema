@@ -2,12 +2,31 @@ import { requireSupabase } from '../../../lib/supabase'
 import type { CanalAula, TurmaInsert } from '../types'
 
 export async function listarTurmas() {
+  const sb = requireSupabase()
+  // O nome da professora vem de vw_professoras_nomes (id/nome/ativa) e
+  // não da tabela professoras, que virou gestão-only para não expor o
+  // valor_por_aluna. A secretária opera a Agenda vendo só os nomes.
+  const [turmasRes, nomesRes] = await Promise.all([
+    sb.from('turmas').select('*').eq('ativa', true).order('dia_semana').order('horario'),
+    sb.from('vw_professoras_nomes').select('id, nome, ativa'),
+  ])
+  if (turmasRes.error) throw turmasRes.error
+  if (nomesRes.error) throw nomesRes.error
+
+  const nomes = new Map((nomesRes.data ?? []).map((p) => [p.id, p]))
+  return (turmasRes.data ?? []).map((t) => ({
+    ...t,
+    professora: nomes.get(t.professora_id) ?? { id: t.professora_id, nome: '—', ativa: true },
+  }))
+}
+
+/** Nomes de professoras para o seletor de turma (sem dado financeiro). */
+export async function listarNomesProfessoras() {
   const { data, error } = await requireSupabase()
-    .from('turmas')
-    .select('*, professora:professoras(*)')
+    .from('vw_professoras_nomes')
+    .select('id, nome, ativa')
     .eq('ativa', true)
-    .order('dia_semana')
-    .order('horario')
+    .order('nome')
   if (error) throw error
   return data
 }

@@ -1,4 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import { Plus, RotateCcw, X } from 'lucide-react'
+import { Badge } from '../../../components/ui/Badge'
+import { Button } from '../../../components/ui/Button'
+import { EmptyState } from '../../../components/ui/EmptyState'
+import { Input } from '../../../components/ui/Input'
+import { Select } from '../../../components/ui/Select'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import {
@@ -12,10 +18,7 @@ import {
   useRecorrentes,
   useSaidas,
 } from '../hooks/useFinanceiro'
-import type { TipoSaida } from '../types'
-
-const inputCls =
-  'rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500'
+import { ORDEM_TIPO_SAIDA, TIPO_SAIDA_DESCRICAO, TIPO_SAIDA_LABEL, type TipoSaida } from '../types'
 
 export function SaidasTab({ mes }: { mes: string }) {
   const { data: saidas, isLoading } = useSaidas(mes)
@@ -34,7 +37,9 @@ export function SaidasTab({ mes }: { mes: string }) {
   const [categoriaId, setCategoriaId] = useState('')
   const [data, setData] = useState(hoje)
   const [recorrente, setRecorrente] = useState(false)
-  const [novaCategoria, setNovaCategoria] = useState<{ nome: string; tipo: TipoSaida } | null>(null)
+  const [novaCategoria, setNovaCategoria] = useState<{ nome: string; tipo: TipoSaida } | null>(
+    null,
+  )
 
   function lancar(e: FormEvent) {
     e.preventDefault()
@@ -46,7 +51,6 @@ export function SaidasTab({ mes }: { mes: string }) {
       setRecorrente(false)
     }
     if (recorrente) {
-      // cria o modelo mensal e o lançamento deste mês já vinculado
       criarRecorrente.mutate(
         {
           descricao: descricao.trim() || 'Despesa recorrente',
@@ -88,60 +92,56 @@ export function SaidasTab({ mes }: { mes: string }) {
     )
   }
 
-  const fixas = (categorias ?? []).filter((c) => c.tipo === 'fixa')
-  const variaveis = (categorias ?? []).filter((c) => c.tipo === 'variavel')
+  const categoriasPorTipo = (tipo: TipoSaida) => (categorias ?? []).filter((c) => c.tipo === tipo)
 
-  // recorrentes já lançadas neste mês (pelo vínculo recorrente_id)
   const lancadasIds = new Set(
     (saidas ?? []).map((s) => s.recorrente_id).filter(Boolean) as string[],
   )
 
-  const saidasFixas = (saidas ?? []).filter((s) => s.categoria?.tipo === 'fixa')
-  const saidasVariaveis = (saidas ?? []).filter((s) => s.categoria?.tipo === 'variavel')
+  const saidasPorTipo = (tipo: TipoSaida) => (saidas ?? []).filter((s) => s.categoria?.tipo === tipo)
   const total = (lista: { valor_centavos: number }[]) =>
     lista.reduce((s, x) => s + x.valor_centavos, 0)
 
   const ItemSaida = ({ s }: { s: NonNullable<typeof saidas>[number] }) => (
-    <li className="flex items-center gap-3 rounded-md border border-neutral-100 px-3 py-2 text-sm">
+    <li className="flex items-center gap-3 rounded-md border border-neutral-100 bg-white px-3 py-2.5 text-sm">
       <span className="w-24 font-medium text-neutral-900">{fmtCentavos(s.valor_centavos)}</span>
-      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500">
-        {s.categoria?.nome}
-      </span>
+      <Badge variant="neutral">{s.categoria?.nome}</Badge>
       <span className="flex-1 truncate text-neutral-500">
         {s.descricao}
         {s.recorrente_id && (
-          <span className="ml-1.5 text-[10px] text-brand-600" title="Lançada de uma despesa recorrente">
-            ↻
-          </span>
+          <RotateCcw
+            className="ml-1.5 inline-block size-3 text-brand-600"
+            aria-label="Lançada de uma despesa recorrente"
+          />
         )}
       </span>
       <span className="text-xs text-neutral-400">{fmtData(s.data_caixa)}</span>
       <button
         onClick={() => excluir.mutate(s.id)}
-        className="text-xs text-neutral-300 transition hover:text-red-500"
+        className="rounded p-0.5 text-neutral-300 transition hover:text-danger-600"
       >
-        ×
+        <X className="size-3.5" />
       </button>
     </li>
   )
 
   return (
     <div className="max-w-3xl">
-      <form onSubmit={lancar} className="mb-2 flex flex-wrap items-end gap-2">
-        <input
+      <form onSubmit={lancar} className="mb-4 flex flex-wrap items-end gap-2">
+        <Input
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
           placeholder="Descrição (opcional)"
-          className={`${inputCls} w-44`}
+          className="w-44"
         />
-        <input
+        <Input
           value={valor}
           onChange={(e) => setValor(e.target.value)}
           placeholder="R$ 0,00"
           required
-          className={`${inputCls} w-24`}
+          className="w-24"
         />
-        <select
+        <Select
           value={categoriaId}
           onChange={(e) => {
             if (e.target.value === '__nova__') {
@@ -151,31 +151,21 @@ export function SaidasTab({ mes }: { mes: string }) {
             }
           }}
           required
-          className={inputCls}
+          className="w-44"
         >
           <option value="">Categoria…</option>
-          <optgroup label="Fixas">
-            {fixas.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="Variáveis">
-            {variaveis.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </optgroup>
+          {ORDEM_TIPO_SAIDA.map((tipo) => (
+            <optgroup key={tipo} label={TIPO_SAIDA_LABEL[tipo]}>
+              {categoriasPorTipo(tipo).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </optgroup>
+          ))}
           <option value="__nova__">+ Nova categoria…</option>
-        </select>
-        <input
-          type="date"
-          value={data}
-          onChange={(e) => setData(e.target.value)}
-          className={inputCls}
-        />
+        </Select>
+        <Input type="date" value={data} onChange={(e) => setData(e.target.value)} className="w-40" />
         <label
           className="flex items-center gap-1.5 px-1 text-sm text-neutral-600"
           title="Cria o modelo mensal: a despesa passa a aparecer como pendente todo mês e entra no saldo projetado"
@@ -188,47 +178,40 @@ export function SaidasTab({ mes }: { mes: string }) {
           />
           todo mês
         </label>
-        <button
-          type="submit"
-          disabled={criar.isPending || criarRecorrente.isPending}
-          className="rounded-md bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
-        >
+        <Button type="submit" loading={criar.isPending || criarRecorrente.isPending}>
+          <Plus className="size-4" />
           Lançar
-        </button>
+        </Button>
       </form>
 
       {novaCategoria && (
-        <div className="mb-4 flex items-center gap-2 rounded-md bg-neutral-50 p-2">
-          <input
+        <div className="mb-4 flex flex-wrap items-end gap-2 rounded-lg bg-neutral-50 p-3">
+          <Input
             autoFocus
             value={novaCategoria.nome}
             onChange={(e) => setNovaCategoria({ ...novaCategoria, nome: e.target.value })}
             placeholder="Nome da categoria"
-            className={`${inputCls} w-44`}
+            className="w-44"
           />
-          <select
+          <Select
             value={novaCategoria.tipo}
             onChange={(e) =>
               setNovaCategoria({ ...novaCategoria, tipo: e.target.value as TipoSaida })
             }
-            className={inputCls}
+            className="w-44"
           >
-            <option value="fixa">Fixa</option>
-            <option value="variavel">Variável</option>
-          </select>
-          <button
-            onClick={salvarCategoria}
-            disabled={criarCategoria.isPending}
-            className="rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
-          >
+            {ORDEM_TIPO_SAIDA.map((tipo) => (
+              <option key={tipo} value={tipo}>
+                {TIPO_SAIDA_LABEL[tipo]}
+              </option>
+            ))}
+          </Select>
+          <Button size="sm" onClick={salvarCategoria} loading={criarCategoria.isPending}>
             Criar
-          </button>
-          <button
-            onClick={() => setNovaCategoria(null)}
-            className="px-1 text-xs text-neutral-400 hover:text-neutral-700"
-          >
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setNovaCategoria(null)}>
             Cancelar
-          </button>
+          </Button>
         </div>
       )}
 
@@ -243,35 +226,33 @@ export function SaidasTab({ mes }: { mes: string }) {
               return (
                 <li
                   key={r.id}
-                  className={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm ${
-                    paga ? 'border-neutral-100 opacity-60' : 'border-dashed border-neutral-200'
+                  className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm ${
+                    paga ? 'border-neutral-100 bg-white opacity-60' : 'border-dashed border-neutral-200'
                   }`}
                 >
                   <span className="w-24 font-medium text-neutral-900">
                     {fmtCentavos(r.valor_centavos)}
                   </span>
-                  <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500">
-                    {r.categoria?.nome}
-                  </span>
+                  <Badge variant="neutral">{r.categoria?.nome}</Badge>
                   <span className="flex-1 truncate text-neutral-600">{r.descricao}</span>
                   <span className="text-xs text-neutral-400">dia {r.dia_vencimento}</span>
                   {paga ? (
-                    <span className="text-xs font-medium text-brand-600">paga ✓</span>
+                    <Badge variant="success">paga ✓</Badge>
                   ) : (
-                    <button
+                    <Button
+                      size="sm"
                       onClick={() => lancarRecorrente.mutate({ recorrente: r, mes })}
-                      disabled={lancarRecorrente.isPending}
-                      className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
+                      loading={lancarRecorrente.isPending}
                     >
                       Pagar
-                    </button>
+                    </Button>
                   )}
                   <button
                     onClick={() => desativarRecorrente.mutate(r.id)}
                     title="Deixar de ser recorrente (não afeta lançamentos já feitos)"
-                    className="text-xs text-neutral-300 transition hover:text-red-500"
+                    className="rounded p-0.5 text-neutral-300 transition hover:text-danger-600"
                   >
-                    ×
+                    <X className="size-3.5" />
                   </button>
                 </li>
               )
@@ -285,31 +266,31 @@ export function SaidasTab({ mes }: { mes: string }) {
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      <div className="mb-2 mt-4 flex items-baseline justify-between">
-        <h3 className="text-xs font-semibold tracking-wide text-neutral-500">FIXAS</h3>
-        <span className="text-xs text-neutral-400">{fmtCentavos(total(saidasFixas))}</span>
-      </div>
-      <ul className="flex flex-col gap-1.5">
-        {saidasFixas.map((s) => (
-          <ItemSaida key={s.id} s={s} />
-        ))}
-        {!isLoading && saidasFixas.length === 0 && (
-          <li className="py-1 text-sm text-neutral-300">Nenhuma saída fixa no mês.</li>
-        )}
-      </ul>
-
-      <div className="mb-2 mt-5 flex items-baseline justify-between">
-        <h3 className="text-xs font-semibold tracking-wide text-neutral-500">VARIÁVEIS</h3>
-        <span className="text-xs text-neutral-400">{fmtCentavos(total(saidasVariaveis))}</span>
-      </div>
-      <ul className="flex flex-col gap-1.5">
-        {saidasVariaveis.map((s) => (
-          <ItemSaida key={s.id} s={s} />
-        ))}
-        {!isLoading && saidasVariaveis.length === 0 && (
-          <li className="py-1 text-sm text-neutral-300">Nenhuma saída variável no mês.</li>
-        )}
-      </ul>
+      {ORDEM_TIPO_SAIDA.map((tipo) => {
+        const lista = saidasPorTipo(tipo)
+        return (
+          <div key={tipo}>
+            <div className="mb-2 mt-5 flex items-baseline justify-between">
+              <div>
+                <h3 className="text-xs font-semibold tracking-wide text-neutral-500">
+                  {TIPO_SAIDA_LABEL[tipo].toUpperCase()}
+                </h3>
+                <p className="text-[11px] text-neutral-400">{TIPO_SAIDA_DESCRICAO[tipo]}</p>
+              </div>
+              <span className="text-xs font-medium text-neutral-500">{fmtCentavos(total(lista))}</span>
+            </div>
+            {lista.length === 0 && !isLoading ? (
+              <EmptyState title={`Nenhuma despesa ${TIPO_SAIDA_LABEL[tipo].toLowerCase()} no mês.`} />
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {lista.map((s) => (
+                  <ItemSaida key={s.id} s={s} />
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

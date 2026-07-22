@@ -172,7 +172,7 @@ function TurmaDoDia({
           onChange={(e) => setNovaClienteId(e.target.value)}
           className={`${inputCls} max-w-44 flex-1`}
         >
-          <option value="">Adicionar aluna…</option>
+          <option value="">Adicionar aluno…</option>
           {disponiveis.map((c) => (
             <option key={c.id} value={c.id}>
               {c.nome}
