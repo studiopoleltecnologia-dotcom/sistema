@@ -166,7 +166,6 @@ export async function obterConfigAgendamento() {
 
 export async function atualizarConfigAgendamento(patch: {
   horas_cancelamento?: number
-  max_reposicoes_por_matricula?: number
   valor_checkin_wellhub_centavos?: number
 }) {
   const { data, error } = await requireSupabase()

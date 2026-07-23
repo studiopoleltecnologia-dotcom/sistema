@@ -98,7 +98,6 @@ export function PlanosPage() {
               <ul className="mt-2 flex flex-col gap-0.5 text-[11px] text-neutral-400">
                 <li>• Cancelamento até {config.horas_cancelamento}h antes devolve o crédito</li>
                 <li>• Faltou sem cancelar: crédito é consumido</li>
-                <li>• Até {config.max_reposicoes_por_matricula} reposições por plano</li>
               </ul>
             )}
 

@@ -64,7 +64,6 @@ function ConfigAgendamentoForm() {
   const { data: config } = useConfigAgendamento()
   const atualizar = useAtualizarConfigAgendamento()
   const [horas, setHoras] = useState<string | null>(null)
-  const [reposicoes, setReposicoes] = useState<string | null>(null)
   const [valorWellhub, setValorWellhub] = useState<string | null>(null)
 
   if (!config) return <p className="text-sm text-neutral-400">Carregando…</p>
@@ -75,8 +74,6 @@ function ConfigAgendamentoForm() {
       valorWellhub !== null ? parseCentavos(valorWellhub) : config.valor_checkin_wellhub_centavos
     atualizar.mutate({
       horas_cancelamento: horas !== null ? Number(horas) : config.horas_cancelamento,
-      max_reposicoes_por_matricula:
-        reposicoes !== null ? Number(reposicoes) : config.max_reposicoes_por_matricula,
       valor_checkin_wellhub_centavos: valorCent ?? config.valor_checkin_wellhub_centavos,
     })
   }
@@ -95,14 +92,6 @@ function ConfigAgendamentoForm() {
           <input
             value={horas ?? String(config.horas_cancelamento)}
             onChange={(e) => setHoras(e.target.value)}
-            className={input}
-          />
-        </div>
-        <div>
-          <label className={campo}>Máximo de reposições por matrícula</label>
-          <input
-            value={reposicoes ?? String(config.max_reposicoes_por_matricula)}
-            onChange={(e) => setReposicoes(e.target.value)}
             className={input}
           />
         </div>

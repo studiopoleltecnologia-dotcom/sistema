@@ -51,8 +51,8 @@ export function PlanosPage() {
   const { data: saldos } = useSaldos()
   const { data: clientes } = useClientes()
   // Secretária vê planos e matrículas, mas não cria/edita nem mexe em
-  // crédito (matricular, renovar, inadimplir, reposição). RLS já recusa a
-  // gravação de plano; aqui escondemos as ações para não frustrar o clique.
+  // crédito (matricular, renovar, inadimplir). RLS já recusa a gravação
+  // de plano; aqui escondemos as ações para não frustrar o clique.
   const { data: funcao } = useMinhaFuncao()
   const ehGestao = funcao === 'gestao'
 
@@ -112,21 +112,6 @@ export function PlanosPage() {
       setMatriculaCliente('')
       setMatriculaPlano('')
     },
-  })
-
-  const reposicao = useMutation({
-    mutationFn: async (matriculaId: string) => {
-      const sb = requireSupabase()
-      const { data: auth } = await sb.auth.getUser()
-      const { error } = await sb.from('creditos_eventos').insert({
-        matricula_id: matriculaId,
-        delta: 1,
-        motivo: 'reposicao',
-        criado_por: auth.user?.id ?? null,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['saldo-creditos'] }),
   })
 
   // Enquanto não existe gateway, a renovação é manual: a equipe
@@ -312,14 +297,6 @@ export function PlanosPage() {
             </span>
             {ehGestao && (
               <>
-                <button
-                  onClick={() => s.matricula_id && reposicao.mutate(s.matricula_id)}
-                  disabled={reposicao.isPending}
-                  title="Conceder 1 crédito de reposição (limite configurável na Agenda → Config)"
-                  className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100 disabled:opacity-40"
-                >
-                  + reposição
-                </button>
                 {(s.ciclo_atual ?? 1) < (s.ciclos_total ?? 1) && (
                   <button
                     onClick={() => s.matricula_id && renovar.mutate(s.matricula_id)}
