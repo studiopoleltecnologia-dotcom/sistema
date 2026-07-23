@@ -14,7 +14,9 @@ export function ClientesPage() {
   const criar = useCriarCliente()
   const atualizar = useAtualizarCliente()
 
-  const [visao, setVisao] = useState<Visao>('funil')
+  // Abre na Lista (roster do dia a dia): a maioria dos registros são alunos
+  // ativos, não leads. O Funil fica a um clique para o trabalho de captação.
+  const [visao, setVisao] = useState<Visao>('lista')
   const [busca, setBusca] = useState('')
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null)
   const [formAberto, setFormAberto] = useState(false)
@@ -93,7 +95,7 @@ export function ClientesPage() {
             onClick={() => setFormAberto(true)}
             className="rounded-md bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-brand-700"
           >
-            Nova cliente
+            Novo aluno
           </button>
         </div>
       </div>

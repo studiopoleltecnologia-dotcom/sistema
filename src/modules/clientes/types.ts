@@ -15,10 +15,10 @@ export const ESTAGIOS: { value: EstagioFunil; label: string }[] = [
   { value: 'pediu_informacoes', label: 'Pediu informações' },
   { value: 'agendou_experimental', label: 'Agendou experimental' },
   { value: 'fez_experimental', label: 'Fez experimental' },
-  { value: 'ativa', label: 'Aluna ativa' },
+  { value: 'ativa', label: 'Aluno ativo' },
   { value: 'inativa', label: 'Parou de frequentar' },
   { value: 'em_retorno', label: 'Em retorno' },
-  { value: 'ex_aluna', label: 'Ex-aluna' },
+  { value: 'ex_aluna', label: 'Ex-aluno' },
 ]
 
 export const ESTAGIO_LABEL = Object.fromEntries(

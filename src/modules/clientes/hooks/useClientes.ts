@@ -5,6 +5,9 @@ import {
   criarCliente,
   listarClientes,
   listarInteracoes,
+  listarMatriculasDoCliente,
+  listarPlanosNomes,
+  listarProximasAulasDoCliente,
   listarSocias,
 } from '../api/clientes'
 import type { ClienteInsert, ClienteUpdate } from '../types'
@@ -23,6 +26,26 @@ export function useInteracoes(clienteId: string | null) {
     queryFn: () => listarInteracoes(clienteId!),
     enabled: clienteId !== null,
   })
+}
+
+export function useMatriculasDoCliente(clienteId: string | null) {
+  return useQuery({
+    queryKey: ['matriculas-cliente', clienteId],
+    queryFn: () => listarMatriculasDoCliente(clienteId!),
+    enabled: clienteId !== null,
+  })
+}
+
+export function useProximasAulasDoCliente(clienteId: string | null) {
+  return useQuery({
+    queryKey: ['proximas-aulas-cliente', clienteId],
+    queryFn: () => listarProximasAulasDoCliente(clienteId!),
+    enabled: clienteId !== null,
+  })
+}
+
+export function usePlanosNomes() {
+  return useQuery({ queryKey: ['planos-nomes'], queryFn: listarPlanosNomes })
 }
 
 export function useCriarCliente() {

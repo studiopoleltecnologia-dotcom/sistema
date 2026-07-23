@@ -66,7 +66,7 @@ export function ClienteForm({
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg"
       >
         <h2 className="mb-4 text-base font-semibold text-neutral-900">
-          {cliente ? 'Editar cliente' : 'Nova cliente'}
+          {cliente ? 'Editar aluno' : 'Novo aluno'}
         </h2>
 
         <div className="grid grid-cols-2 gap-3">

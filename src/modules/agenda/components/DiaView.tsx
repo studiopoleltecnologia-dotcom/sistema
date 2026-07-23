@@ -97,6 +97,11 @@ function TurmaDoDia({
           <span className="text-sm font-semibold text-neutral-900">
             {fmtHora(turma.horario)} — {turma.modalidade}
           </span>
+          {turma.sala && (
+            <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+              {turma.sala.nome}
+            </span>
+          )}
           <span className="text-xs text-neutral-400">{turma.professora.nome}</span>
         </div>
         <span

@@ -37,9 +37,10 @@ operação real.
 | S1 | **Ativar confirmação de e-mail** no Supabase Auth | 🔴 | O convite da professora depende disso: sem confirmação, quem souber o e-mail dela cria a conta dela. Toggle no painel, não é código. |
 | S2 | **Ligar proteção contra senha vazada** (HaveIBeenPwned) | 🟡 | Apontado pelo linter do Supabase. Também é toggle. |
 | S3 | ~~Trava do Financeiro só para a gestão~~ | ✅ | **Feito em 21/07/2026 (M8).** Funções internas gestao/secretaria/social; Financeiro trancado no banco por `is_gestao()`; painel e menu escondem dinheiro de não-gestão; `professoras` gestão-only. MFA vira reforço opcional, não bloqueia. |
-| S3b | **Migrar policies operacionais para `is_operacional()`** antes de criar conta `social` | 🔴 (quando for criar social) | Hoje operação usa `is_socia()` (qualquer conta interna). Correto enquanto só há gestao/secretaria. Uma conta social herdaria a operação — migrar antes. Sem conta social, sem vazamento. |
+| S3b | **Migrar policies operacionais para `is_operacional()`** antes de criar conta `social` | 🔴 (quando for criar social) | Hoje operação usa `is_socia()` (qualquer conta interna). Correto enquanto só há gestao/secretaria. Uma conta social herdaria a operação — migrar antes. Sem conta social, sem vazamento. **Junto disto:** as RPCs `matricular`/`renovar_ciclo`/`marcar_inadimplente` (SECURITY DEFINER, compartilhadas com o portal do aluno) precisam de guarda `is_gestao()` interna — hoje travadas só na UI (ver S6). |
 | S4 | ~~Tela para provisionar acessos internos~~ | ✅ | **Feito em 21/07/2026 (M9).** Tela **Equipe & Acessos** (gestão): convida por e-mail + função, muda função, remove. `convidar_equipe` promove na hora se já existe login, senão deixa convite que o signup consome. Protege a última gestão de se auto-remover. Falta a equipe real ser cadastrada (dado, não código). |
 | S5 | Revisar as 3 views *definer* apontadas pelo linter | ⚪ | `vw_grade_publica`, `vw_vagas_turma`, `vw_alunas_da_aula`. São deliberadas e autofiltradas no `WHERE` — item é documentar a exceção, não "corrigir". |
+| S6 | ~~Agenda→Config e Planos: refinar acesso dentro do módulo~~ | ✅ | **Feito em 22/07/2026.** Aba **Config** da Agenda só gestão (UI + RLS em `config_agendamento`). **Planos**: operação vê, só gestão cria/edita/matricula/renova/inadimple (UI + escrita de `planos` por `is_gestao()`). As ações de matrícula ficam travadas **só na UI** — reforço no banco depende de S3b. |
 
 ---
 
@@ -58,6 +59,7 @@ O que existe: a Edge Function `wellhub-webhook` escrita no repo e a RPC
 | W5 | Informar à Wellhub a URL do webhook + o secret | 🟡 | Recomendação deles: **uma única URL** para check-in e booking. |
 | W6 | Import do relatório de repasse do Portal do Parceiro | 🟡 | A Wellhub **não expõe financeiro por API** (confirmado). Conciliação é import manual/CSV contra os check-ins "a reconciliar". |
 | W7 | **Booking API** (aluna reserva pelo app Wellhub) | ⚪ | Opcional. Janela de 15 min para confirmar/recusar por `PATCH`. Só faz sentido com a Agenda madura. |
+| W8 | **Catalogar a aluna que vem pelo Wellhub** (nome, telefone, histórico) | 🟡 | A aluna Wellhub já é modelável como um `cliente` com `origem='wellhub'` + `gympass_id` (campo existe). Falta: o webhook de check-in **criar/enriquecer** esse registro e a ficha do cliente mostrar o histórico de check-ins. Casado com C1 (ficha 360°). |
 
 ---
 
@@ -196,3 +198,16 @@ Não é obrigação — é a sequência que destrava mais coisa com menos esfor�
 O raciocínio: os três primeiros são pequenos e destravam trabalho **já feito que
 está parado** — fila de espera, portal da professora e Wellhub. O quarto dá
 visibilidade ao que já existe. Os dois últimos são o próximo salto de escopo.
+
+---
+
+## 11. Frentes levantadas em 22/07/2026
+
+| # | Frente | Pri | Estado / Nota |
+|---|---|---|---|
+| F1 | **Financeiro por período** (mês, trimestre, semestre, ano, faixa de/até) | — | ✅ **Feito em 22/07.** Seletor no topo do módulo; KPIs, listas (Entradas/Saídas) e gráficos agregam pelo intervalo. Saldo e MEI seguem sendo foto do "hoje"/ano-calendário. "Despesas pendentes" e o painel de recorrentes a pagar só aparecem em mês único (são ação do mês corrente). `src/modules/financeiro/periodo.ts`. |
+| C1 | **Clientes → ficha 360°** — unir plano, créditos, pagamento e próximas aulas ao CRM numa tela só | 🟡 | Hoje a mesma pessoa vive em 4 tabelas (`clientes`, `matriculas`, `agendamentos`, `contas_aluna`) e a ficha (`ClienteDetalhe`) só mostra o CRM. É o que a Carol sente como "estranho/mal estruturado". Também define onde a aluna Wellhub (W8) é catalogada. Terminologia no masculino ("aluno"). Abrir por padrão na **Lista** (roster) em vez do Funil pode ajudar. |
+| CO1 | **WhatsApp Business API** — secretária + mais pessoas respondem o mesmo número | 🟡 | Estudo ainda não feito. Decidir **Meta Cloud API** (oficial, barata, mas 1 número/1 sessão — precisa de camada de atendimento multi-operador) × **plataforma terceira** (ex. atendimento com várias pessoas no mesmo número). Levantar custo mensal, aprovação do número e verificação do negócio (Meta Business), e como liga no histórico de interações do cliente (tipo `whatsapp` já existe). Relaciona-se a A5/Resend (mesma lógica de comunicação, canal diferente). |
+| AG1 | **Agenda: salas, modalidades e grade estilo calendário** | — | ✅ **Feito em 22/07.** Tabelas `salas` e `modalidades` (seed: Sala 1/2 e as 15 modalidades), `turmas.sala_id`/`modalidade_id` (texto mantido p/ compat). Grade nova estilo calendário (eixo hora × dia, cartões coloridos por modalidade, sala visível). Form de turma com modalidade em dropdown (+ criar nova) e sala obrigatória; ações criar/editar/duplicar/excluir. Existentes foram para a Sala 1. |
+| PR1 | **Professoras: remuneração flexível** | — | ✅ **Feito em 22/07.** `professoras.modelo` (por_aluna/por_hora/fixo) + campos: `piso_uma_aluna`, `valor_dia_sem_alunas`, `valor_hora`, `valor_fixo_mes`, `valor_passagem_dia`, `percentual_passagem`. `vw_pagamento_professoras` recalcula pelo modelo (pisos, hora, fixo, passagem por dia trabalhado). UI: botão **Remuneração** por professora. Validado: 1 aluna → piso R$50 + passagem 70%. Workshop entra como ajuste manual no fechamento. PII do contrato **não** entrou no repo. |
+| PR2 | **Fechamento mensal de professoras (folha)** | — | ✅ **Feito em 22/07.** Módulo **Fechamento** (gestão-only, `#/fechamento`). Tabelas `fechamentos_professora` + `fechamento_ajustes`. Folha do mês por professora (aulas, horas, alunos, bruto, ajustes, final, status) + total; painel de detalhe com ajustes manuais (bônus/desconto/falta/substituição/reposição/passagem/workshop) que recalculam o final; **Aprovar** congela o snapshot; **Reabrir**; **Lançar no Financeiro** (evita duplicar). Aba **Histórico** com filtro professora/ano. ⚠️ pendências: pagamento auto no dia 15, e o "R$75/dia cheio de falta" é por-aula (aproximação). |

@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { Card, CardHeader } from '../../../components/ui/Card'
 import { fmtCentavos } from '../../../lib/dinheiro'
+import { contemMes, rotuloPeriodo, type Periodo } from '../periodo'
 import type { Entrada, MixReceitaMensal, Saida, SaidasMensal, TipoSaida } from '../types'
 
 const CHART_CORES = [
@@ -43,13 +44,13 @@ function tooltipReais(valor: number) {
 export function GraficosFinanceiro({
   entradas,
   saidas,
-  mes,
+  periodo,
   mixMensal,
   saidasMensal,
 }: {
   entradas: Entrada[]
   saidas: (Saida & { categoria?: { tipo: TipoSaida; nome: string } | null })[]
-  mes: string
+  periodo: Periodo
   mixMensal: MixReceitaMensal[]
   saidasMensal: SaidasMensal[]
 }) {
@@ -84,7 +85,9 @@ export function GraficosFinanceiro({
     .filter((e) => e.status === 'recebida')
     .reduce((s, e) => s + e.valor_centavos, 0)
   const previstoMes = entradas
-    .filter((e) => e.status === 'prevista' && (e.data_prevista ?? '').slice(0, 7) === mes)
+    .filter(
+      (e) => e.status === 'prevista' && contemMes(periodo, (e.data_prevista ?? '').slice(0, 7)),
+    )
     .reduce((s, e) => s + e.valor_centavos, 0)
   const pagasMes = saidas.reduce((s, x) => s + x.valor_centavos, 0)
 
@@ -139,7 +142,7 @@ export function GraficosFinanceiro({
       </Card>
 
       <Card>
-        <CardHeader title="Gastos por categoria" subtitle="Mês atual" />
+        <CardHeader title="Gastos por categoria" subtitle={rotuloPeriodo(periodo)} />
         {distribuicao.length === 0 ? (
           <p className="py-8 text-center text-sm text-neutral-400">Sem despesas no mês.</p>
         ) : (
@@ -178,7 +181,7 @@ export function GraficosFinanceiro({
       </Card>
 
       <Card className="lg:col-span-3">
-        <CardHeader title="Previsto x Realizado" subtitle="Mês atual" />
+        <CardHeader title="Previsto x Realizado" subtitle={rotuloPeriodo(periodo)} />
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={comparativo} margin={{ left: -20 }}>
             <CartesianGrid vertical={false} stroke="var(--color-neutral-100)" />

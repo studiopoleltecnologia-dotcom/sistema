@@ -1,7 +1,3 @@
-/**
- * Tipos gerados do schema Supabase (mcp__supabase__generate_typescript_types).
- * NÃO editar à mão — regenerar após cada migration (CLAUDE.md seção 7).
- */
 export type Json =
   | string
   | number
@@ -135,13 +131,6 @@ export type Database = {
             referencedRelation: "agendamentos"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "agendamentos_eventos_criado_por_fkey"
-            columns: ["criado_por"]
-            isOneToOne: false
-            referencedRelation: "socias"
-            referencedColumns: ["id"]
-          },
         ]
       }
       categorias_saida: {
@@ -235,6 +224,13 @@ export type Database = {
             columns: ["responsavel_id"]
             isOneToOne: false
             referencedRelation: "socias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clientes_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "vw_equipe"
             referencedColumns: ["id"]
           },
         ]
@@ -352,6 +348,13 @@ export type Database = {
             referencedRelation: "professoras"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contas_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: true
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       creditos_eventos: {
@@ -394,13 +397,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "creditos_eventos_criado_por_fkey"
-            columns: ["criado_por"]
-            isOneToOne: false
-            referencedRelation: "socias"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "creditos_eventos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
@@ -415,33 +411,6 @@ export type Database = {
             referencedColumns: ["matricula_id"]
           },
         ]
-      }
-      equipe_convites: {
-        Row: {
-          criado_em: string
-          criado_por: string | null
-          email: string
-          funcao: Database["public"]["Enums"]["funcao_interna"]
-          nome: string
-          usado_em: string | null
-        }
-        Insert: {
-          criado_em?: string
-          criado_por?: string | null
-          email: string
-          funcao: Database["public"]["Enums"]["funcao_interna"]
-          nome: string
-          usado_em?: string | null
-        }
-        Update: {
-          criado_em?: string
-          criado_por?: string | null
-          email?: string
-          funcao?: Database["public"]["Enums"]["funcao_interna"]
-          nome?: string
-          usado_em?: string | null
-        }
-        Relationships: []
       }
       despesas_recorrentes: {
         Row: {
@@ -544,6 +513,131 @@ export type Database = {
           },
         ]
       }
+      equipe_convites: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          email: string
+          funcao: Database["public"]["Enums"]["funcao_interna"]
+          nome: string
+          usado_em: string | null
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          email: string
+          funcao: Database["public"]["Enums"]["funcao_interna"]
+          nome: string
+          usado_em?: string | null
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          email?: string
+          funcao?: Database["public"]["Enums"]["funcao_interna"]
+          nome?: string
+          usado_em?: string | null
+        }
+        Relationships: []
+      }
+      fechamento_ajustes: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          descricao: string | null
+          fechamento_id: string
+          id: string
+          tipo: Database["public"]["Enums"]["tipo_ajuste_folha"]
+          valor_centavos: number
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string | null
+          fechamento_id: string
+          id?: string
+          tipo?: Database["public"]["Enums"]["tipo_ajuste_folha"]
+          valor_centavos: number
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string | null
+          fechamento_id?: string
+          id?: string
+          tipo?: Database["public"]["Enums"]["tipo_ajuste_folha"]
+          valor_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamento_ajustes_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "fechamentos_professora"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fechamentos_professora: {
+        Row: {
+          alunas: number | null
+          aprovado_em: string | null
+          aprovado_por: string | null
+          aulas: number | null
+          bruto_centavos: number | null
+          competencia: string
+          criado_em: string
+          horas: number | null
+          id: string
+          observacao: string | null
+          professora_id: string
+          status: Database["public"]["Enums"]["status_fechamento"]
+        }
+        Insert: {
+          alunas?: number | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          aulas?: number | null
+          bruto_centavos?: number | null
+          competencia: string
+          criado_em?: string
+          horas?: number | null
+          id?: string
+          observacao?: string | null
+          professora_id: string
+          status?: Database["public"]["Enums"]["status_fechamento"]
+        }
+        Update: {
+          alunas?: number | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          aulas?: number | null
+          bruto_centavos?: number | null
+          competencia?: string
+          criado_em?: string
+          horas?: number | null
+          id?: string
+          observacao?: string | null
+          professora_id?: string
+          status?: Database["public"]["Enums"]["status_fechamento"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamentos_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamentos_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       followup_regras: {
         Row: {
           ativa: boolean
@@ -621,6 +715,13 @@ export type Database = {
             referencedRelation: "socias"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "followups_resolvido_por_fkey"
+            columns: ["resolvido_por"]
+            isOneToOne: false
+            referencedRelation: "vw_equipe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       interacoes_crm: {
@@ -661,6 +762,13 @@ export type Database = {
             columns: ["socia_id"]
             isOneToOne: false
             referencedRelation: "socias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interacoes_crm_socia_id_fkey"
+            columns: ["socia_id"]
+            isOneToOne: false
+            referencedRelation: "vw_equipe"
             referencedColumns: ["id"]
           },
         ]
@@ -711,6 +819,13 @@ export type Database = {
             referencedRelation: "turmas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lista_espera_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
+          },
         ]
       }
       matriculas: {
@@ -730,6 +845,8 @@ export type Database = {
         }
         Insert: {
           atualizada_em?: string
+          ciclo_atual?: number
+          ciclos_total?: number
           cliente_id: string
           creditos_total: number
           criada_em?: string
@@ -770,6 +887,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      modalidades: {
+        Row: {
+          ativa: boolean
+          criada_em: string
+          id: string
+          nome: string
+          ordem: number
+        }
+        Insert: {
+          ativa?: boolean
+          criada_em?: string
+          id?: string
+          nome: string
+          ordem?: number
+        }
+        Update: {
+          ativa?: boolean
+          criada_em?: string
+          id?: string
+          nome?: string
+          ordem?: number
+        }
+        Relationships: []
       }
       movimentacoes_funil: {
         Row: {
@@ -812,6 +953,13 @@ export type Database = {
             columns: ["socia_id"]
             isOneToOne: false
             referencedRelation: "socias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_funil_socia_id_fkey"
+            columns: ["socia_id"]
+            isOneToOne: false
+            referencedRelation: "vw_equipe"
             referencedColumns: ["id"]
           },
         ]
@@ -915,6 +1063,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "presencas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
@@ -938,8 +1093,15 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           id: string
+          modelo: Database["public"]["Enums"]["modelo_remuneracao"]
           nome: string
+          percentual_passagem: number
+          piso_uma_aluna_centavos: number
           telefone: string | null
+          valor_dia_sem_alunas_centavos: number
+          valor_fixo_mes_centavos: number
+          valor_hora_centavos: number
+          valor_passagem_dia_centavos: number
           valor_por_aluna_centavos: number
         }
         Insert: {
@@ -949,8 +1111,15 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           id?: string
+          modelo?: Database["public"]["Enums"]["modelo_remuneracao"]
           nome: string
+          percentual_passagem?: number
+          piso_uma_aluna_centavos?: number
           telefone?: string | null
+          valor_dia_sem_alunas_centavos?: number
+          valor_fixo_mes_centavos?: number
+          valor_hora_centavos?: number
+          valor_passagem_dia_centavos?: number
           valor_por_aluna_centavos: number
         }
         Update: {
@@ -960,8 +1129,15 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           id?: string
+          modelo?: Database["public"]["Enums"]["modelo_remuneracao"]
           nome?: string
+          percentual_passagem?: number
+          piso_uma_aluna_centavos?: number
           telefone?: string | null
+          valor_dia_sem_alunas_centavos?: number
+          valor_fixo_mes_centavos?: number
+          valor_hora_centavos?: number
+          valor_passagem_dia_centavos?: number
           valor_por_aluna_centavos?: number
         }
         Relationships: []
@@ -1041,6 +1217,30 @@ export type Database = {
           },
         ]
       }
+      salas: {
+        Row: {
+          ativa: boolean
+          criada_em: string
+          id: string
+          nome: string
+          ordem: number
+        }
+        Insert: {
+          ativa?: boolean
+          criada_em?: string
+          id?: string
+          nome: string
+          ordem?: number
+        }
+        Update: {
+          ativa?: boolean
+          criada_em?: string
+          id?: string
+          nome?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
       socias: {
         Row: {
           criada_em: string
@@ -1073,7 +1273,9 @@ export type Database = {
           horario: string
           id: string
           modalidade: string
+          modalidade_id: string | null
           professora_id: string
+          sala_id: string | null
         }
         Insert: {
           ativa?: boolean
@@ -1085,7 +1287,9 @@ export type Database = {
           horario: string
           id?: string
           modalidade?: string
+          modalidade_id?: string | null
           professora_id: string
+          sala_id?: string | null
         }
         Update: {
           ativa?: boolean
@@ -1097,14 +1301,37 @@ export type Database = {
           horario?: string
           id?: string
           modalidade?: string
+          modalidade_id?: string | null
           professora_id?: string
+          sala_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "modalidades"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "turmas_professora_id_fkey"
             columns: ["professora_id"]
             isOneToOne: false
             referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_sala_id_fkey"
+            columns: ["sala_id"]
+            isOneToOne: false
+            referencedRelation: "salas"
             referencedColumns: ["id"]
           },
         ]
@@ -1168,6 +1395,8 @@ export type Database = {
         Row: {
           alunas_presentes: number | null
           aulas: number | null
+          dias: number | null
+          horas: number | null
           mes: string | null
           professora: string | null
           professora_id: string | null
@@ -1179,6 +1408,13 @@ export type Database = {
             columns: ["professora_id"]
             isOneToOne: false
             referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
             referencedColumns: ["id"]
           },
         ]
@@ -1195,11 +1431,25 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "lista_espera_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lista_espera_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lista_espera_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
           },
         ]
       }
@@ -1208,6 +1458,16 @@ export type Database = {
           ativa: boolean | null
           id: string | null
           nome: string | null
+        }
+        Insert: {
+          ativa?: boolean | null
+          id?: string | null
+          nome?: string | null
+        }
+        Update: {
+          ativa?: boolean | null
+          id?: string | null
+          nome?: string | null
         }
         Relationships: []
       }
@@ -1308,21 +1568,6 @@ export type Database = {
         Returns: boolean
       }
       cliente_atual: { Args: never; Returns: string }
-      convidar_equipe: {
-        Args: {
-          p_email: string
-          p_funcao: Database["public"]["Enums"]["funcao_interna"]
-          p_nome: string
-        }
-        Returns: string
-      }
-      definir_funcao: {
-        Args: {
-          p_funcao: Database["public"]["Enums"]["funcao_interna"]
-          p_id: string
-        }
-        Returns: undefined
-      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string
@@ -1330,6 +1575,14 @@ export type Database = {
           p_valor_total_centavos: number
         }
         Returns: number
+      }
+      convidar_equipe: {
+        Args: {
+          p_email: string
+          p_funcao: Database["public"]["Enums"]["funcao_interna"]
+          p_nome: string
+        }
+        Returns: string
       }
       criar_conta_aluna: {
         Args: {
@@ -1342,6 +1595,13 @@ export type Database = {
         }
         Returns: string
       }
+      definir_funcao: {
+        Args: {
+          p_funcao: Database["public"]["Enums"]["funcao_interna"]
+          p_id: string
+        }
+        Returns: undefined
+      }
       entrar_lista_espera: {
         Args: { p_data: string; p_turma: string }
         Returns: string
@@ -1352,30 +1612,20 @@ export type Database = {
       is_operacional: { Args: never; Returns: boolean }
       is_professora: { Args: never; Returns: boolean }
       is_socia: { Args: never; Returns: boolean }
-      minha_funcao: {
-        Args: never
-        Returns: Database["public"]["Enums"]["funcao_interna"]
-      }
-      marcar_inadimplente: {
-        Args: { p_matricula: string }
-        Returns: boolean
-      }
+      marcar_inadimplente: { Args: { p_matricula: string }; Returns: boolean }
       matricular: {
         Args: { p_cliente: string; p_plano: string }
         Returns: string
       }
+      minha_funcao: {
+        Args: never
+        Returns: Database["public"]["Enums"]["funcao_interna"]
+      }
+      processar_listas_espera: { Args: never; Returns: number }
       professora_atual: { Args: never; Returns: string }
-      remover_acesso: {
-        Args: { p_id: string }
-        Returns: undefined
-      }
-      renovar_ciclo: {
-        Args: { p_matricula: string }
-        Returns: number
-      }
-      sair_lista_espera: {
-        Args: { p_id: string }
-        Returns: boolean
+      promover_lista_espera: {
+        Args: { p_data: string; p_turma: string }
+        Returns: string
       }
       registrar_presenca: {
         Args: {
@@ -1387,6 +1637,9 @@ export type Database = {
         }
         Returns: string
       }
+      remover_acesso: { Args: { p_id: string }; Returns: undefined }
+      renovar_ciclo: { Args: { p_matricula: string }; Returns: number }
+      sair_lista_espera: { Args: { p_id: string }; Returns: boolean }
     }
     Enums: {
       canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
@@ -1408,6 +1661,7 @@ export type Database = {
         | "em_retorno"
         | "ex_aluna"
       funcao_interna: "gestao" | "secretaria" | "social"
+      modelo_remuneracao: "por_aluna" | "por_hora" | "fixo"
       motivo_credito:
         | "compra"
         | "agendamento"
@@ -1428,6 +1682,7 @@ export type Database = {
       plano_tipo: "creditos" | "semanal"
       status_agendamento: "agendado" | "cancelado"
       status_entrada: "prevista" | "recebida"
+      status_fechamento: "aberto" | "aprovado"
       status_followup: "pendente" | "concluido" | "dispensado"
       status_lista_espera:
         | "aguardando"
@@ -1436,6 +1691,15 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      tipo_ajuste_folha:
+        | "bonus"
+        | "desconto"
+        | "falta"
+        | "substituicao"
+        | "reposicao"
+        | "passagem"
+        | "workshop"
+        | "outro"
       tipo_evento_agendamento: "agendado" | "cancelado" | "presenca" | "falta"
       tipo_followup:
         | "lead_sumido"
@@ -1594,6 +1858,7 @@ export const Constants = {
         "ex_aluna",
       ],
       funcao_interna: ["gestao", "secretaria", "social"],
+      modelo_remuneracao: ["por_aluna", "por_hora", "fixo"],
       motivo_credito: [
         "compra",
         "agendamento",
@@ -1616,6 +1881,7 @@ export const Constants = {
       plano_tipo: ["creditos", "semanal"],
       status_agendamento: ["agendado", "cancelado"],
       status_entrada: ["prevista", "recebida"],
+      status_fechamento: ["aberto", "aprovado"],
       status_followup: ["pendente", "concluido", "dispensado"],
       status_lista_espera: [
         "aguardando",
@@ -1625,6 +1891,16 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      tipo_ajuste_folha: [
+        "bonus",
+        "desconto",
+        "falta",
+        "substituicao",
+        "reposicao",
+        "passagem",
+        "workshop",
+        "outro",
+      ],
       tipo_evento_agendamento: ["agendado", "cancelado", "presenca", "falta"],
       tipo_followup: [
         "lead_sumido",

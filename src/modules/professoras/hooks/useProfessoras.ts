@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { requireSupabase } from '../../../lib/supabase'
-import type { Tables, TablesInsert } from '../../../lib/database.types'
+import type { Tables, TablesInsert, TablesUpdate } from '../../../lib/database.types'
 
 export type Professora = Tables<'professoras'>
 export type PagamentoProfessora = Tables<'vw_pagamento_professoras'>
@@ -65,6 +65,26 @@ export function useCriarProfessora() {
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['professoras'] }),
+  })
+}
+
+export function useAtualizarProfessora() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: TablesUpdate<'professoras'> }) => {
+      const { data, error } = await requireSupabase()
+        .from('professoras')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['professoras'] })
+      qc.invalidateQueries({ queryKey: ['pagamento-professoras'] })
+    },
   })
 }
 

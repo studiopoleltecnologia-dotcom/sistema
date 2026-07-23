@@ -13,6 +13,7 @@ import {
   useExcluirEntrada,
   useEntradas,
 } from '../hooks/useFinanceiro'
+import type { Periodo } from '../periodo'
 import {
   CATEGORIAS_ENTRADA,
   CATEGORIA_ENTRADA_LABEL,
@@ -27,8 +28,8 @@ function previsaoWellhub(competencia: string): string {
   return `${prox.getFullYear()}-${String(prox.getMonth() + 1).padStart(2, '0')}-15`
 }
 
-export function EntradasTab({ mes }: { mes: string }) {
-  const { data: entradas, isLoading } = useEntradas(mes)
+export function EntradasTab({ periodo }: { periodo: Periodo }) {
+  const { data: entradas, isLoading } = useEntradas(periodo)
   const criar = useCriarEntrada()
   const atualizar = useAtualizarEntrada()
   const excluir = useExcluirEntrada()
@@ -155,10 +156,10 @@ export function EntradasTab({ mes }: { mes: string }) {
       )}
 
       <h3 className="mb-2 text-xs font-semibold tracking-wide text-neutral-500">
-        RECEBIDAS NO MÊS
+        RECEBIDAS NO PERÍODO
       </h3>
       {!isLoading && recebidas.length === 0 ? (
-        <EmptyState title="Nenhuma entrada recebida no mês." />
+        <EmptyState title="Nenhuma entrada recebida no período." />
       ) : (
         <ul className="flex flex-col gap-1.5">
           {recebidas.map((e) => (

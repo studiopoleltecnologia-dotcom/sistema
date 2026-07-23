@@ -14,14 +14,17 @@ import {
   listarCategoriasSaida,
   listarEntradas,
   listarMixReceitaMensal,
+  listarMixReceitaPeriodo,
   listarRecorrentes,
   listarReserva,
   listarSaidas,
   listarSaidasMensal,
+  listarSaidasPeriodo,
   obterConfig,
   obterMei,
   obterSaldoCaixa,
 } from '../api/financeiro'
+import type { Periodo } from '../periodo'
 import type { ConfigFinanceiroUpdate, EntradaInsert, EntradaUpdate } from '../types'
 
 // invalidações em bloco: qualquer lançamento mexe em MEI e resumo
@@ -40,12 +43,18 @@ export function useSaldoCaixa() {
   return useQuery({ queryKey: ['saldo-caixa'], queryFn: obterSaldoCaixa })
 }
 
-export function useEntradas(mes: string) {
-  return useQuery({ queryKey: ['entradas', mes], queryFn: () => listarEntradas(mes) })
+export function useEntradas(periodo: Periodo) {
+  return useQuery({
+    queryKey: ['entradas', periodo.inicio, periodo.fim],
+    queryFn: () => listarEntradas(periodo),
+  })
 }
 
-export function useSaidas(mes: string) {
-  return useQuery({ queryKey: ['saidas', mes], queryFn: () => listarSaidas(mes) })
+export function useSaidas(periodo: Periodo) {
+  return useQuery({
+    queryKey: ['saidas', periodo.inicio, periodo.fim],
+    queryFn: () => listarSaidas(periodo),
+  })
 }
 
 export function useCategoriasSaida() {
@@ -75,6 +84,20 @@ export function useSaidasMensal(meses = 6) {
   return useQuery({
     queryKey: ['saidas-mensal', meses],
     queryFn: () => listarSaidasMensal(meses),
+  })
+}
+
+export function useMixReceitaPeriodo(periodo: Periodo) {
+  return useQuery({
+    queryKey: ['mix-receita-periodo', periodo.inicio, periodo.fim],
+    queryFn: () => listarMixReceitaPeriodo(periodo),
+  })
+}
+
+export function useSaidasPeriodo(periodo: Periodo) {
+  return useQuery({
+    queryKey: ['saidas-periodo', periodo.inicio, periodo.fim],
+    queryFn: () => listarSaidasPeriodo(periodo),
   })
 }
 

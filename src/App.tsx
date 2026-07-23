@@ -9,6 +9,7 @@ import { FinanceiroPage } from './modules/financeiro/FinanceiroPage'
 import { FollowupPage } from './modules/followup/FollowupPage'
 import { AgendaPage } from './modules/agenda/AgendaPage'
 import { ProfessorasPage } from './modules/professoras/ProfessorasPage'
+import { FechamentoPage } from './modules/fechamento/FechamentoPage'
 import { PlanosPage } from './modules/planos/PlanosPage'
 import { PortalApp } from './modules/portal-aluna/PortalApp'
 import { ProfessoraApp } from './modules/portal-professora/ProfessoraApp'
@@ -73,6 +74,14 @@ export default function App() {
                   element={
                     <RotaFuncao permitido={['gestao']}>
                       <ProfessorasPage />
+                    </RotaFuncao>
+                  }
+                />
+                <Route
+                  path="fechamento"
+                  element={
+                    <RotaFuncao permitido={['gestao']}>
+                      <FechamentoPage />
                     </RotaFuncao>
                   }
                 />

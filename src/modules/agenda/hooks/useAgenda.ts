@@ -2,11 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   agendarAula,
   atualizarConfigAgendamento,
+  atualizarTurma,
   cancelarAgendamento,
+  criarModalidade,
   criarTurma,
   desativarTurma,
   listarDia,
+  listarModalidades,
   listarNomesProfessoras,
+  listarSalas,
   listarTurmas,
   obterConfigAgendamento,
   registrarPresenca,
@@ -18,6 +22,14 @@ export function useTurmas() {
 
 export function useNomesProfessoras() {
   return useQuery({ queryKey: ['nomes-professoras'], queryFn: listarNomesProfessoras })
+}
+
+export function useSalas() {
+  return useQuery({ queryKey: ['salas'], queryFn: listarSalas })
+}
+
+export function useModalidades() {
+  return useQuery({ queryKey: ['modalidades'], queryFn: listarModalidades })
 }
 
 export function useDia(data: string) {
@@ -48,11 +60,28 @@ export function useCriarTurma() {
   })
 }
 
+export function useAtualizarTurma() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof atualizarTurma>[1] }) =>
+      atualizarTurma(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['turmas'] }),
+  })
+}
+
 export function useDesativarTurma() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: desativarTurma,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['turmas'] }),
+  })
+}
+
+export function useCriarModalidade() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: criarModalidade,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['modalidades'] }),
   })
 }
 

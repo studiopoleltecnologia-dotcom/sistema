@@ -1,6 +1,14 @@
 import { useState } from 'react'
+import { Badge } from '../../../components/ui/Badge'
 import { fmtData, fmtDataHora } from '../../../lib/datas'
-import { useAdicionarInteracao, useAtualizarCliente, useInteracoes } from '../hooks/useClientes'
+import {
+  useAdicionarInteracao,
+  useAtualizarCliente,
+  useInteracoes,
+  useMatriculasDoCliente,
+  usePlanosNomes,
+  useProximasAulasDoCliente,
+} from '../hooks/useClientes'
 import {
   ESTAGIOS,
   ORIGEM_LABEL,
@@ -10,6 +18,13 @@ import {
   type Socia,
   type TipoInteracao,
 } from '../types'
+
+const fmtHora = (h: string) => h.slice(0, 5)
+const CANAL_CURTO: Record<string, string> = {
+  wellhub: 'Wellhub',
+  classpass: 'ClassPass',
+  avulsa: 'Avulsa',
+}
 
 /**
  * Painel lateral: dados da cliente, mudança de estágio (1 clique) e
@@ -27,6 +42,9 @@ export function ClienteDetalhe({
   onFechar: () => void
 }) {
   const { data: interacoes } = useInteracoes(cliente.id)
+  const { data: matriculas } = useMatriculasDoCliente(cliente.id)
+  const { data: aulas } = useProximasAulasDoCliente(cliente.id)
+  const { data: planosNomes } = usePlanosNomes()
   const atualizar = useAtualizarCliente()
   const adicionarInteracao = useAdicionarInteracao()
 
@@ -34,6 +52,8 @@ export function ClienteDetalhe({
   const [tipoNota, setTipoNota] = useState<TipoInteracao>('nota')
 
   const responsavel = socias.find((s) => s.id === cliente.responsavel_id)?.nome
+  const nomePlano = (id: string | null) =>
+    (planosNomes ?? []).find((p) => p.id === id)?.nome ?? 'Plano'
 
   function mudarEstagio(estagio: EstagioFunil) {
     atualizar.mutate({ id: cliente.id, patch: { estagio } })
@@ -119,6 +139,61 @@ export function ClienteDetalhe({
           <p className="mt-3 rounded-md bg-neutral-50 p-2.5 text-xs text-neutral-600">
             {cliente.observacoes}
           </p>
+        )}
+
+        <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">
+          PLANO &amp; CRÉDITOS
+        </h3>
+        {(matriculas ?? []).length === 0 ? (
+          <p className="text-xs text-neutral-400">Sem plano ativo — matricule em Planos.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {(matriculas ?? []).map((m) => (
+              <li key={m.matricula_id ?? ''} className="rounded-md border border-neutral-100 p-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 truncate text-sm font-medium text-neutral-800">
+                    {nomePlano(m.plano_id)}
+                  </span>
+                  {m.status === 'inadimplente' && <Badge variant="danger">em aberto</Badge>}
+                  <span
+                    className={`text-sm font-semibold ${
+                      (m.saldo ?? 0) > 0 ? 'text-neutral-900' : 'text-danger-600'
+                    }`}
+                  >
+                    {m.saldo} crédito{m.saldo === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-neutral-400">
+                  {(m.ciclos_total ?? 1) > 1 && `mês ${m.ciclo_atual}/${m.ciclos_total} · `}
+                  válido até {fmtData(m.data_fim)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">
+          PRÓXIMAS AULAS
+        </h3>
+        {(aulas ?? []).length === 0 ? (
+          <p className="text-xs text-neutral-400">Nenhuma aula agendada.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {(aulas ?? []).map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center gap-2 rounded-md border border-neutral-100 px-2.5 py-2 text-xs"
+              >
+                <span className="font-medium text-neutral-700">{fmtData(a.data)}</span>
+                {a.turma && <span className="text-neutral-500">{fmtHora(a.turma.horario)}</span>}
+                <span className="flex-1 truncate text-neutral-500">{a.turma?.modalidade}</span>
+                {a.canal !== 'mensalista' && (
+                  <Badge variant="brand">{CANAL_CURTO[a.canal] ?? a.canal}</Badge>
+                )}
+                {a.professora && <span className="text-neutral-400">{a.professora}</span>}
+              </li>
+            ))}
+          </ul>
         )}
 
         <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">

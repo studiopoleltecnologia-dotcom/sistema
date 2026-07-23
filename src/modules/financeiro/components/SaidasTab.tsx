@@ -18,10 +18,11 @@ import {
   useRecorrentes,
   useSaidas,
 } from '../hooks/useFinanceiro'
+import { ehMesUnico, type Periodo } from '../periodo'
 import { ORDEM_TIPO_SAIDA, TIPO_SAIDA_DESCRICAO, TIPO_SAIDA_LABEL, type TipoSaida } from '../types'
 
-export function SaidasTab({ mes }: { mes: string }) {
-  const { data: saidas, isLoading } = useSaidas(mes)
+export function SaidasTab({ periodo }: { periodo: Periodo }) {
+  const { data: saidas, isLoading } = useSaidas(periodo)
   const { data: categorias } = useCategoriasSaida()
   const { data: recorrentes } = useRecorrentes()
   const criar = useCriarSaida()
@@ -215,7 +216,7 @@ export function SaidasTab({ mes }: { mes: string }) {
         </div>
       )}
 
-      {(recorrentes ?? []).length > 0 && (
+      {ehMesUnico(periodo) && (recorrentes ?? []).length > 0 && (
         <>
           <h3 className="mb-2 mt-5 text-xs font-semibold tracking-wide text-neutral-500">
             RECORRENTES DO MÊS
@@ -241,7 +242,9 @@ export function SaidasTab({ mes }: { mes: string }) {
                   ) : (
                     <Button
                       size="sm"
-                      onClick={() => lancarRecorrente.mutate({ recorrente: r, mes })}
+                      onClick={() =>
+                        lancarRecorrente.mutate({ recorrente: r, mes: periodo.inicio })
+                      }
                       loading={lancarRecorrente.isPending}
                     >
                       Pagar
@@ -280,7 +283,9 @@ export function SaidasTab({ mes }: { mes: string }) {
               <span className="text-xs font-medium text-neutral-500">{fmtCentavos(total(lista))}</span>
             </div>
             {lista.length === 0 && !isLoading ? (
-              <EmptyState title={`Nenhuma despesa ${TIPO_SAIDA_LABEL[tipo].toLowerCase()} no mês.`} />
+              <EmptyState
+                title={`Nenhuma despesa ${TIPO_SAIDA_LABEL[tipo].toLowerCase()} no período.`}
+              />
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {lista.map((s) => (

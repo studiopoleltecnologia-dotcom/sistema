@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { KpiCard } from '../../../components/ui/KpiCard'
 import { fmtCentavos } from '../../../lib/dinheiro'
+import { contemMes, ehMesUnico, rotuloPeriodo, type Periodo } from '../periodo'
 import { nivelAlertaMei, ORDEM_TIPO_SAIDA, TIPO_SAIDA_LABEL, type Entrada, type MeiAcumulado, type Saida, type SaldoCaixa, type TipoSaida } from '../types'
 
 const TIPO_COR: Record<TipoSaida, string> = {
@@ -59,20 +60,24 @@ export function PainelFinanceiro({
   saidas,
   mei,
   saldo,
-  mes,
+  periodo,
 }: {
   entradas: Entrada[]
   saidas: (Saida & { categoria?: { tipo: TipoSaida; nome: string } | null })[]
   mei: MeiAcumulado | undefined
   saldo: SaldoCaixa | undefined
-  mes: string
+  periodo: Periodo
 }) {
+  const mesUnico = ehMesUnico(periodo)
+
   const recebidoMes = entradas
     .filter((e) => e.status === 'recebida')
     .reduce((s, e) => s + e.valor_centavos, 0)
 
   const previstoMes = entradas
-    .filter((e) => e.status === 'prevista' && (e.data_prevista ?? '').slice(0, 7) === mes)
+    .filter(
+      (e) => e.status === 'prevista' && contemMes(periodo, (e.data_prevista ?? '').slice(0, 7)),
+    )
     .reduce((s, e) => s + e.valor_centavos, 0)
 
   const porTipo = (tipo: TipoSaida) =>
@@ -82,7 +87,9 @@ export function PainelFinanceiro({
   const custosPlanejados = porTipo('fixa_planejada')
   const custosVariaveis = porTipo('variavel')
   const despesasPagas = custosRecorrentes + custosPlanejados + custosVariaveis
-  const despesasPendentes = saldo?.recorrentes_pendentes_mes_centavos ?? 0
+  // "Recorrentes ainda não lançadas este mês" é uma pendência do mês
+  // corrente; num intervalo de vários meses não é um número único.
+  const despesasPendentes = mesUnico ? saldo?.recorrentes_pendentes_mes_centavos ?? 0 : 0
 
   const receitaTotalMes = recebidoMes + previstoMes
   const despesaTotalMes = despesasPagas + despesasPendentes
@@ -114,11 +121,11 @@ export function PainelFinanceiro({
           value={fmtCentavos(lucroProjetado)}
           icon={Scale}
           tone={lucroProjetado >= 0 ? 'success' : 'danger'}
-          hint="receita − despesas do mês"
+          hint="receita − despesas do período"
         />
         <KpiCard
           size="lg"
-          label="Receita do mês"
+          label="Receita do período"
           value={fmtCentavos(receitaTotalMes)}
           icon={TrendingUp}
           tone="success"
@@ -128,13 +135,13 @@ export function PainelFinanceiro({
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
-          label="Recebido no mês"
+          label="Recebido no período"
           value={fmtCentavos(recebidoMes)}
           icon={Banknote}
           tone="success"
         />
         <KpiCard
-          label="Previsto no mês"
+          label="Previsto no período"
           value={fmtCentavos(previstoMes)}
           icon={Receipt}
           tone="brand"
@@ -152,13 +159,15 @@ export function PainelFinanceiro({
           icon={TrendingDown}
           tone="danger"
         />
-        <KpiCard
-          label="Despesas pendentes"
-          value={fmtCentavos(despesasPendentes)}
-          icon={Receipt}
-          tone="warning"
-          hint="recorrentes do mês"
-        />
+        {mesUnico && (
+          <KpiCard
+            label="Despesas pendentes"
+            value={fmtCentavos(despesasPendentes)}
+            icon={Receipt}
+            tone="warning"
+            hint="recorrentes do mês"
+          />
+        )}
         <KpiCard
           label="Ponto de equilíbrio"
           value={fmtCentavos(pontoEquilibrio)}
@@ -187,7 +196,7 @@ export function PainelFinanceiro({
 
       <div className="rounded-lg border border-neutral-200/80 bg-white p-4">
         <h3 className="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-neutral-400">
-          Fluxo do mês
+          Fluxo · {rotuloPeriodo(periodo)}
         </h3>
         <div className="flex flex-wrap items-center gap-1.5">
           <FluxoEtapa label="Previsto" valor={fmtCentavos(receitaTotalMes)} />

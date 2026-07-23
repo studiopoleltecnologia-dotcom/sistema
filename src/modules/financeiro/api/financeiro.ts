@@ -1,4 +1,5 @@
 import { requireSupabase } from '../../../lib/supabase'
+import { limitesDoPeriodo, ultimosMeses, type Periodo } from '../periodo'
 import type {
   ConfigFinanceiroUpdate,
   EntradaInsert,
@@ -8,17 +9,9 @@ import type {
   TipoSaida,
 } from '../types'
 
-/** Primeiro e último dia (ISO) do mês de referência. */
-export function limitesDoMes(mes: string) {
-  const [ano, m] = mes.split('-').map(Number)
-  const inicio = `${mes}-01`
-  const fim = new Date(ano, m, 0).getDate()
-  return { inicio, fim: `${mes}-${String(fim).padStart(2, '0')}` }
-}
-
-/** Entradas do mês (por data_caixa) + todas as previstas em aberto. */
-export async function listarEntradas(mes: string) {
-  const { inicio, fim } = limitesDoMes(mes)
+/** Entradas do período (por data_caixa) + todas as previstas em aberto. */
+export async function listarEntradas(periodo: Periodo) {
+  const { inicio, fim } = limitesDoPeriodo(periodo)
   const { data, error } = await requireSupabase()
     .from('entradas_financeiras')
     .select('*')
@@ -59,8 +52,8 @@ export async function excluirEntrada(id: string) {
   if (error) throw error
 }
 
-export async function listarSaidas(mes: string) {
-  const { inicio, fim } = limitesDoMes(mes)
+export async function listarSaidas(periodo: Periodo) {
+  const { inicio, fim } = limitesDoPeriodo(periodo)
   const { data, error } = await requireSupabase()
     .from('saidas_financeiras')
     .select('*, categoria:categorias_saida(*)')
@@ -227,30 +220,38 @@ export async function criarReservaMovimento(input: ReservaMovimentoInsert) {
   return data
 }
 
-/** Últimos N meses (incl. o atual) de receita por categoria — alimenta os gráficos. */
-export async function listarMixReceitaMensal(meses: number) {
-  const desde = new Date()
-  desde.setMonth(desde.getMonth() - (meses - 1))
-  desde.setDate(1)
+/** Receita por categoria, mês a mês, dentro do período — alimenta os gráficos. */
+export async function listarMixReceitaPeriodo(periodo: Periodo) {
+  const { inicio, fim } = limitesDoPeriodo(periodo)
   const { data, error } = await requireSupabase()
     .from('vw_mix_receita_mensal')
     .select('*')
-    .gte('mes', desde.toISOString().slice(0, 10))
+    .gte('mes', inicio)
+    .lte('mes', fim)
     .order('mes')
   if (error) throw error
   return data
 }
 
-/** Últimos N meses de saída por tipo (recorrente/planejada/variável). */
-export async function listarSaidasMensal(meses: number) {
-  const desde = new Date()
-  desde.setMonth(desde.getMonth() - (meses - 1))
-  desde.setDate(1)
+/** Últimos N meses (incl. o atual) de receita por categoria. Usado pelo Dashboard. */
+export async function listarMixReceitaMensal(meses: number) {
+  return listarMixReceitaPeriodo(ultimosMeses(meses))
+}
+
+/** Saída por tipo (recorrente/planejada/variável), mês a mês, dentro do período. */
+export async function listarSaidasPeriodo(periodo: Periodo) {
+  const { inicio, fim } = limitesDoPeriodo(periodo)
   const { data, error } = await requireSupabase()
     .from('vw_saidas_mensal')
     .select('*')
-    .gte('mes', desde.toISOString().slice(0, 10))
+    .gte('mes', inicio)
+    .lte('mes', fim)
     .order('mes')
   if (error) throw error
   return data
+}
+
+/** Últimos N meses de saída por tipo. Usado pelo Dashboard. */
+export async function listarSaidasMensal(meses: number) {
+  return listarSaidasPeriodo(ultimosMeses(meses))
 }
