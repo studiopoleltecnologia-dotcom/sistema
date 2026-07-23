@@ -39,6 +39,8 @@ export function ClienteForm({
     gympass_id: cliente?.gympass_id ?? null,
     vip: cliente?.vip ?? false,
     observacoes: cliente?.observacoes ?? null,
+    contato_emergencia_nome: cliente?.contato_emergencia_nome ?? null,
+    contato_emergencia_telefone: cliente?.contato_emergencia_telefone ?? null,
   })
 
   const set = <K extends keyof ClienteInsert>(campo: K, valor: ClienteInsert[K]) =>
@@ -183,6 +185,32 @@ export function ClienteForm({
               value={form.data_nascimento ?? ''}
               onChange={(e) => set('data_nascimento', e.target.value || null)}
             />
+          </div>
+
+          <div className="col-span-2 mt-1 border-t border-neutral-100 pt-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              Contato de emergência
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Nome</label>
+                <input
+                  className={inputCls}
+                  value={form.contato_emergencia_nome ?? ''}
+                  onChange={(e) => set('contato_emergencia_nome', texto(e.target.value))}
+                  placeholder="Quem acionar"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Telefone</label>
+                <input
+                  className={inputCls}
+                  value={form.contato_emergencia_telefone ?? ''}
+                  onChange={(e) => set('contato_emergencia_telefone', texto(e.target.value))}
+                  placeholder="(21) 9…"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="col-span-2">

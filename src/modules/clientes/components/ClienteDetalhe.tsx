@@ -135,6 +135,20 @@ export function ClienteDetalhe({
           {cliente.gympass_id ? dado('ID Wellhub', cliente.gympass_id) : null}
         </dl>
 
+        {(cliente.contato_emergencia_nome || cliente.contato_emergencia_telefone) && (
+          <div className="mt-3 rounded-md border border-warning-200 bg-warning-50 p-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-warning-700">
+              Contato de emergência
+            </p>
+            <p className="mt-0.5 text-sm text-neutral-700">
+              {cliente.contato_emergencia_nome || '—'}
+              {cliente.contato_emergencia_telefone && (
+                <span className="text-neutral-500"> · {cliente.contato_emergencia_telefone}</span>
+              )}
+            </p>
+          </div>
+        )}
+
         {cliente.observacoes && (
           <p className="mt-3 rounded-md bg-neutral-50 p-2.5 text-xs text-neutral-600">
             {cliente.observacoes}

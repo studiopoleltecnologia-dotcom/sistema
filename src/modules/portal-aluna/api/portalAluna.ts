@@ -41,7 +41,13 @@ export async function obterMeuCliente() {
 
 export async function atualizarMeuCliente(
   clienteId: string,
-  patch: { nome?: string; telefone?: string; data_nascimento?: string | null },
+  patch: {
+    nome?: string
+    telefone?: string
+    data_nascimento?: string | null
+    contato_emergencia_nome?: string | null
+    contato_emergencia_telefone?: string | null
+  },
 ) {
   const { data, error } = await requireSupabase()
     .from('clientes')

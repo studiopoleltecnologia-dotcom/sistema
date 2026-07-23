@@ -160,6 +160,8 @@ export type Database = {
       clientes: {
         Row: {
           atualizada_em: string
+          contato_emergencia_nome: string | null
+          contato_emergencia_telefone: string | null
           criada_em: string
           data_nascimento: string | null
           email: string | null
@@ -180,6 +182,8 @@ export type Database = {
         }
         Insert: {
           atualizada_em?: string
+          contato_emergencia_nome?: string | null
+          contato_emergencia_telefone?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
@@ -200,6 +204,8 @@ export type Database = {
         }
         Update: {
           atualizada_em?: string
+          contato_emergencia_nome?: string | null
+          contato_emergencia_telefone?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
