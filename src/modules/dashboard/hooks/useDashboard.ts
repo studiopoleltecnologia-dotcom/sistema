@@ -4,6 +4,7 @@ import {
   contarFollowupsPendentes,
   contarFunil,
   contarInadimplentes,
+  folhaPrevistaMes,
   ocupacaoProximosDias,
 } from '../api/dashboard'
 
@@ -25,4 +26,9 @@ export function useOcupacao(dias = 7) {
 
 export function useAniversariantes() {
   return useQuery({ queryKey: ['dash-aniversariantes'], queryFn: aniversariantesDoMes })
+}
+
+/** Só a gestão vê valor de pagamento — `enabled` evita a consulta às demais. */
+export function useFolhaPrevista(enabled: boolean) {
+  return useQuery({ queryKey: ['dash-folha'], queryFn: folhaPrevistaMes, enabled })
 }

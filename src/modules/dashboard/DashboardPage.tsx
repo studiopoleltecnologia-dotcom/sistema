@@ -20,9 +20,11 @@ import { nivelAlertaMei } from '../financeiro/types'
 import { ReceitaEvolucao } from './components/ReceitaEvolucao'
 import { OcupacaoSemana } from './components/OcupacaoSemana'
 import { FunilResumo } from './components/FunilResumo'
+import { FolhaResumo } from './components/FolhaResumo'
 import {
   useAniversariantes,
   useFollowupsPendentes,
+  useFolhaPrevista,
   useFunil,
   useInadimplentes,
   useOcupacao,
@@ -60,6 +62,7 @@ export function DashboardPage() {
   const inadimplentes = useInadimplentes()
   const ocupacao = useOcupacao(7)
   const aniversariantes = useAniversariantes()
+  const folha = useFolhaPrevista(gestao)
 
   const carregando = funil.isLoading || (gestao && (mei.isLoading || caixa.isLoading))
 
@@ -205,6 +208,10 @@ export function DashboardPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {gestao && folha.data && folha.data.total_centavos > 0 && (
+        <FolhaResumo folha={folha.data} />
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

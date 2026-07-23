@@ -66,6 +66,29 @@ export async function ocupacaoProximosDias(dias = 7): Promise<OcupacaoDia[]> {
     .sort((a, b) => a.data.localeCompare(b.data))
 }
 
+export type FolhaPrevista = { total_centavos: number; professoras: number; aulas: number }
+
+/**
+ * Folha das professoras prevista para o mês corrente — o bruto calculado
+ * ao vivo pela mesma view do módulo Fechamento (antes de ajustes manuais
+ * e da aprovação). É uma previsão de saída de caixa (pagamento dia 15),
+ * não o valor congelado; o número exato fica no /fechamento.
+ */
+export async function folhaPrevistaMes(): Promise<FolhaPrevista> {
+  const mes = new Date().toISOString().slice(0, 7)
+  const { data, error } = await requireSupabase()
+    .from('vw_pagamento_professoras')
+    .select('professora_id, total_centavos, aulas')
+    .eq('mes', `${mes}-01`)
+  if (error) throw error
+  const linhas = data ?? []
+  return {
+    total_centavos: linhas.reduce((s, l) => s + (l.total_centavos ?? 0), 0),
+    professoras: new Set(linhas.map((l) => l.professora_id)).size,
+    aulas: linhas.reduce((s, l) => s + (l.aulas ?? 0), 0),
+  }
+}
+
 /** Aniversariantes do mês corrente (gatilho de relacionamento). */
 export async function aniversariantesDoMes(): Promise<{ nome: string; dia: number }[]> {
   const { data, error } = await requireSupabase()
