@@ -27,7 +27,7 @@ import {
   YAxis,
 } from 'recharts'
 import { KpiCard } from '../../../components/ui/KpiCard'
-import { Card, CardHeader } from '../../../components/ui/Card'
+import { CardColapsavel } from '../../../components/ui/CardColapsavel'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { deslocarMes, mesAtual, periodoMes, rotuloPeriodo } from '../periodo'
 import {
@@ -221,8 +221,12 @@ export function DashboardFinanceiro() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader title="Evolução" subtitle="Receita recebida x despesa paga, últimos meses" />
+        <CardColapsavel
+          className="lg:col-span-2"
+          title="Evolução"
+          subtitle="Receita recebida x despesa paga, últimos meses"
+          persistKey="fin-dash-evolucao"
+        >
           {evolucao.length < 2 ? (
             <p className="py-12 text-center text-sm text-neutral-400">
               Ainda sem histórico suficiente para o gráfico.
@@ -263,10 +267,9 @@ export function DashboardFinanceiro() {
               </AreaChart>
             </ResponsiveContainer>
           )}
-        </Card>
+        </CardColapsavel>
 
-        <Card>
-          <CardHeader title="Receita do mês" subtitle="Composição por categoria" />
+        <CardColapsavel title="Receita do mês" subtitle="Composição por categoria" persistKey="fin-dash-composicao">
           {composicao.length === 0 ? (
             <p className="py-12 text-center text-sm text-neutral-400">Nada recebido ainda este mês.</p>
           ) : (
@@ -294,7 +297,7 @@ export function DashboardFinanceiro() {
               </ul>
             </>
           )}
-        </Card>
+        </CardColapsavel>
       </div>
 
       <div>
