@@ -12,6 +12,7 @@ export type ReservaMovimento = Tables<'reserva_movimentos'>
 export type ReservaMovimentoInsert = TablesInsert<'reserva_movimentos'>
 export type MeiAcumulado = Tables<'vw_mei_acumulado'>
 export type SaldoCaixa = Tables<'vw_saldo_caixa'>
+export type Mrr = Tables<'vw_mrr'>
 export type MixReceitaMensal = Tables<'vw_mix_receita_mensal'>
 export type SaidasMensal = Tables<'vw_saidas_mensal'>
 export type DespesaRecorrente = Tables<'despesas_recorrentes'>

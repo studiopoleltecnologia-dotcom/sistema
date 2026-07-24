@@ -205,6 +205,16 @@ export async function obterSaldoCaixa() {
   return data
 }
 
+/** Receita recorrente dos mensalistas (MRR) — resumo de 1 linha, gestão-only. */
+export async function obterMrr() {
+  const { data, error } = await requireSupabase()
+    .from('vw_mrr')
+    .select('*')
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function listarReserva() {
   const { data, error } = await requireSupabase()
     .from('reserva_movimentos')

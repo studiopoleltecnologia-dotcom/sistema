@@ -1486,6 +1486,20 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_mrr: {
+        Row: {
+          clientes_ativos: number | null
+          inadimplentes: number | null
+          mrr_centavos: number | null
+          mrr_em_risco_centavos: number | null
+          mrr_novos_centavos: number | null
+          mrr_renovacoes_centavos: number | null
+          novos_mes: number | null
+          renovacoes_mes: number | null
+          ticket_medio_centavos: number | null
+        }
+        Relationships: []
+      }
       vw_saldo_caixa: {
         Row: {
           previsto_em_aberto_centavos: number | null

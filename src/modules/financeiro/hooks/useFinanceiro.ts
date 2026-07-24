@@ -22,6 +22,7 @@ import {
   listarSaidasPeriodo,
   obterConfig,
   obterMei,
+  obterMrr,
   obterSaldoCaixa,
 } from '../api/financeiro'
 import type { Periodo } from '../periodo'
@@ -67,6 +68,10 @@ export function useConfigFinanceiro() {
 
 export function useMei() {
   return useQuery({ queryKey: ['mei'], queryFn: obterMei })
+}
+
+export function useMrr() {
+  return useQuery({ queryKey: ['mrr'], queryFn: obterMrr })
 }
 
 export function useReserva() {

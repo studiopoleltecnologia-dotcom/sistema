@@ -7,11 +7,14 @@ import {
   CalendarClock,
   Landmark,
   PiggyBank,
+  Repeat,
   Scale,
   Sparkles,
   TrendingDown,
   TrendingUp,
   TriangleAlert,
+  UserPlus,
+  Users,
   Wallet,
 } from 'lucide-react'
 import {
@@ -34,6 +37,7 @@ import {
   useEntradas,
   useMei,
   useMixReceitaPeriodo,
+  useMrr,
   useSaidas,
   useSaidasPeriodo,
   useSaldoCaixa,
@@ -67,6 +71,7 @@ export function DashboardFinanceiro() {
 
   const { data: saldo } = useSaldoCaixa()
   const { data: mei } = useMei()
+  const { data: mrr } = useMrr()
   const { data: entradas } = useEntradas(periodo)
   const { data: saidas } = useSaidas(periodo)
   const { data: mixMensal } = useMixReceitaPeriodo(janela)
@@ -92,6 +97,17 @@ export function DashboardFinanceiro() {
   const pctMei = mei?.percentual_limite ?? 0
   const nivelMei = nivelAlertaMei(pctMei)
   const MEI_TOM = { ok: 'success', atencao: 'warning', alerta: 'warning', critico: 'danger' } as const
+
+  // Receita recorrente (MRR): valor mensalizado das matrículas ativas.
+  const mrrCentavos = mrr?.mrr_centavos ?? 0
+  const clientesAtivos = mrr?.clientes_ativos ?? 0
+  const ticketMedio = mrr?.ticket_medio_centavos ?? 0
+  const novosMes = mrr?.novos_mes ?? 0
+  const mrrNovos = mrr?.mrr_novos_centavos ?? 0
+  const renovacoesMes = mrr?.renovacoes_mes ?? 0
+  const mrrRenovacoes = mrr?.mrr_renovacoes_centavos ?? 0
+  const inadimplentes = mrr?.inadimplentes ?? 0
+  const mrrEmRisco = mrr?.mrr_em_risco_centavos ?? 0
 
   // Série de evolução (6 meses): receita recebida x despesa paga.
   const recPorMes = new Map<string, number>()
@@ -131,6 +147,13 @@ export function DashboardFinanceiro() {
       texto: `Faturamento MEI em ${pctMei.toFixed(0)}% do teto anual`,
       tom: nivelMei === 'critico' ? 'danger' : 'warning',
       to: 'fiscal',
+    })
+  if (inadimplentes > 0)
+    alertas.push({
+      icon: Repeat,
+      texto: `${inadimplentes} mensalista(s) inadimplente(s) — ${fmtCentavos(mrrEmRisco)}/mês de MRR em risco`,
+      tom: 'warning',
+      to: 'entradas',
     })
 
   const atalhos = [
@@ -198,6 +221,49 @@ export function DashboardFinanceiro() {
           tone={MEI_TOM[nivelMei]}
           hint={`faltam ${fmtCentavos(mei?.falta_para_limite_centavos ?? 0)}`}
         />
+      </div>
+
+      <div>
+        <p className={secaoCls}>Receita recorrente · mensalistas</p>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <KpiCard
+            size="lg"
+            label="MRR — receita previsível"
+            value={fmtCentavos(mrrCentavos)}
+            icon={Repeat}
+            tone="brand"
+            hint={
+              clientesAtivos > 0
+                ? `${clientesAtivos} mensalista(s) ativo(s)`
+                : 'sem mensalistas ativos'
+            }
+          />
+          <KpiCard
+            label="Ticket médio"
+            value={fmtCentavos(ticketMedio)}
+            icon={Users}
+            tone="neutral"
+            hint="por mensalista/mês"
+          />
+          <KpiCard
+            label="Novos no mês"
+            value={novosMes > 0 ? `+ ${fmtCentavos(mrrNovos)}` : fmtCentavos(0)}
+            icon={UserPlus}
+            tone={novosMes > 0 ? 'success' : 'neutral'}
+            hint={`${novosMes} nova(s) matrícula(s)`}
+          />
+          <KpiCard
+            label="Renovam este mês"
+            value={fmtCentavos(mrrRenovacoes)}
+            icon={CalendarClock}
+            tone={renovacoesMes > 0 ? 'warning' : 'neutral'}
+            hint={
+              renovacoesMes > 0
+                ? `${renovacoesMes} ciclo(s) a renovar`
+                : 'nenhum ciclo vence agora'
+            }
+          />
+        </div>
       </div>
 
       {alertas.length > 0 && (
