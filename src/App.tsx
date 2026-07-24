@@ -5,7 +5,14 @@ import { AuthGate } from './modules/auth/AuthGate'
 import { Layout } from './components/Layout'
 import { Placeholder } from './components/Placeholder'
 import { ClientesPage } from './modules/clientes/ClientesPage'
-import { FinanceiroPage } from './modules/financeiro/FinanceiroPage'
+import { FinanceiroLayout } from './modules/financeiro/FinanceiroLayout'
+import { DashboardFinanceiro } from './modules/financeiro/pages/DashboardFinanceiro'
+import { EntradasPage } from './modules/financeiro/pages/EntradasPage'
+import { SaidasPage } from './modules/financeiro/pages/SaidasPage'
+import { FluxoPage } from './modules/financeiro/pages/FluxoPage'
+import { FiscalPage } from './modules/financeiro/pages/FiscalPage'
+import { ReservaPage } from './modules/financeiro/pages/ReservaPage'
+import { WellhubPage } from './modules/financeiro/pages/WellhubPage'
 import { FollowupPage } from './modules/followup/FollowupPage'
 import { AgendaPage } from './modules/agenda/AgendaPage'
 import { ProfessorasPage } from './modules/professoras/ProfessorasPage'
@@ -63,10 +70,18 @@ export default function App() {
                   path="financeiro"
                   element={
                     <RotaFuncao permitido={['gestao']}>
-                      <FinanceiroPage />
+                      <FinanceiroLayout />
                     </RotaFuncao>
                   }
-                />
+                >
+                  <Route index element={<DashboardFinanceiro />} />
+                  <Route path="entradas" element={<EntradasPage />} />
+                  <Route path="saidas" element={<SaidasPage />} />
+                  <Route path="fluxo" element={<FluxoPage />} />
+                  <Route path="fiscal" element={<FiscalPage />} />
+                  <Route path="reserva" element={<ReservaPage />} />
+                  <Route path="wellhub" element={<WellhubPage />} />
+                </Route>
                 <Route path="followup" element={<FollowupPage />} />
                 <Route path="agenda" element={<AgendaPage />} />
                 <Route
