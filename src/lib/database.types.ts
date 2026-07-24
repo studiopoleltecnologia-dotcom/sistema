@@ -1593,6 +1593,8 @@ export type Database = {
       criar_conta_aluna: {
         Args: {
           p_aceite_lgpd: boolean
+          p_contato_emergencia_nome?: string
+          p_contato_emergencia_telefone?: string
           p_data_nascimento: string
           p_email: string
           p_nome: string

@@ -54,6 +54,8 @@ export function ClienteForm({
   function submit(e: FormEvent) {
     e.preventDefault()
     if (!form.nome.trim()) return
+    // Contato de emergência é obrigatório (estúdio de atividade física).
+    if (!form.contato_emergencia_nome?.trim() || !form.contato_emergencia_telefone?.trim()) return
     onSalvar(form)
   }
 
@@ -189,12 +191,13 @@ export function ClienteForm({
 
           <div className="col-span-2 mt-1 border-t border-neutral-100 pt-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-              Contato de emergência
+              Contato de emergência *
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Nome</label>
+                <label className={labelCls}>Nome *</label>
                 <input
+                  required
                   className={inputCls}
                   value={form.contato_emergencia_nome ?? ''}
                   onChange={(e) => set('contato_emergencia_nome', texto(e.target.value))}
@@ -202,8 +205,9 @@ export function ClienteForm({
                 />
               </div>
               <div>
-                <label className={labelCls}>Telefone</label>
+                <label className={labelCls}>Telefone *</label>
                 <input
+                  required
                   className={inputCls}
                   value={form.contato_emergencia_telefone ?? ''}
                   onChange={(e) => set('contato_emergencia_telefone', texto(e.target.value))}

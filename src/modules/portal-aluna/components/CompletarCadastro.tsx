@@ -11,6 +11,8 @@ export function CompletarCadastro() {
   const [telefone, setTelefone] = useState('')
   const [email, setEmail] = useState('')
   const [nascimento, setNascimento] = useState('')
+  const [emergNome, setEmergNome] = useState('')
+  const [emergTelefone, setEmergTelefone] = useState('')
   const [aceite, setAceite] = useState(false)
 
   // O e-mail já é o do login: preenche sozinho para ela não redigitar,
@@ -30,6 +32,8 @@ export function CompletarCadastro() {
       email: email.trim(),
       dataNascimento: nascimento || null,
       aceiteLgpd: aceite,
+      emergenciaNome: emergNome.trim(),
+      emergenciaTelefone: emergTelefone.trim(),
     })
   }
 
@@ -88,6 +92,32 @@ export function CompletarCadastro() {
             className={inputCls}
           />
         </label>
+
+        <div className="mb-4 border-t border-neutral-100 pt-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            Contato de emergência
+          </p>
+          <label className="mb-4 block">
+            <span className="mb-1 block text-xs font-medium text-neutral-600">Nome</span>
+            <input
+              required
+              value={emergNome}
+              onChange={(e) => setEmergNome(e.target.value)}
+              placeholder="Quem acionar se precisar"
+              className={inputCls}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-neutral-600">Telefone</span>
+            <input
+              required
+              value={emergTelefone}
+              onChange={(e) => setEmergTelefone(e.target.value)}
+              placeholder="(11) 91234-5678"
+              className={inputCls}
+            />
+          </label>
+        </div>
 
         <label className="mb-6 flex items-start gap-2 text-sm text-neutral-600">
           <input

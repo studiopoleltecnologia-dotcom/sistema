@@ -21,6 +21,8 @@ export async function criarContaAluna(args: {
   email: string
   dataNascimento: string | null
   aceiteLgpd: boolean
+  emergenciaNome: string
+  emergenciaTelefone: string
 }) {
   const { data, error } = await requireSupabase().rpc('criar_conta_aluna', {
     p_nome: args.nome,
@@ -28,6 +30,8 @@ export async function criarContaAluna(args: {
     p_email: args.email,
     p_data_nascimento: args.dataNascimento as string,
     p_aceite_lgpd: args.aceiteLgpd,
+    p_contato_emergencia_nome: args.emergenciaNome,
+    p_contato_emergencia_telefone: args.emergenciaTelefone,
   })
   if (error) throw error
   return data
