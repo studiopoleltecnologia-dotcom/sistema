@@ -94,6 +94,22 @@ export async function listarMatriculasDoCliente(clienteId: string) {
   return data
 }
 
+/**
+ * "Aluno desde": data da primeira matrícula (qualquer status), base do tempo
+ * de casa e dos marcos de fidelidade. null se nunca teve matrícula (ainda lead).
+ */
+export async function obterAlunoDesde(clienteId: string): Promise<string | null> {
+  const { data, error } = await requireSupabase()
+    .from('matriculas')
+    .select('data_inicio')
+    .eq('cliente_id', clienteId)
+    .order('data_inicio', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data?.data_inicio ?? null
+}
+
 /** Nome dos planos, para rotular a matrícula na ficha (vw_saldo_creditos só traz o id). */
 export async function listarPlanosNomes() {
   const { data, error } = await requireSupabase().from('planos').select('id, nome')

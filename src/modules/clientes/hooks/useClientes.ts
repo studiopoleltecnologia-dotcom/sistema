@@ -9,6 +9,7 @@ import {
   listarPlanosNomes,
   listarProximasAulasDoCliente,
   listarSocias,
+  obterAlunoDesde,
 } from '../api/clientes'
 import type { ClienteInsert, ClienteUpdate } from '../types'
 
@@ -46,6 +47,14 @@ export function useProximasAulasDoCliente(clienteId: string | null) {
 
 export function usePlanosNomes() {
   return useQuery({ queryKey: ['planos-nomes'], queryFn: listarPlanosNomes })
+}
+
+export function useAlunoDesde(clienteId: string | null) {
+  return useQuery({
+    queryKey: ['aluno-desde', clienteId],
+    queryFn: () => obterAlunoDesde(clienteId!),
+    enabled: clienteId !== null,
+  })
 }
 
 export function useCriarCliente() {

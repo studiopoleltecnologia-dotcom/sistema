@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Badge } from '../../../components/ui/Badge'
+import { TempoDeCasa } from './TempoDeCasa'
 import { fmtData, fmtDataHora } from '../../../lib/datas'
 import {
   useAdicionarInteracao,
@@ -154,6 +155,8 @@ export function ClienteDetalhe({
             {cliente.observacoes}
           </p>
         )}
+
+        <TempoDeCasa clienteId={cliente.id} />
 
         <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">
           PLANO &amp; CRÉDITOS
