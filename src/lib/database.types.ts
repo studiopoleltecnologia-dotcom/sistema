@@ -1495,6 +1495,19 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_ocupacao_turma: {
+        Row: {
+          capacidade: number | null
+          dia_semana: number | null
+          horario: string | null
+          modalidade: string | null
+          ocorrencias: number | null
+          ocupacao_pct: number | null
+          reservas: number | null
+          turma_id: string | null
+        }
+        Relationships: []
+      }
       vw_mrr: {
         Row: {
           clientes_ativos: number | null
