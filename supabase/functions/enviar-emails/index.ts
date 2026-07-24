@@ -1,15 +1,12 @@
 // Disparo de e-mails do Studio Pole L.
 //
-// Varre a fila de avisos pendentes e envia pela Resend. Hoje trata o
-// aviso de "vaga liberada" da lista de espera (lista_espera com
-// status='notificada' e email_enviado_em nulo = pendente). É desenhado
-// para crescer: outros tipos de e-mail entram como novas varreduras aqui.
+// Varre a fila (emails_fila, status='pendente'), renderiza pelo `tipo` e
+// envia pela Resend. Novos e-mails = novo caso no render(). Quem enfileira
+// são os gatilhos/crons no banco (migration fila_emails_e_gatilhos).
 //
 // Segredos (env, nunca no repo — o repositório é público):
-//   RESEND_API_KEY            — chave da Resend (cofre do Supabase)
-//   SUPABASE_URL / SERVICE    — injetados pelo Supabase automaticamente
-//
-// Invocada de tempos em tempos pelo pg_cron (ver migration do cron).
+//   RESEND_API_KEY   — chave da Resend (cofre do Supabase)
+//   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — injetados pelo Supabase.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -20,48 +17,30 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const REMETENTE = 'Studio Pole L <contato@studiopolel.com.br>'
 const RESPONDER_PARA = 'carolinedsnunes@gmail.com'
 const PORTAL = 'https://studiopoleltecnologia-dotcom.github.io/sistema/#/portal'
+const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png'
+const MAX_TENTATIVAS = 5
 
 const DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE)
 
-function dataExtenso(iso: string): string {
-  const [a, m, d] = iso.split('-').map(Number)
+const dataExtenso = (iso?: string | null): string => {
+  if (!iso) return ''
+  const [a, m, d] = iso.slice(0, 10).split('-').map(Number)
   const dt = new Date(a, m - 1, d, 12)
   return `${DIAS[dt.getDay()]}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
 }
-
-function hhmm(hora: string | null): string {
-  return (hora ?? '').slice(0, 5)
-}
-
-async function enviarResend(para: string, assunto: string, html: string) {
-  const resp = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: REMETENTE,
-      to: [para],
-      reply_to: RESPONDER_PARA,
-      subject: assunto,
-      html,
-    }),
-  })
-  if (!resp.ok) {
-    const txt = await resp.text()
-    throw new Error(`Resend ${resp.status}: ${txt}`)
-  }
-}
+const hhmm = (hora?: string | null): string => (hora ?? '').slice(0, 5)
+const fmtReais = (cent?: number | null): string =>
+  cent == null ? '' : `R$ ${(cent / 100).toFixed(2).replace('.', ',')}`
+const primeiroNome = (nome?: string | null): string => (nome ?? '').split(' ')[0] || 'Olá'
 
 function layout(titulo: string, corpo: string, cta?: { texto: string; url: string }): string {
   return `<!doctype html><html><body style="margin:0;background:#f7f5fa;padding:24px;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#241f33">
   <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e7e2ef">
-    <div style="background:#574a78;padding:20px 24px">
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:#fff;color:#574a78;font-weight:800;font-size:15px">L</span>
-      <span style="color:#fff;font-weight:700;letter-spacing:.04em;margin-left:8px;font-size:14px">STUDIO POLE L</span>
+    <div style="padding:22px 24px 18px;text-align:center;border-bottom:1px solid #f0edf5">
+      <img src="${LOGO_URL}" alt="Studio Pole L" width="60" height="60" style="display:inline-block;border:0;border-radius:50%" />
+      <div style="margin-top:8px;color:#574a78;font-weight:700;letter-spacing:.1em;font-size:12px">STUDIO POLE L</div>
     </div>
     <div style="padding:28px 24px">
       <h1 style="margin:0 0 12px;font-size:20px;letter-spacing:-.01em">${titulo}</h1>
@@ -74,62 +53,113 @@ function layout(titulo: string, corpo: string, cta?: { texto: string; url: strin
   </div></body></html>`
 }
 
-async function processarListaEspera(): Promise<number> {
-  const { data: cfg } = await supabase
-    .from('config_agendamento')
-    .select('minutos_reserva_espera')
-    .single()
-  const minutos = cfg?.minutos_reserva_espera ?? 30
+type Dados = Record<string, unknown>
+type Render = { assunto: string; html: string } | null
 
-  const { data: pendentes, error } = await supabase
-    .from('lista_espera')
-    .select('id, data, cliente:clientes(nome, email), turma:turmas(modalidade, horario)')
-    .eq('status', 'notificada')
-    .is('email_enviado_em', null)
-  if (error) throw error
+function render(tipo: string, d: Dados): Render {
+  const nome = primeiroNome(d.nome as string)
+  const modalidade = (d.modalidade as string) || 'sua aula'
+  const data = dataExtenso(d.data as string)
+  const hora = hhmm(d.horario as string)
 
-  let enviados = 0
-  for (const p of pendentes ?? []) {
-    const cliente = p.cliente as unknown as { nome: string; email: string | null } | null
-    const turma = p.turma as unknown as { modalidade: string | null; horario: string | null } | null
-    if (!cliente?.email) continue
-
-    const primeiroNome = cliente.nome?.split(' ')[0] ?? 'Olá'
-    const modalidade = turma?.modalidade ?? 'sua aula'
-    const assunto = `Vaga liberada — ${modalidade} · ${dataExtenso(p.data)}`
-    const corpo = `Oi, ${primeiroNome}! 🎉<br><br>
-      Abriu uma vaga na aula que você estava esperando:<br><br>
-      <strong style="color:#241f33">${modalidade}</strong><br>
-      ${dataExtenso(p.data)} às ${hhmm(turma?.horario ?? null)}<br><br>
-      A vaga está <strong>reservada para você por ${minutos} minutos</strong>. Entre no app e confirme para garantir seu lugar — passado o prazo, ela vai para a próxima da fila.`
-    const html = layout('Sua vaga abriu!', corpo, { texto: 'Confirmar minha vaga', url: PORTAL })
-
-    try {
-      await enviarResend(cliente.email, assunto, html)
-      await supabase
-        .from('lista_espera')
-        .update({ email_enviado_em: new Date().toISOString() })
-        .eq('id', p.id)
-      enviados++
-    } catch (e) {
-      console.error(`Falha ao enviar para ${cliente.email}:`, (e as Error).message)
-      // não marca como enviado: tenta de novo na próxima varredura
+  switch (tipo) {
+    case 'vaga_liberada': {
+      const mins = (d.minutos as number) ?? 30
+      return {
+        assunto: `Vaga liberada — ${modalidade} · ${data}`,
+        html: layout('Sua vaga abriu! 🎉',
+          `Oi, ${nome}!<br><br>Abriu uma vaga na aula que você estava esperando:<br><br>
+           <strong style="color:#241f33">${modalidade}</strong><br>${data} às ${hora}<br><br>
+           A vaga está <strong>reservada para você por ${mins} minutos</strong>. Confirme no app para garantir seu lugar — passado o prazo, ela vai para a próxima da fila.`,
+          { texto: 'Confirmar minha vaga', url: PORTAL }),
+      }
     }
+    case 'confirmacao_agendamento':
+      return {
+        assunto: `Aula confirmada — ${modalidade} · ${data}`,
+        html: layout('Presença confirmada ✓',
+          `Oi, ${nome}! Sua aula está reservada:<br><br>
+           <strong style="color:#241f33">${modalidade}</strong><br>${data} às ${hora}<br><br>
+           Te esperamos! Se precisar desmarcar, é só cancelar pelo app dentro do prazo.`,
+          { texto: 'Ver minhas aulas', url: PORTAL }),
+      }
+    case 'lembrete_aula':
+      return {
+        assunto: `Lembrete: sua aula é amanhã — ${modalidade}`,
+        html: layout('Sua aula é amanhã 💜',
+          `Oi, ${nome}! Passando para lembrar da sua aula:<br><br>
+           <strong style="color:#241f33">${modalidade}</strong><br>${data} às ${hora}<br><br>
+           Não vai poder ir? Cancele pelo app para liberar a vaga para outra aluna. 🙏`,
+          { texto: 'Abrir o app', url: PORTAL }),
+      }
+    case 'vencimento': {
+      const plano = (d.plano as string) || 'seu plano'
+      const fim = dataExtenso(d.data_fim as string)
+      const valor = fmtReais(d.valor_centavos as number)
+      return {
+        assunto: 'Sua mensalidade está vencendo',
+        html: layout('Hora de renovar 🗓️',
+          `Oi, ${nome}! Seu plano <strong style="color:#241f33">${plano}</strong> vence em <strong>${fim}</strong>.<br><br>
+           ${valor ? `Valor da renovação: <strong>${valor}</strong>.<br><br>` : ''}
+           Renove para não perder seus créditos e seguir agendando suas aulas normalmente.`,
+          { texto: 'Renovar meu plano', url: PORTAL }),
+      }
+    }
+    default:
+      return null
   }
-  return enviados
+}
+
+async function enviarResend(para: string, assunto: string, html: string) {
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: REMETENTE, to: [para], reply_to: RESPONDER_PARA, subject: assunto, html }),
+  })
+  if (!resp.ok) throw new Error(`Resend ${resp.status}: ${await resp.text()}`)
 }
 
 Deno.serve(async () => {
-  try {
-    const enviados = await processarListaEspera()
-    return new Response(JSON.stringify({ ok: true, enviados }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  } catch (e) {
-    console.error('Erro no disparo:', (e as Error).message)
-    return new Response(JSON.stringify({ ok: false, erro: (e as Error).message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+  const { data: pendentes, error } = await supabase
+    .from('emails_fila')
+    .select('*')
+    .eq('status', 'pendente')
+    .order('criado_em')
+    .limit(100)
+  if (error) {
+    return new Response(JSON.stringify({ ok: false, erro: error.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
     })
   }
+
+  let enviados = 0
+  for (const e of pendentes ?? []) {
+    try {
+      const r = render(e.tipo, e.dados ?? {})
+      if (!r) {
+        await supabase.from('emails_fila')
+          .update({ status: 'erro', ultimo_erro: `tipo desconhecido: ${e.tipo}` })
+          .eq('id', e.id)
+        continue
+      }
+      await enviarResend(e.destinatario, r.assunto, r.html)
+      await supabase.from('emails_fila')
+        .update({ status: 'enviado', enviado_em: new Date().toISOString() })
+        .eq('id', e.id)
+      enviados++
+    } catch (err) {
+      const tentativas = (e.tentativas ?? 0) + 1
+      await supabase.from('emails_fila')
+        .update({
+          tentativas,
+          ultimo_erro: (err as Error).message,
+          status: tentativas >= MAX_TENTATIVAS ? 'erro' : 'pendente',
+        })
+        .eq('id', e.id)
+    }
+  }
+
+  return new Response(JSON.stringify({ ok: true, enviados }), {
+    headers: { 'Content-Type': 'application/json' },
+  })
 })
