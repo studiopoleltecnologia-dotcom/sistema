@@ -268,6 +268,109 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_itens: {
+        Row: {
+          ativo: boolean
+          criada_em: string
+          id: string
+          ordem: number
+          rotina: Database["public"]["Enums"]["rotina_checklist"]
+          titulo: string
+        }
+        Insert: {
+          ativo?: boolean
+          criada_em?: string
+          id?: string
+          ordem?: number
+          rotina: Database["public"]["Enums"]["rotina_checklist"]
+          titulo: string
+        }
+        Update: {
+          ativo?: boolean
+          criada_em?: string
+          id?: string
+          ordem?: number
+          rotina?: Database["public"]["Enums"]["rotina_checklist"]
+          titulo?: string
+        }
+        Relationships: []
+      }
+      checklist_execucoes: {
+        Row: {
+          data: string
+          feito_em: string
+          feito_por: string | null
+          id: string
+          item_id: string
+        }
+        Insert: {
+          data?: string
+          feito_em?: string
+          feito_por?: string | null
+          id?: string
+          item_id: string
+        }
+        Update: {
+          data?: string
+          feito_em?: string
+          feito_por?: string | null
+          id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_execucoes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tarefas: {
+        Row: {
+          concluida: boolean
+          concluida_em: string | null
+          criada_em: string
+          criada_por: string | null
+          descricao: string | null
+          id: string
+          prazo: string | null
+          responsavel_id: string | null
+          titulo: string
+        }
+        Insert: {
+          concluida?: boolean
+          concluida_em?: string | null
+          criada_em?: string
+          criada_por?: string | null
+          descricao?: string | null
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          titulo: string
+        }
+        Update: {
+          concluida?: boolean
+          concluida_em?: string | null
+          criada_em?: string
+          criada_por?: string | null
+          descricao?: string | null
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "socias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_financeiro: {
         Row: {
           atualizada_em: string
@@ -1727,6 +1830,7 @@ export type Database = {
       status_agendamento: "agendado" | "cancelado"
       status_entrada: "prevista" | "recebida" | "cancelada"
       status_fechamento: "aberto" | "aprovado"
+      rotina_checklist: "abertura" | "fechamento"
       status_followup: "pendente" | "concluido" | "dispensado"
       status_lista_espera:
         | "aguardando"
@@ -1924,6 +2028,7 @@ export const Constants = {
       ],
       plano_tipo: ["creditos", "semanal"],
       status_agendamento: ["agendado", "cancelado"],
+      rotina_checklist: ["abertura", "fechamento"],
       status_entrada: ["prevista", "recebida", "cancelada"],
       status_fechamento: ["aberto", "aprovado"],
       status_followup: ["pendente", "concluido", "dispensado"],

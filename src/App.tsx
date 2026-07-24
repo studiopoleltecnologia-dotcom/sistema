@@ -24,6 +24,7 @@ import { PlanosPage } from './modules/planos/PlanosPage'
 import { PortalApp } from './modules/portal-aluna/PortalApp'
 import { ProfessoraApp } from './modules/portal-professora/ProfessoraApp'
 import { DashboardPage } from './modules/dashboard/DashboardPage'
+import { TarefasPage } from './modules/tarefas/TarefasPage'
 import { RotaFuncao } from './components/RotaFuncao'
 import { EquipePage } from './modules/equipe/EquipePage'
 
@@ -116,7 +117,7 @@ export default function App() {
                   }
                 />
                 <Route path="conteudo" element={<Placeholder title="Conteúdo" fase="Fase 6" />} />
-                <Route path="tarefas" element={<Placeholder title="Tarefas" fase="Fase 6" />} />
+                <Route path="tarefas" element={<TarefasPage />} />
                 <Route
                   path="investimentos"
                   element={
