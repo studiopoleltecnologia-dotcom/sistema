@@ -1188,6 +1188,7 @@ export type Database = {
           criada_em: string
           data_caixa: string
           descricao: string | null
+          fechamento_id: string | null
           id: string
           recorrente_id: string | null
           valor_centavos: number
@@ -1198,6 +1199,7 @@ export type Database = {
           criada_em?: string
           data_caixa?: string
           descricao?: string | null
+          fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
           valor_centavos: number
@@ -1208,6 +1210,7 @@ export type Database = {
           criada_em?: string
           data_caixa?: string
           descricao?: string | null
+          fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
           valor_centavos?: number
