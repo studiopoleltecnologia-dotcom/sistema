@@ -9,6 +9,8 @@ import { FinanceiroLayout } from './modules/financeiro/FinanceiroLayout'
 import { DashboardFinanceiro } from './modules/financeiro/pages/DashboardFinanceiro'
 import { EntradasPage } from './modules/financeiro/pages/EntradasPage'
 import { SaidasPage } from './modules/financeiro/pages/SaidasPage'
+import { RecorrenciasPage } from './modules/financeiro/pages/RecorrenciasPage'
+import { ContasPage } from './modules/financeiro/pages/ContasPage'
 import { FluxoPage } from './modules/financeiro/pages/FluxoPage'
 import { FiscalPage } from './modules/financeiro/pages/FiscalPage'
 import { ReservaPage } from './modules/financeiro/pages/ReservaPage'
@@ -77,6 +79,8 @@ export default function App() {
                   <Route index element={<DashboardFinanceiro />} />
                   <Route path="entradas" element={<EntradasPage />} />
                   <Route path="saidas" element={<SaidasPage />} />
+                  <Route path="recorrencias" element={<RecorrenciasPage />} />
+                  <Route path="contas" element={<ContasPage />} />
                   <Route path="fluxo" element={<FluxoPage />} />
                   <Route path="fiscal" element={<FiscalPage />} />
                   <Route path="reserva" element={<ReservaPage />} />
