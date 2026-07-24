@@ -9,14 +9,18 @@ import type {
   TipoSaida,
 } from '../types'
 
-/** Entradas do período (por data_caixa) + todas as previstas em aberto. */
+/**
+ * Entradas do período: recebidas por data_caixa, todas as previstas em
+ * aberto (independem do período — são pendências vivas) e as canceladas
+ * cuja competência caiu no período (para a aba "Canceladas" ter conteúdo).
+ */
 export async function listarEntradas(periodo: Periodo) {
   const { inicio, fim } = limitesDoPeriodo(periodo)
   const { data, error } = await requireSupabase()
     .from('entradas_financeiras')
     .select('*')
     .or(
-      `and(data_caixa.gte.${inicio},data_caixa.lte.${fim}),status.eq.prevista`,
+      `and(data_caixa.gte.${inicio},data_caixa.lte.${fim}),status.eq.prevista,and(status.eq.cancelada,data_competencia.gte.${inicio},data_competencia.lte.${fim})`,
     )
     .order('data_caixa', { ascending: false, nullsFirst: true })
   if (error) throw error

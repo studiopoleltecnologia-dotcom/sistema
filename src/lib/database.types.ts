@@ -1689,7 +1689,7 @@ export type Database = {
         | "portal_aluna"
       plano_tipo: "creditos" | "semanal"
       status_agendamento: "agendado" | "cancelado"
-      status_entrada: "prevista" | "recebida"
+      status_entrada: "prevista" | "recebida" | "cancelada"
       status_fechamento: "aberto" | "aprovado"
       status_followup: "pendente" | "concluido" | "dispensado"
       status_lista_espera:
@@ -1888,7 +1888,7 @@ export const Constants = {
       ],
       plano_tipo: ["creditos", "semanal"],
       status_agendamento: ["agendado", "cancelado"],
-      status_entrada: ["prevista", "recebida"],
+      status_entrada: ["prevista", "recebida", "cancelada"],
       status_fechamento: ["aberto", "aprovado"],
       status_followup: ["pendente", "concluido", "dispensado"],
       status_lista_espera: [

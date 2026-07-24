@@ -49,6 +49,23 @@ export const TIPO_SAIDA_DESCRICAO: Record<TipoSaida, string> = {
 /** Ordem de exibição: do mais previsível ao mais variável. */
 export const ORDEM_TIPO_SAIDA: TipoSaida[] = ['fixa', 'fixa_planejada', 'variavel']
 
+/**
+ * Status "de tela" de uma entrada. `atrasada` não existe no banco — é
+ * derivada de uma prevista cuja data_prevista já passou. As demais espelham
+ * o enum status_entrada.
+ */
+export type StatusEntradaVis = 'recebida' | 'pendente' | 'atrasada' | 'cancelada'
+
+export function statusEntradaVis(
+  e: Pick<Entrada, 'status' | 'data_prevista'>,
+  hojeISO: string,
+): StatusEntradaVis {
+  if (e.status === 'recebida') return 'recebida'
+  if (e.status === 'cancelada') return 'cancelada'
+  if (e.data_prevista != null && e.data_prevista < hojeISO) return 'atrasada'
+  return 'pendente'
+}
+
 /** Alertas MEI nos degraus do CLAUDE.md seção 8. */
 export function nivelAlertaMei(percentual: number): 'ok' | 'atencao' | 'alerta' | 'critico' {
   if (percentual >= 95) return 'critico'
