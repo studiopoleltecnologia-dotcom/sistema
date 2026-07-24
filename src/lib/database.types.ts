@@ -273,6 +273,8 @@ export type Database = {
           atualizada_em: string
           id: boolean
           limite_mei_centavos: number
+          meta_faturamento_anual_centavos: number
+          meta_faturamento_mensal_centavos: number
           meta_reserva_meses: number
           percentual_reserva: number
           saldo_inicial_centavos: number
@@ -282,6 +284,8 @@ export type Database = {
           atualizada_em?: string
           id?: boolean
           limite_mei_centavos?: number
+          meta_faturamento_anual_centavos?: number
+          meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number
@@ -291,6 +295,8 @@ export type Database = {
           atualizada_em?: string
           id?: boolean
           limite_mei_centavos?: number
+          meta_faturamento_anual_centavos?: number
+          meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number

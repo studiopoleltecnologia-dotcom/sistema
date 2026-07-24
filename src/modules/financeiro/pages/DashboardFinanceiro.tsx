@@ -10,6 +10,7 @@ import {
   Repeat,
   Scale,
   Sparkles,
+  Target,
   TrendingDown,
   TrendingUp,
   TriangleAlert,
@@ -34,6 +35,7 @@ import { CardColapsavel } from '../../../components/ui/CardColapsavel'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { deslocarMes, mesAtual, periodoMes, rotuloPeriodo } from '../periodo'
 import {
+  useConfigFinanceiro,
   useEntradas,
   useMei,
   useMixReceitaPeriodo,
@@ -64,6 +66,37 @@ const hojeISO = () => new Date().toISOString().slice(0, 10)
 
 const secaoCls = 'mb-3 font-display text-xs font-semibold uppercase tracking-wide text-neutral-400'
 
+function BarraMeta({ label, realizado, meta }: { label: string; realizado: number; meta: number }) {
+  const pctReal = meta > 0 ? Math.round((realizado / meta) * 100) : 0
+  const largura = Math.min(100, Math.max(pctReal, 2))
+  const bateu = realizado >= meta && meta > 0
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-sm font-medium text-neutral-700">{label}</span>
+        <span className="text-xs tabular-nums text-neutral-400">
+          {fmtCentavos(realizado)}
+          <span className="text-neutral-300"> / {fmtCentavos(meta)}</span>
+        </span>
+      </div>
+      <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-neutral-100">
+        <div
+          className={`h-full rounded-full transition-all ${bateu ? 'bg-success-500' : 'bg-brand-500'}`}
+          style={{ width: `${largura}%` }}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-xs">
+        <span className={bateu ? 'font-semibold text-success-600' : 'text-neutral-400'}>
+          {pctReal}%{bateu ? ' · meta batida 🎉' : ''}
+        </span>
+        {!bateu && (
+          <span className="text-neutral-400">faltam {fmtCentavos(Math.max(meta - realizado, 0))}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function DashboardFinanceiro() {
   const mes = mesAtual()
   const periodo = periodoMes(mes)
@@ -72,6 +105,7 @@ export function DashboardFinanceiro() {
   const { data: saldo } = useSaldoCaixa()
   const { data: mei } = useMei()
   const { data: mrr } = useMrr()
+  const { data: config } = useConfigFinanceiro()
   const { data: entradas } = useEntradas(periodo)
   const { data: saidas } = useSaidas(periodo)
   const { data: mixMensal } = useMixReceitaPeriodo(janela)
@@ -108,6 +142,12 @@ export function DashboardFinanceiro() {
   const mrrRenovacoes = mrr?.mrr_renovacoes_centavos ?? 0
   const inadimplentes = mrr?.inadimplentes ?? 0
   const mrrEmRisco = mrr?.mrr_em_risco_centavos ?? 0
+
+  // Metas de faturamento (regime de caixa). 0 = não definida → barra escondida.
+  const metaMes = config?.meta_faturamento_mensal_centavos ?? 0
+  const metaAno = config?.meta_faturamento_anual_centavos ?? 0
+  const faturamentoAno = mei?.faturamento_ano_centavos ?? 0
+  const temMeta = metaMes > 0 || metaAno > 0
 
   // Série de evolução (6 meses): receita recebida x despesa paga.
   const recPorMes = new Map<string, number>()
@@ -264,6 +304,26 @@ export function DashboardFinanceiro() {
             }
           />
         </div>
+      </div>
+
+      <div>
+        <p className={secaoCls}>Metas de faturamento</p>
+        {temMeta ? (
+          <div className="grid grid-cols-1 gap-5 rounded-xl border border-neutral-200/80 bg-white p-5 shadow-sm sm:grid-cols-2">
+            {metaMes > 0 && (
+              <BarraMeta label={`Mês · ${rotuloPeriodo(periodo)}`} realizado={recebido} meta={metaMes} />
+            )}
+            {metaAno > 0 && <BarraMeta label={`Ano · ${new Date().getFullYear()}`} realizado={faturamentoAno} meta={metaAno} />}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-neutral-200 bg-white p-5 text-sm text-neutral-400">
+            <Target className="size-4 shrink-0" />
+            <span>
+              Defina metas de faturamento em{' '}
+              <strong className="font-medium text-neutral-500">Config</strong> para acompanhar o progresso aqui.
+            </span>
+          </div>
+        )}
       </div>
 
       {alertas.length > 0 && (
