@@ -13,6 +13,7 @@ import { RecorrenciasPage } from './modules/financeiro/pages/RecorrenciasPage'
 import { ContasPage } from './modules/financeiro/pages/ContasPage'
 import { FluxoPage } from './modules/financeiro/pages/FluxoPage'
 import { FiscalPage } from './modules/financeiro/pages/FiscalPage'
+import { DrePage } from './modules/financeiro/pages/DrePage'
 import { ReservaPage } from './modules/financeiro/pages/ReservaPage'
 import { WellhubPage } from './modules/financeiro/pages/WellhubPage'
 import { FollowupPage } from './modules/followup/FollowupPage'
@@ -83,6 +84,7 @@ export default function App() {
                   <Route path="contas" element={<ContasPage />} />
                   <Route path="fluxo" element={<FluxoPage />} />
                   <Route path="fiscal" element={<FiscalPage />} />
+                  <Route path="dre" element={<DrePage />} />
                   <Route path="reserva" element={<ReservaPage />} />
                   <Route path="wellhub" element={<WellhubPage />} />
                 </Route>

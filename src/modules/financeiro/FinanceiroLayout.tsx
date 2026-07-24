@@ -5,6 +5,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   CalendarClock,
+  FileText,
   LayoutDashboard,
   Landmark,
   PiggyBank,
@@ -30,6 +31,7 @@ const ITENS: Item[] = [
   { to: 'contas', label: 'Contas', icon: CalendarClock },
   { to: 'fluxo', label: 'Fluxo de caixa', icon: Activity },
   { to: 'fiscal', label: 'Fiscal', icon: Landmark },
+  { to: 'dre', label: 'DRE', icon: FileText },
   { to: 'reserva', label: 'Reserva', icon: PiggyBank },
   { to: 'wellhub', label: 'Wellhub', icon: Sparkles },
 ]
