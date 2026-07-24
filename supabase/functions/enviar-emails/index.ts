@@ -17,7 +17,8 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const REMETENTE = 'Studio Pole L <contato@studiopolel.com.br>'
 const RESPONDER_PARA = 'carolinedsnunes@gmail.com'
 const PORTAL = 'https://studiopoleltecnologia-dotcom.github.io/sistema/#/portal'
-const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png'
+// ?v muda quando a logo troca — fura o cache do Gmail (que guarda imagem por URL).
+const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png?v=2'
 const MAX_TENTATIVAS = 5
 
 const DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
@@ -39,7 +40,7 @@ function layout(titulo: string, corpo: string, cta?: { texto: string; url: strin
   return `<!doctype html><html><body style="margin:0;background:#f7f5fa;padding:24px;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#241f33">
   <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e7e2ef">
     <div style="padding:22px 24px 18px;text-align:center;border-bottom:1px solid #f0edf5">
-      <img src="${LOGO_URL}" alt="Studio Pole L" width="60" height="60" style="display:inline-block;border:0;border-radius:50%" />
+      <img src="${LOGO_URL}" alt="Studio Pole L" style="display:inline-block;border:0;height:64px;width:auto;max-width:220px" />
       <div style="margin-top:8px;color:#574a78;font-weight:700;letter-spacing:.1em;font-size:12px">STUDIO POLE L</div>
     </div>
     <div style="padding:28px 24px">
