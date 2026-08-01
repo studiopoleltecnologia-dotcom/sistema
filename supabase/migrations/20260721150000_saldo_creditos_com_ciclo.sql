@@ -7,7 +7,10 @@
 -- manual — e manual sem informação vira chute.
 -- ============================================================
 
-create or replace view public.vw_saldo_creditos
+-- replay-safe: `create or replace view` não permite reordenar colunas
+-- (ciclo_atual/ciclos_total entram antes de `saldo`). Recria a view.
+drop view if exists public.vw_saldo_creditos;
+create view public.vw_saldo_creditos
 with (security_invoker = true) as
 select
   m.id as matricula_id,

@@ -1,5 +1,7 @@
-name: Deploy no GitHub Pages
+name: Deploy PRODUÇÃO (Supabase + GitHub Pages)
 
+# Entrou em `main` (promoção via PR develop→main): aplica schema + functions
+# na PRODUÇÃO e publica o frontend no GitHub Pages.
 on:
   push:
     branches: [main]
@@ -15,8 +17,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # 1) Schema + Edge Functions na produção ANTES do frontend (o site novo já
+  #    encontra o banco no formato esperado).
+  supabase-prod:
     runs-on: ubuntu-latest
+    environment: Production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase link --project-ref "$REF"
+      - run: supabase db push
+      - run: |
+          supabase functions deploy wellhub-webhook --no-verify-jwt --project-ref "$REF"
+          supabase functions deploy enviar-emails --project-ref "$REF"
+
+  build:
+    needs: supabase-prod
+    runs-on: ubuntu-latest
+    environment: Production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,9 +50,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          # Base path = nome do repositório (GitHub Pages serve em /<repo>/)
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Segredos configurados em Settings → Secrets and variables → Actions
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
