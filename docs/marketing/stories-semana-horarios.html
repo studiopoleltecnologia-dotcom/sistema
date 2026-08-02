@@ -1,0 +1,215 @@
+<title>Stories da semana — horários por dia</title>
+
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:#000; display:flex; flex-direction:column; align-items:center; gap:32px; padding:24px 0; }
+
+  .story{
+    position:relative;
+    width:1080px; height:1920px;
+    overflow:hidden;
+    font-family:"Poppins","Segoe UI",system-ui,-apple-system,sans-serif;
+    color:#fff;
+    background:#20140c;
+  }
+
+  .bg-photo{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+
+  .shade-top{
+    position:absolute; left:0; right:0; top:0; height:520px;
+    background:linear-gradient(to bottom, rgba(10,6,4,.78) 0%, rgba(10,6,4,.42) 55%, rgba(10,6,4,0) 100%);
+  }
+  .shade-mid{
+    position:absolute; left:0; right:0; top:560px; height:520px;
+    background:radial-gradient(60% 100% at 30% 30%, rgba(10,6,4,.55) 0%, rgba(10,6,4,0) 72%);
+  }
+  .shade-bottom{
+    position:absolute; left:0; right:0; bottom:0; height:1060px;
+    background:linear-gradient(to top, rgba(8,5,3,.92) 0%, rgba(8,5,3,.82) 38%, rgba(8,5,3,.35) 78%, rgba(8,5,3,0) 100%);
+  }
+
+  .brand-pill{
+    position:absolute; left:64px; right:64px; top:150px;
+    min-height:118px;
+    background:#c9791d;
+    border-radius:999px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 44px 20px 40px;
+    box-shadow:0 14px 30px -14px rgba(0,0,0,.5);
+  }
+  .brand-pill .left{
+    font-size:22px; font-weight:800; letter-spacing:.03em; line-height:1.28;
+    text-transform:uppercase; color:#fff; max-width:560px;
+  }
+  .brand-pill .right{ display:flex; align-items:center; gap:16px; }
+  .brand-pill .right .txt{ text-align:right; line-height:1.32; }
+  .brand-pill .right .txt .l1{ font-size:17px; color:#fbe6cc; font-weight:600; }
+  .brand-pill .right .txt .l2{ font-size:23px; color:#fff; font-weight:800; }
+  .brand-pill .logo{
+    width:64px; height:64px; border-radius:50%; background:#241f37;
+    display:flex; align-items:center; justify-content:center; flex:none;
+    font-family:"Century Gothic","Futura","Trebuchet MS",sans-serif;
+    font-weight:700; font-size:22px; color:#fff; letter-spacing:.02em;
+  }
+
+  .heading{ position:absolute; left:64px; top:400px; right:64px; }
+  .heading .kicker{
+    font-family:"Caveat","Segoe Script","Brush Script MT",cursive;
+    font-size:56px; font-weight:700; color:#fff; opacity:.92; line-height:1;
+  }
+  .heading .day{
+    font-family:"Anton","Oswald","Century Gothic","Trebuchet MS",sans-serif;
+    font-size:158px; font-weight:900; letter-spacing:.01em; line-height:.92;
+    color:#fff; text-transform:uppercase; margin-top:6px;
+  }
+
+  .list{ position:absolute; left:64px; right:64px; top:900px; bottom:150px;
+    display:flex; flex-direction:column; justify-content:center; }
+  .row{ display:flex; align-items:flex-start; gap:28px; }
+  .row .time{
+    font-variant-numeric:tabular-nums; font-weight:800; font-size:38px;
+    color:#fff; min-width:150px; padding-top:4px; flex:none;
+  }
+  .row .info{ display:flex; flex-direction:column; gap:2px; }
+  .row .info .cls{
+    font-family:"Poppins","Century Gothic","Trebuchet MS",sans-serif;
+    font-weight:800; font-size:44px; line-height:1.08; color:#fff;
+  }
+  .row .info .prof{ font-size:26px; font-weight:400; color:rgba(255,255,255,.72); }
+
+  .list.n6 .row{ margin-bottom:60px; }
+  .list.n7 .row{ margin-bottom:46px; }
+  .list.n8 .row{ margin-bottom:32px; }
+  .list .row:last-child{ margin-bottom:0; }
+
+  .handle{
+    position:absolute; left:0; right:0; bottom:56px; text-align:center;
+    font-size:22px; letter-spacing:.04em; color:rgba(255,255,255,.65); font-weight:600;
+  }
+</style>
+
+<!-- ======================= SEGUNDA ======================= -->
+<div class="story" data-document-role="page" data-label="Segunda">
+  <img class="bg-photo" src="https://picsum.photos/id/1060/1080/1920" alt="Foto do estúdio (trocar pela foto do dia)">
+  <div class="shade-top"></div><div class="shade-mid"></div><div class="shade-bottom"></div>
+  <div class="brand-pill">
+    <span class="left">Aulas de Pole Dance, Flex,<br>Jazz, Ballet Infantil, Funk e +</span>
+    <div class="right"><span class="txt"><span class="l1">espaço de dança, arte e movimento</span><br><span class="l2">Studio Pole L</span></span><span class="logo">PL</span></div>
+  </div>
+  <div class="heading"><div class="kicker">horários</div><div class="day">SEGUNDA</div></div>
+  <div class="list n6">
+    <div class="row"><span class="time">10:00</span><span class="info"><span class="cls">Calistenia</span><span class="prof">com Nathalia</span></span></div>
+    <div class="row"><span class="time">11:00</span><span class="info"><span class="cls">Pole Mix</span><span class="prof">com May</span></span></div>
+    <div class="row"><span class="time">12:00</span><span class="info"><span class="cls">Pole 2</span><span class="prof">com May</span></span></div>
+    <div class="row"><span class="time">17:30</span><span class="info"><span class="cls">Pole Spin 1</span><span class="prof">com Juliana</span></span></div>
+    <div class="row"><span class="time">18:30</span><span class="info"><span class="cls">Pole Dance 1</span><span class="prof">com Juliana</span></span></div>
+    <div class="row"><span class="time">19:30</span><span class="info"><span class="cls">Pole Coreográfico</span><span class="prof">com Juliana</span></span></div>
+  </div>
+  <div class="handle">@studiopolel</div>
+</div>
+
+<!-- ======================= TERÇA ======================= -->
+<div class="story" data-document-role="page" data-label="Terça">
+  <img class="bg-photo" src="https://picsum.photos/id/1060/1080/1920" alt="Foto do estúdio (trocar pela foto do dia)">
+  <div class="shade-top"></div><div class="shade-mid"></div><div class="shade-bottom"></div>
+  <div class="brand-pill">
+    <span class="left">Aulas de Pole Dance, Flex,<br>Jazz, Ballet Infantil, Funk e +</span>
+    <div class="right"><span class="txt"><span class="l1">espaço de dança, arte e movimento</span><br><span class="l2">Studio Pole L</span></span><span class="logo">PL</span></div>
+  </div>
+  <div class="heading"><div class="kicker">horários</div><div class="day">TERÇA</div></div>
+  <div class="list n8">
+    <div class="row"><span class="time">10:00</span><span class="info"><span class="cls">Pole Power</span><span class="prof">com Sara</span></span></div>
+    <div class="row"><span class="time">11:00</span><span class="info"><span class="cls">Pole Coreográfico</span><span class="prof">com Sara</span></span></div>
+    <div class="row"><span class="time">13:40</span><span class="info"><span class="cls">Jazz Juvenil</span><span class="prof">com Tatiane</span></span></div>
+    <div class="row"><span class="time">15:45</span><span class="info"><span class="cls">Ballet Baby</span><span class="prof">com Márcia</span></span></div>
+    <div class="row"><span class="time">17:00</span><span class="info"><span class="cls">Jazz Adulto</span><span class="prof">com Tatiane</span></span></div>
+    <div class="row"><span class="time">18:00</span><span class="info"><span class="cls">Pole 1 e 2</span><span class="prof">com Victoria</span></span></div>
+    <div class="row"><span class="time">19:00</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Victoria</span></span></div>
+    <div class="row"><span class="time">20:00</span><span class="info"><span class="cls">Pole Spin</span><span class="prof">com Victoria</span></span></div>
+  </div>
+  <div class="handle">@studiopolel</div>
+</div>
+
+<!-- ======================= QUARTA ======================= -->
+<div class="story" data-document-role="page" data-label="Quarta">
+  <img class="bg-photo" src="https://picsum.photos/id/1060/1080/1920" alt="Foto do estúdio (trocar pela foto do dia)">
+  <div class="shade-top"></div><div class="shade-mid"></div><div class="shade-bottom"></div>
+  <div class="brand-pill">
+    <span class="left">Aulas de Pole Dance, Flex,<br>Jazz, Ballet Infantil, Funk e +</span>
+    <div class="right"><span class="txt"><span class="l1">espaço de dança, arte e movimento</span><br><span class="l2">Studio Pole L</span></span><span class="logo">PL</span></div>
+  </div>
+  <div class="heading"><div class="kicker">horários</div><div class="day">QUARTA</div></div>
+  <div class="list n8">
+    <div class="row"><span class="time">9:00</span><span class="info"><span class="cls">Calistenia</span><span class="prof">com Nathalia</span></span></div>
+    <div class="row"><span class="time">10:00</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Nathalia</span></span></div>
+    <div class="row"><span class="time">11:00</span><span class="info"><span class="cls">Flexibilidade</span><span class="prof">com Nathalia</span></span></div>
+    <div class="row"><span class="time">16:00</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Paola</span></span></div>
+    <div class="row"><span class="time">17:00</span><span class="info"><span class="cls">Pole 1 e 2</span><span class="prof">com Paola</span></span></div>
+    <div class="row"><span class="time">18:00</span><span class="info"><span class="cls">Flexibilidade</span><span class="prof">com Victoria</span></span></div>
+    <div class="row"><span class="time">19:00</span><span class="info"><span class="cls">Pole On Heels</span><span class="prof">com Victoria</span></span></div>
+    <div class="row"><span class="time">20:00</span><span class="info"><span class="cls">Yoga</span><span class="prof">com Fabiana</span></span></div>
+  </div>
+  <div class="handle">@studiopolel</div>
+</div>
+
+<!-- ======================= QUINTA ======================= -->
+<div class="story" data-document-role="page" data-label="Quinta">
+  <img class="bg-photo" src="https://picsum.photos/id/1060/1080/1920" alt="Foto do estúdio (trocar pela foto do dia)">
+  <div class="shade-top"></div><div class="shade-mid"></div><div class="shade-bottom"></div>
+  <div class="brand-pill">
+    <span class="left">Aulas de Pole Dance, Flex,<br>Jazz, Ballet Infantil, Funk e +</span>
+    <div class="right"><span class="txt"><span class="l1">espaço de dança, arte e movimento</span><br><span class="l2">Studio Pole L</span></span><span class="logo">PL</span></div>
+  </div>
+  <div class="heading"><div class="kicker">horários</div><div class="day">QUINTA</div></div>
+  <div class="list n8">
+    <div class="row"><span class="time">11:00</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Sara</span></span></div>
+    <div class="row"><span class="time">12:00</span><span class="info"><span class="cls">Pole 1 e 2</span><span class="prof">com Sara</span></span></div>
+    <div class="row"><span class="time">13:40</span><span class="info"><span class="cls">Jazz Juvenil</span><span class="prof">com Tatiane</span></span></div>
+    <div class="row"><span class="time">15:45</span><span class="info"><span class="cls">Ballet Baby</span><span class="prof">com Márcia</span></span></div>
+    <div class="row"><span class="time">17:00</span><span class="info"><span class="cls">Jazz Adulto</span><span class="prof">com Tatiane</span></span></div>
+    <div class="row"><span class="time">18:30</span><span class="info"><span class="cls">Dança do Ventre</span><span class="prof">com Bruna</span></span></div>
+    <div class="row"><span class="time">19:30</span><span class="info"><span class="cls">Pole Coreográfico</span><span class="prof">com Juliana</span></span></div>
+    <div class="row"><span class="time">20:30</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Juliana</span></span></div>
+  </div>
+  <div class="handle">@studiopolel</div>
+</div>
+
+<!-- ======================= SEXTA ======================= -->
+<div class="story" data-document-role="page" data-label="Sexta">
+  <img class="bg-photo" src="https://picsum.photos/id/1060/1080/1920" alt="Foto do estúdio (trocar pela foto do dia)">
+  <div class="shade-top"></div><div class="shade-mid"></div><div class="shade-bottom"></div>
+  <div class="brand-pill">
+    <span class="left">Aulas de Pole Dance, Flex,<br>Jazz, Ballet Infantil, Funk e +</span>
+    <div class="right"><span class="txt"><span class="l1">espaço de dança, arte e movimento</span><br><span class="l2">Studio Pole L</span></span><span class="logo">PL</span></div>
+  </div>
+  <div class="heading"><div class="kicker">horários</div><div class="day">SEXTA</div></div>
+  <div class="list n6">
+    <div class="row"><span class="time">11:00</span><span class="info"><span class="cls">Pole 1 e 2</span><span class="prof">com Paola</span></span></div>
+    <div class="row"><span class="time">12:00</span><span class="info"><span class="cls">Pole Coreográfico</span><span class="prof">com Paola</span></span></div>
+    <div class="row"><span class="time">16:00</span><span class="info"><span class="cls">Pole Mix</span><span class="prof">com May</span></span></div>
+    <div class="row"><span class="time">17:00</span><span class="info"><span class="cls">Pole 2</span><span class="prof">com May</span></span></div>
+    <div class="row"><span class="time">18:00</span><span class="info"><span class="cls">Bases de Salto</span><span class="prof">com Victoria</span></span></div>
+    <div class="row"><span class="time">19:00</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Victoria</span></span></div>
+  </div>
+  <div class="handle">@studiopolel</div>
+</div>
+
+<!-- ======================= SÁBADO ======================= -->
+<div class="story" data-document-role="page" data-label="Sábado">
+  <img class="bg-photo" src="https://picsum.photos/id/1060/1080/1920" alt="Foto do estúdio (trocar pela foto do dia)">
+  <div class="shade-top"></div><div class="shade-mid"></div><div class="shade-bottom"></div>
+  <div class="brand-pill">
+    <span class="left">Aulas de Pole Dance, Flex,<br>Jazz, Ballet Infantil, Funk e +</span>
+    <div class="right"><span class="txt"><span class="l1">espaço de dança, arte e movimento</span><br><span class="l2">Studio Pole L</span></span><span class="logo">PL</span></div>
+  </div>
+  <div class="heading"><div class="kicker">horários</div><div class="day">SÁBADO</div></div>
+  <div class="list n6">
+    <div class="row"><span class="time">9:00</span><span class="info"><span class="cls">Flexibilidade</span><span class="prof">com Nathalia</span></span></div>
+    <div class="row"><span class="time">10:00</span><span class="info"><span class="cls">Calistenia</span><span class="prof">com Nathalia</span></span></div>
+    <div class="row"><span class="time">11:00</span><span class="info"><span class="cls">Pole 1 e 2</span><span class="prof">com Letícia</span></span></div>
+    <div class="row"><span class="time">12:00</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Letícia</span></span></div>
+    <div class="row"><span class="time">15:00</span><span class="info"><span class="cls">Pole 1 e 2</span><span class="prof">com Sara</span></span></div>
+    <div class="row"><span class="time">16:00</span><span class="info"><span class="cls">Pole 1</span><span class="prof">com Sara</span></span></div>
+  </div>
+  <div class="handle">@studiopolel</div>
+</div>
