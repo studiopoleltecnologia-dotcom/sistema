@@ -1,0 +1,274 @@
+<title>Grade de Horários — pronta pra enviar</title>
+
+<style>
+  :root{ --ground:#f4f2f7; --faint:#a79ec2; }
+  @media (prefers-color-scheme: dark){ :root{ --ground:#16131c; --faint:#7d7397; } }
+  :root[data-theme="light"]{ --ground:#f4f2f7; --faint:#a79ec2; }
+  :root[data-theme="dark"]{ --ground:#16131c; --faint:#7d7397; }
+
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--ground);
+    font-family:"Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:clamp(20px,5vw,48px) 16px 40px;
+    gap:16px;
+  }
+
+  /* ================= CARTÃO DA GRADE ================= */
+  .grade-card{
+    container-type: inline-size;
+    width:100%; max-width:520px;
+    background:#fbfaf8;
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 18px 40px -22px rgba(36,31,55,.5), 0 0 0 1px rgba(36,31,55,.1);
+    color:#241f37;
+  }
+  .grade-card .topbar{ height:1.4cqw; min-height:3px;
+    background:linear-gradient(90deg,#591a49,#443a66 55%,#db8735); }
+  .grade-card .pad{ padding:7.5cqw 6.5cqw 7cqw; display:flex; flex-direction:column; gap:4.2cqw; }
+
+  .gc-brand{
+    font-family:"Century Gothic","Futura","Trebuchet MS",sans-serif;
+    text-transform:uppercase; letter-spacing:.3em; font-size:2.2cqw; font-weight:700;
+    color:#8d84b3;
+  }
+  .gc-title-block{ display:flex; flex-direction:column; gap:.6cqw; }
+  .gc-title{
+    font-family:"Century Gothic","Futura","Trebuchet MS",sans-serif;
+    font-size:8.6cqw; font-weight:700; line-height:.98; letter-spacing:-.01em; color:#241f37;
+  }
+  .gc-sub{ font-size:2.9cqw; color:#6b6193; }
+
+  .gc-legend{ display:flex; flex-wrap:wrap; gap:2cqw 3.6cqw; padding-top:.4cqw; }
+  .gc-legend span{ display:flex; align-items:center; gap:1.1cqw; font-size:2.15cqw; font-weight:700; color:#443a66; }
+  .gc-legend i{ width:1.9cqw; height:1.9cqw; min-width:6px; min-height:6px; border-radius:50%; display:inline-block; }
+
+  .gtable{ display:flex; flex-direction:column; border-top:1px solid #e4e0ef; margin-top:.8cqw; }
+  .grow{ display:grid; grid-template-columns:10cqw repeat(6,1fr); align-items:stretch;
+    border-bottom:1px solid #e4e0ef; }
+  .grow.ghead{ border-bottom:1px solid #241f37; }
+  .ghcell{
+    font-size:2.15cqw; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+    color:#241f37; text-align:center; padding:2.2cqw .3cqw; align-self:center;
+  }
+  .gtime{
+    font-size:2.15cqw; font-weight:800; font-variant-numeric:tabular-nums;
+    color:#8d84b3; padding:2.3cqw .3cqw 2.3cqw 0; align-self:center;
+  }
+  .gcell{ padding:1.1cqw .5cqw; display:flex; align-items:stretch; }
+  .chip{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    border-radius:1.6cqw; padding:1.5cqw .4cqw; gap:.3cqw;
+  }
+  .chip b{ font-size:2.05cqw; font-weight:800; line-height:1.15; }
+  .chip i{ font-style:normal; font-size:1.65cqw; font-weight:700; opacity:.72; line-height:1; }
+  .empty{ flex:1; display:flex; align-items:center; justify-content:center; color:#d3cfe6; font-size:2.2cqw; }
+
+  .fam-pole{ background:#ece9f5; color:#443a66; }
+  .fam-danca{ background:#faf1e2; color:#a1671e; }
+  .fam-kids{ background:#e4f4f3; color:#237c7a; }
+  .fam-cond{ background:#eef1e0; color:#5f7222; }
+  .dot-pole{ background:#443a66; } .dot-danca{ background:#c07a24; }
+  .dot-kids{ background:#2fa9a6; } .dot-cond{ background:#7c8f2e; }
+
+  .hint{ max-width:520px; text-align:center; font-size:12.5px; color:var(--faint); line-height:1.5; }
+</style>
+
+<div class="grade-card" data-document-role="page" data-label="Grade de horários">
+  <div class="topbar"></div>
+  <div class="pad">
+    <span class="gc-brand">Studio Pole L</span>
+    <div class="gc-title-block">
+      <span class="gc-title">GRADE</span>
+      <span class="gc-sub">de horários · segunda a sábado</span>
+    </div>
+
+    <div class="gc-legend">
+      <span><i class="dot-pole"></i>Pole</span>
+      <span><i class="dot-danca"></i>Dança</span>
+      <span><i class="dot-kids"></i>Casinha Kids</span>
+      <span><i class="dot-cond"></i>Condicionamento</span>
+    </div>
+
+    <div class="gtable">
+      <div class="grow ghead">
+        <span class="ghcell"></span><span class="ghcell">Seg</span><span class="ghcell">Ter</span>
+        <span class="ghcell">Qua</span><span class="ghcell">Qui</span><span class="ghcell">Sex</span><span class="ghcell">Sáb</span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">8h</span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Nathalia</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Nathalia</i></span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">9h</span>
+        <span class="gcell"><span class="chip fam-cond"><b>Calistenia</b><i>Nathalia</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-cond"><b>Calistenia</b><i>Nathalia</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Sara</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-cond"><b>Flexibilidade</b><i>Nathalia</i></span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">10h</span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Coreográfico</b><i>May</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Nathalia</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Coreográfico</b><i>Sara</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-cond"><b>Calistenia</b><i>Nathalia</i></span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">11h</span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Mix</b><i>May</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-cond"><b>Flexibilidade</b><i>Nathalia</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Power</b><i>Sara</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1 e 2</b><i>Paola</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Coreográfico</b><i>Juliana</i></span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">12h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Coreográfico</b><i>Paola</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Juliana</i></span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">13:40h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-kids"><b>Jazz Juvenil</b><i>Tatiane</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-kids"><b>Jazz Juvenil</b><i>Tatiane</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">15h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">15:45h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-kids"><b>Ballet Baby</b><i>Márcia</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-kids"><b>Ballet Baby</b><i>Márcia</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">16h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Paola</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Mix</b><i>May</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">17h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Coreográfico</b><i>Paola</i></span></span>
+        <span class="gcell"><span class="chip fam-danca"><b>Jazz Adulto</b><i>Tatiane</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 2</b><i>May</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">17:30h</span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Spin 1</b><i>Juliana</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">18h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1 e 2</b><i>Victoria</i></span></span>
+        <span class="gcell"><span class="chip fam-cond"><b>Flexibilidade</b><i>Victoria</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-cond"><b>Bases Salto</b><i>Victoria</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">18:30h</span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Dance 1</b><i>Juliana</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-danca"><b>D. Ventre</b><i>Bruna</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">19h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Victoria</i></span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole On Heels</b><i>Victoria</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Victoria</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">19:30h</span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Coreográfico</b><i>Juliana</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Coreográfico</b><i>Juliana</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">20h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole Spin</b><i>Victoria</i></span></span>
+        <span class="gcell"><span class="chip fam-cond"><b>Yoga</b><i>Fabiana</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+
+      <div class="grow">
+        <span class="gtime">20:30h</span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="chip fam-pole"><b>Pole 1</b><i>Juliana</i></span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+        <span class="gcell"><span class="empty">–</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="hint">Sem texto de bastidor por perto de propósito — é só rolar, tirar o print do cartão acima e mandar no grupo das alunas. Pra exportar em PNG de verdade, recrie este layout no Canva com os mesmos horários.</p>
