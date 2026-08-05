@@ -43,10 +43,19 @@ const ERA_LINK_RECUPERACAO = window.location.hash.includes('type=recovery')
 
 type Jornada = 'admin' | 'aluna' | 'professora'
 
-// #/prof (e não #/professoras) porque o admin já usa /professoras para o
-// módulo de gestão. Pelo mesmo motivo o teste é por segmento exato: um
-// startsWith('#/prof') sequestraria justamente a rota #/professoras do admin.
+// Domínio próprio (sistema.studiopolel.com.br): a jornada é decidida pelo
+// caminho da URL — /agendamentos (aluna) e /portalequipe (professora) têm
+// cada um seu index.html físico no build (deploy.yml), já que o GitHub
+// Pages não tem servidor para rewrite de SPA. Fora deles, cai no admin.
+//
+// O hash antigo (#/portal, #/prof — era o único mecanismo antes do domínio
+// próprio, quando o site vivia em github.io/sistema/) continua reconhecido
+// para não quebrar link/favorito salvo de antes.
 function jornadaAtual(): Jornada {
+  const path = window.location.pathname
+  if (path === '/agendamentos' || path.startsWith('/agendamentos/')) return 'aluna'
+  if (path === '/portalequipe' || path.startsWith('/portalequipe/')) return 'professora'
+
   const hash = window.location.hash
   if (hash === '#/portal' || hash.startsWith('#/portal/')) return 'aluna'
   if (hash === '#/prof' || hash.startsWith('#/prof/')) return 'professora'
