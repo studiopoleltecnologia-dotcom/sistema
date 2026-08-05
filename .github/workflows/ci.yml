@@ -16,7 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: Development
     env:
-      VITE_BASE: /${{ github.event.repository.name }}/
+      # Tem que ser o MESMO base do deploy.yml, senão o smoke valida um bundle
+      # que não é o que vai ao ar. Desde o domínio próprio, produção serve a
+      # raiz (sistema.studiopolel.com.br), não /sistema/.
+      VITE_BASE: /
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
     steps:
