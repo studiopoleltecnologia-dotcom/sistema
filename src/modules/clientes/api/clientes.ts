@@ -144,3 +144,30 @@ export async function listarProximasAulasDoCliente(clienteId: string) {
     professora: a.turma ? nomeMap.get(a.turma.professora_id) ?? null : null,
   }))
 }
+
+/**
+ * Últimos pagamentos/cobranças do aluno. Dado financeiro — a RLS de
+ * entradas_financeiras já recusa quem não é gestão; só chamar quando a
+ * função for gestão evita pedir uma lista que sempre volta vazia.
+ */
+export async function listarPagamentosDoCliente(clienteId: string) {
+  const { data, error } = await requireSupabase()
+    .from('entradas_financeiras')
+    .select('id, descricao, valor_centavos, categoria, status, data_competencia, data_caixa')
+    .eq('cliente_id', clienteId)
+    .order('data_competencia', { ascending: false })
+    .limit(10)
+  if (error) throw error
+  return data
+}
+
+/** Se o aluno já criou login no portal (contas_aluna) — indicador simples. */
+export async function verificarAcessoPortal(clienteId: string) {
+  const { data, error } = await requireSupabase()
+    .from('contas_aluna')
+    .select('criada_em')
+    .eq('cliente_id', clienteId)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}

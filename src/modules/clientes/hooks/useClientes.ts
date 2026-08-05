@@ -6,10 +6,12 @@ import {
   listarClientes,
   listarInteracoes,
   listarMatriculasDoCliente,
+  listarPagamentosDoCliente,
   listarPlanosNomes,
   listarProximasAulasDoCliente,
   listarSocias,
   obterAlunoDesde,
+  verificarAcessoPortal,
 } from '../api/clientes'
 import type { ClienteInsert, ClienteUpdate } from '../types'
 
@@ -53,6 +55,23 @@ export function useAlunoDesde(clienteId: string | null) {
   return useQuery({
     queryKey: ['aluno-desde', clienteId],
     queryFn: () => obterAlunoDesde(clienteId!),
+    enabled: clienteId !== null,
+  })
+}
+
+/** `habilitado=false` (não-gestão) evita pedir dado que a RLS sempre nega. */
+export function usePagamentosDoCliente(clienteId: string | null, habilitado: boolean) {
+  return useQuery({
+    queryKey: ['pagamentos-cliente', clienteId],
+    queryFn: () => listarPagamentosDoCliente(clienteId!),
+    enabled: clienteId !== null && habilitado,
+  })
+}
+
+export function useAcessoPortal(clienteId: string | null) {
+  return useQuery({
+    queryKey: ['acesso-portal-cliente', clienteId],
+    queryFn: () => verificarAcessoPortal(clienteId!),
     enabled: clienteId !== null,
   })
 }

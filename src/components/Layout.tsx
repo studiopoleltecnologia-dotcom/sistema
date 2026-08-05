@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
+  BarChart3,
   CalendarDays,
   CheckSquare,
   Coins,
@@ -37,6 +38,7 @@ const NAV: NavItem[] = [
   { to: '/financeiro', label: 'Financeiro', icon: Wallet, funcoes: ['gestao'] },
   { to: '/followup', label: 'Follow-up', icon: MessageCircleHeart, funcoes: ['gestao', 'secretaria'] },
   { to: '/agenda', label: 'Agenda', icon: CalendarDays, funcoes: ['gestao', 'secretaria'] },
+  { to: '/analises', label: 'Análises', icon: BarChart3, funcoes: ['gestao', 'secretaria'] },
   { to: '/planos', label: 'Planos', icon: CreditCard, funcoes: ['gestao', 'secretaria'] },
   { to: '/professoras', label: 'Professoras', icon: GraduationCap, funcoes: ['gestao'] },
   { to: '/fechamento', label: 'Fechamento', icon: Coins, funcoes: ['gestao'] },
