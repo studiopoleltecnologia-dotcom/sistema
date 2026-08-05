@@ -5,6 +5,7 @@ export type EntradaInsert = TablesInsert<'entradas_financeiras'>
 export type EntradaUpdate = TablesUpdate<'entradas_financeiras'>
 export type Saida = Tables<'saidas_financeiras'>
 export type SaidaInsert = TablesInsert<'saidas_financeiras'>
+export type SaidaUpdate = TablesUpdate<'saidas_financeiras'>
 export type CategoriaSaida = Tables<'categorias_saida'>
 export type ConfigFinanceiro = Tables<'config_financeiro'>
 export type ConfigFinanceiroUpdate = TablesUpdate<'config_financeiro'>
@@ -16,6 +17,9 @@ export type Mrr = Tables<'vw_mrr'>
 export type MixReceitaMensal = Tables<'vw_mix_receita_mensal'>
 export type SaidasMensal = Tables<'vw_saidas_mensal'>
 export type DespesaRecorrente = Tables<'despesas_recorrentes'>
+export type DreCompetencia = Tables<'vw_dre_competencia'>
+export type ContaAReceber = Tables<'vw_contas_a_receber'>
+export type ContaAPagar = Tables<'vw_contas_a_pagar'>
 
 export type CategoriaEntrada = Enums<'categoria_entrada'>
 export type StatusEntrada = Enums<'status_entrada'>

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   atualizarConfig,
   atualizarEntrada,
+  atualizarSaida,
   criarCategoriaSaida,
   criarEntrada,
   criarRecorrente,
@@ -12,6 +13,9 @@ import {
   excluirSaida,
   lancarRecorrente,
   listarCategoriasSaida,
+  listarContasAPagar,
+  listarContasAReceber,
+  listarDreCompetencia,
   listarEntradas,
   listarMixReceitaMensal,
   listarMixReceitaPeriodo,
@@ -26,7 +30,7 @@ import {
   obterSaldoCaixa,
 } from '../api/financeiro'
 import type { Periodo } from '../periodo'
-import type { ConfigFinanceiroUpdate, EntradaInsert, EntradaUpdate } from '../types'
+import type { ConfigFinanceiroUpdate, EntradaInsert, EntradaUpdate, SaidaUpdate } from '../types'
 
 // invalidações em bloco: qualquer lançamento mexe em MEI e resumo
 function useInvalidarFinanceiro() {
@@ -37,6 +41,9 @@ function useInvalidarFinanceiro() {
     qc.invalidateQueries({ queryKey: ['mei'] })
     qc.invalidateQueries({ queryKey: ['reserva'] })
     qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+    qc.invalidateQueries({ queryKey: ['dre-competencia'] })
+    qc.invalidateQueries({ queryKey: ['contas-a-receber'] })
+    qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
   }
 }
 
@@ -106,6 +113,22 @@ export function useSaidasPeriodo(periodo: Periodo) {
   })
 }
 
+/** DRE por competência (mês em que a receita/despesa foi gerada, não paga/recebida). */
+export function useDreCompetencia(periodo: Periodo) {
+  return useQuery({
+    queryKey: ['dre-competencia', periodo.inicio, periodo.fim],
+    queryFn: () => listarDreCompetencia(periodo),
+  })
+}
+
+export function useContasAReceber() {
+  return useQuery({ queryKey: ['contas-a-receber'], queryFn: listarContasAReceber })
+}
+
+export function useContasAPagar() {
+  return useQuery({ queryKey: ['contas-a-pagar'], queryFn: listarContasAPagar })
+}
+
 export function useCriarEntrada() {
   const invalidar = useInvalidarFinanceiro()
   return useMutation({
@@ -133,6 +156,14 @@ export function useCriarSaida() {
   return useMutation({ mutationFn: criarSaida, onSuccess: invalidar })
 }
 
+export function useAtualizarSaida() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: SaidaUpdate }) => atualizarSaida(id, patch),
+    onSuccess: invalidar,
+  })
+}
+
 export function useExcluirSaida() {
   const invalidar = useInvalidarFinanceiro()
   return useMutation({ mutationFn: excluirSaida, onSuccess: invalidar })
@@ -149,6 +180,7 @@ export function useCriarRecorrente() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['recorrentes'] })
       qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+      qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
     },
   })
 }
@@ -160,6 +192,7 @@ export function useDesativarRecorrente() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['recorrentes'] })
       qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+      qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
     },
   })
 }

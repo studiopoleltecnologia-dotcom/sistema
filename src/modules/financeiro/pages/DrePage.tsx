@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, Printer } from 'lucide-react'
 import { KpiCard } from '../../../components/ui/KpiCard'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { deslocarMes, mesAtual, periodoMes, rotuloPeriodo } from '../periodo'
-import { useEntradas, useSaidas } from '../hooks/useFinanceiro'
+import { useDreCompetencia } from '../hooks/useFinanceiro'
 import {
   CATEGORIA_ENTRADA_LABEL,
   ORDEM_TIPO_SAIDA,
@@ -24,27 +24,26 @@ const rotuloExtenso = (ym: string) => {
 export function DrePage() {
   const [mes, setMes] = useState(mesAtual())
   const periodo = periodoMes(mes)
-  const { data: entradas } = useEntradas(periodo)
-  const { data: saidas } = useSaidas(periodo)
+  const { data: dre } = useDreCompetencia(periodo)
 
-  // Receitas recebidas (regime de caixa) por categoria.
+  // Receita gerada no mês (competência), por categoria — recebida ou não.
   const recPorCat = new Map<CategoriaEntrada, number>()
-  for (const e of entradas ?? []) {
-    if (e.status !== 'recebida') continue
-    recPorCat.set(e.categoria, (recPorCat.get(e.categoria) ?? 0) + e.valor_centavos)
+  for (const l of dre ?? []) {
+    if (l.tipo !== 'receita' || !l.categoria) continue
+    const cat = l.categoria as CategoriaEntrada
+    recPorCat.set(cat, (recPorCat.get(cat) ?? 0) + (l.total_centavos ?? 0))
   }
   const receitas: Linha[] = [...recPorCat.entries()]
     .map(([cat, v]) => ({ rotulo: CATEGORIA_ENTRADA_LABEL[cat], valor: v }))
     .sort((a, b) => b.valor - a.valor)
   const receitaTotal = receitas.reduce((s, l) => s + l.valor, 0)
 
-  // Despesas por tipo (Fixo / Fixo planejado / Variável), cada uma por categoria.
+  // Despesa gerada no mês (competência), por tipo (Fixo / Fixo planejado / Variável) e categoria.
   const grupos: Grupo[] = ORDEM_TIPO_SAIDA.map((tipo: TipoSaida) => {
     const porCat = new Map<string, number>()
-    for (const s of saidas ?? []) {
-      if (s.categoria?.tipo !== tipo) continue
-      const nome = s.categoria?.nome ?? 'Sem categoria'
-      porCat.set(nome, (porCat.get(nome) ?? 0) + s.valor_centavos)
+    for (const l of dre ?? []) {
+      if (l.tipo !== 'despesa' || l.subtipo !== tipo || !l.categoria) continue
+      porCat.set(l.categoria, (porCat.get(l.categoria) ?? 0) + (l.total_centavos ?? 0))
     }
     const linhas = [...porCat.entries()]
       .map(([rotulo, valor]) => ({ rotulo, valor }))
@@ -110,7 +109,7 @@ export function DrePage() {
           Receitas
         </h3>
         {receitas.length === 0 ? (
-          <p className="py-2 text-sm text-neutral-400">Nada recebido no mês.</p>
+          <p className="py-2 text-sm text-neutral-400">Nenhuma receita gerada no mês.</p>
         ) : (
           receitas.map((l) => (
             <div key={l.rotulo} className={`${linhaCls} border-b border-neutral-50`}>
@@ -166,7 +165,8 @@ export function DrePage() {
       </div>
 
       <p className="text-xs text-neutral-400">
-        Regime de caixa (conta quando o dinheiro entra/sai). {rotuloPeriodo(periodo)}.
+        Regime de competência (conta no mês em que a receita/despesa foi gerada — recebida/paga ou não).{' '}
+        {rotuloPeriodo(periodo)}.
       </p>
     </div>
   )
@@ -187,7 +187,7 @@ function montarHtml(d: {
 
   const receitasHtml = d.receitas.length
     ? d.receitas.map((l) => linha(l.rotulo, l.valor)).join('')
-    : '<tr><td colspan="2" class="vazio">Nada recebido no mês.</td></tr>'
+    : '<tr><td colspan="2" class="vazio">Nenhuma receita gerada no mês.</td></tr>'
 
   const despesasHtml = d.grupos.length
     ? d.grupos
@@ -236,7 +236,7 @@ function montarHtml(d: {
       <span>Resultado do mês (receita − despesa)</span>
       <span class="num ${d.resultado >= 0 ? 'pos' : 'neg'}">${fmtCentavos(d.resultado)}</span>
     </div>
-    <p class="rodape">Regime de caixa. Gerado pelo sistema Studio Pole L.</p>
+    <p class="rodape">Regime de competência. Gerado pelo sistema Studio Pole L.</p>
   </body></html>`
 }
 
