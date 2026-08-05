@@ -41,13 +41,25 @@ export function useRemoverAjuste() {
   return useMutation({ mutationFn: removerAjuste, onSuccess: invalidar })
 }
 
+// Aprovar/reabrir mexem no Financeiro: o trigger sync_folha_financeiro cria
+// (ou apaga) a saída da folha. Invalida também as queries financeiras.
+function useInvalidarFechamentoEFinanceiro() {
+  const qc = useQueryClient()
+  const invalidarFech = useInvalidarFechamento()
+  return () => {
+    invalidarFech()
+    qc.invalidateQueries({ queryKey: ['saidas'] })
+    qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+  }
+}
+
 export function useAprovarFechamento() {
-  const invalidar = useInvalidarFechamento()
+  const invalidar = useInvalidarFechamentoEFinanceiro()
   return useMutation({ mutationFn: aprovarFechamento, onSuccess: invalidar })
 }
 
 export function useReabrirFechamento() {
-  const invalidar = useInvalidarFechamento()
+  const invalidar = useInvalidarFechamentoEFinanceiro()
   return useMutation({ mutationFn: reabrirFechamento, onSuccess: invalidar })
 }
 

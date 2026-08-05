@@ -5,7 +5,7 @@ const inputCls =
   'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand-500'
 
 export function PortalLogin() {
-  const [modo, setModo] = useState<'entrar' | 'cadastro'>('entrar')
+  const [modo, setModo] = useState<'entrar' | 'cadastro' | 'recuperar'>('entrar')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +19,13 @@ export function PortalLogin() {
     setError(null)
     setAviso(null)
 
-    if (modo === 'entrar') {
+    if (modo === 'recuperar') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname,
+      })
+      if (error) setError(error.message)
+      else setAviso('Se esse e-mail tiver conta, enviamos um link para redefinir a senha.')
+    } else if (modo === 'entrar') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setError(
@@ -53,7 +59,11 @@ export function PortalLogin() {
       >
         <h1 className="mb-1 text-lg font-semibold text-neutral-900">Studio Pole L</h1>
         <p className="mb-6 text-sm text-neutral-500">
-          {modo === 'entrar' ? 'Entre para agendar suas aulas' : 'Crie sua conta de aluno'}
+          {modo === 'entrar'
+            ? 'Entre para agendar suas aulas'
+            : modo === 'cadastro'
+              ? 'Crie sua conta de aluno'
+              : 'Recuperar senha'}
         </p>
 
         <label className="mb-4 block">
@@ -67,17 +77,19 @@ export function PortalLogin() {
           />
         </label>
 
-        <label className="mb-6 block">
-          <span className="mb-1 block text-xs font-medium text-neutral-600">Senha</span>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputCls}
-          />
-        </label>
+        {modo !== 'recuperar' && (
+          <label className="mb-6 block">
+            <span className="mb-1 block text-xs font-medium text-neutral-600">Senha</span>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputCls}
+            />
+          </label>
+        )}
 
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
         {aviso && <p className="mb-4 text-sm text-brand-700">{aviso}</p>}
@@ -87,19 +99,43 @@ export function PortalLogin() {
           disabled={submitting}
           className="w-full rounded-md bg-brand-600 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
         >
-          {submitting ? 'Aguarde…' : modo === 'entrar' ? 'Entrar' : 'Criar conta'}
+          {submitting
+            ? 'Aguarde…'
+            : modo === 'entrar'
+              ? 'Entrar'
+              : modo === 'cadastro'
+                ? 'Criar conta'
+                : 'Enviar link de recuperação'}
         </button>
+
+        {modo === 'entrar' && (
+          <button
+            type="button"
+            onClick={() => {
+              setModo('recuperar')
+              setError(null)
+              setAviso(null)
+            }}
+            className="mt-3 w-full text-center text-xs text-neutral-400 hover:text-brand-700"
+          >
+            Esqueci minha senha
+          </button>
+        )}
 
         <button
           type="button"
           onClick={() => {
-            setModo(modo === 'entrar' ? 'cadastro' : 'entrar')
+            setModo(modo === 'recuperar' ? 'entrar' : modo === 'entrar' ? 'cadastro' : 'entrar')
             setError(null)
             setAviso(null)
           }}
           className="mt-4 w-full text-center text-sm text-neutral-500 hover:text-brand-700"
         >
-          {modo === 'entrar' ? 'Ainda não tem conta? Criar conta' : 'Já tem conta? Entrar'}
+          {modo === 'entrar'
+            ? 'Ainda não tem conta? Criar conta'
+            : modo === 'cadastro'
+              ? 'Já tem conta? Entrar'
+              : 'Voltar para o login'}
         </button>
       </form>
     </div>

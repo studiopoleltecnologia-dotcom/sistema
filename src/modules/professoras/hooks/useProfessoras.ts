@@ -102,52 +102,8 @@ export function useDesativarProfessora() {
   })
 }
 
-/**
- * Descrições já lançadas como saída "Professoras" no mês (evita pagar a
- * mesma professora duas vezes — a view de pagamento é recomputada ao vivo
- * e não tem flag de "já pago").
- */
-export function usePagamentosLancados(mes: string) {
-  return useQuery({
-    queryKey: ['pagamentos-professoras-lancados', mes],
-    queryFn: async () => {
-      const { data, error } = await requireSupabase()
-        .from('saidas_financeiras')
-        .select('descricao, categoria:categorias_saida(nome)')
-        .ilike('descricao', `%(${mes})`)
-      if (error) throw error
-      return new Set(
-        (data ?? [])
-          .filter((d) => d.categoria?.nome === 'Professoras')
-          .map((d) => d.descricao),
-      )
-    },
-  })
-}
-
-/** Lança o pagamento do mês como saída na categoria "Professoras". */
-export function useLancarPagamento() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (args: { professora: string; mes: string; total_centavos: number }) => {
-      const sb = requireSupabase()
-      const { data: cat, error: catErr } = await sb
-        .from('categorias_saida')
-        .select('id')
-        .eq('nome', 'Professoras')
-        .single()
-      if (catErr) throw catErr
-      const { error } = await sb.from('saidas_financeiras').insert({
-        descricao: `Pagamento ${args.professora} (${args.mes})`,
-        valor_centavos: args.total_centavos,
-        categoria_id: cat.id,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['saidas'] })
-      qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
-      qc.invalidateQueries({ queryKey: ['pagamentos-professoras-lancados'] })
-    },
-  })
-}
+// O lançamento da folha no Financeiro deixou de ser manual: a aprovação do
+// fechamento dispara o trigger sync_folha_financeiro (migration
+// 20260724170000), que cria a saída "Professoras" vencendo dia 15 do mês
+// seguinte. Os hooks manuais (useLancarPagamento/usePagamentosLancados) foram
+// removidos por isso.

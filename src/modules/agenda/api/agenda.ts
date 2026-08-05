@@ -24,6 +24,16 @@ export async function listarTurmas() {
   }))
 }
 
+/** Ocupação média por turma nas últimas 8 semanas (view vw_ocupacao_turma). */
+export async function listarOcupacao() {
+  const { data, error } = await requireSupabase()
+    .from('vw_ocupacao_turma')
+    .select('*')
+    .order('ocupacao_pct', { ascending: false })
+  if (error) throw error
+  return data
+}
+
 export async function listarSalas() {
   const { data, error } = await requireSupabase()
     .from('salas')

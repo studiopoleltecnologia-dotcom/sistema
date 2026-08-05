@@ -6,11 +6,21 @@ dist/
 .DS_Store
 
 # Material estratégico interno — não publicar no repo público
-docs/marketing/
-docs/interno/
+docs/
 definicoes.txt
 scripts/ig/
 
 # Config local da máquina / artefatos de build
 .claude/settings.local.json
+.mcp.json
 *.tsbuildinfo
+supabase/.temp/
+
+# Scripts de teste local da integração Wellhub (não versionar)
+/validate.mjs
+/simular.mjs
+/webhook-e2e.mjs
+
+# Pessoais
+proximos-passos.txt
+CLAUDE.md
