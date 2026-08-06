@@ -26,14 +26,23 @@ jobs:
       - name: Origem do PR
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          ESTE_REPO: ${{ github.repository }}
         run: |
+          # O repo e publico (CLAUDE.md secao 3): qualquer um pode dar fork,
+          # criar uma branch chamada 'develop' la dentro e abrir PR para a
+          # nossa main. So o nome bateria. Por isso o repo tambem e checado.
+          if [ "$HEAD_REPO" != "$ESTE_REPO" ]; then
+            echo "::error::PR para main veio de fork ($HEAD_REPO). Promocao para main so sai de '$ESTE_REPO'."
+            exit 1
+          fi
           if [ "$HEAD_REF" != "develop" ]; then
             echo "::error::PR para main veio de '$HEAD_REF'. Só 'develop' pode abrir PR para main."
             echo "Ciclo obrigatório: feat/* -> develop -> main (CLAUDE.md secao 14)."
             echo "Abra o PR para develop; depois promova develop -> main."
             exit 1
           fi
-          echo "OK: PR para main veio de develop."
+          echo "OK: PR para main veio de develop, neste repo."
 
   # Todo commit que entra em main tem que já existir em develop. Um merge de
   # PR develop→main satisfaz isso naturalmente (o merge commit é ignorado, e

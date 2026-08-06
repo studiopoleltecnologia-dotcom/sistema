@@ -11,8 +11,12 @@ on:
 permissions:
   contents: read
 
+# Mesma trava do deploy.yml: `workflow_dispatch` aceita qualquer branch, então
+# sem isto daria para empurrar migration de uma feature direto no Supabase DEV
+# sem passar por PR em develop.
 jobs:
   supabase-dev:
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     environment: Development
     env:
