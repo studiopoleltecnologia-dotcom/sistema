@@ -10,6 +10,7 @@ import {
   listarDia,
   listarModalidades,
   listarNomesProfessoras,
+  listarOcupacao,
   listarSalas,
   listarTurmas,
   obterConfigAgendamento,
@@ -30,6 +31,10 @@ export function useSalas() {
 
 export function useModalidades() {
   return useQuery({ queryKey: ['modalidades'], queryFn: listarModalidades })
+}
+
+export function useOcupacao() {
+  return useQuery({ queryKey: ['ocupacao-turmas'], queryFn: listarOcupacao })
 }
 
 export function useDia(data: string) {

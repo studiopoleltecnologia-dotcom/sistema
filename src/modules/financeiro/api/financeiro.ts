@@ -6,6 +6,7 @@ import type {
   EntradaUpdate,
   ReservaMovimentoInsert,
   SaidaInsert,
+  SaidaUpdate,
   TipoSaida,
 } from '../types'
 
@@ -78,6 +79,17 @@ export async function criarSaida(input: SaidaInsert) {
   return data
 }
 
+export async function atualizarSaida(id: string, patch: SaidaUpdate) {
+  const { data, error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function excluirSaida(id: string) {
   const { error } = await requireSupabase()
     .from('saidas_financeiras')
@@ -138,6 +150,7 @@ export async function lancarRecorrente(args: {
       valor_centavos: args.recorrente.valor_centavos,
       categoria_id: args.recorrente.categoria_id,
       data_caixa: `${args.mes}-${dia}`,
+      data_competencia: `${args.mes}-01`,
       recorrente_id: args.recorrente.id,
     })
     .select()
@@ -205,6 +218,16 @@ export async function obterSaldoCaixa() {
   return data
 }
 
+/** Receita recorrente dos mensalistas (MRR) — resumo de 1 linha, gestão-only. */
+export async function obterMrr() {
+  const { data, error } = await requireSupabase()
+    .from('vw_mrr')
+    .select('*')
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function listarReserva() {
   const { data, error } = await requireSupabase()
     .from('reserva_movimentos')
@@ -258,4 +281,36 @@ export async function listarSaidasPeriodo(periodo: Periodo) {
 /** Últimos N meses de saída por tipo. Usado pelo Dashboard. */
 export async function listarSaidasMensal(meses: number) {
   return listarSaidasPeriodo(ultimosMeses(meses))
+}
+
+/** DRE por mês de COMPETÊNCIA (não caixa) — receita e despesa geradas no mês, recebidas ou não. */
+export async function listarDreCompetencia(periodo: Periodo) {
+  const { inicio, fim } = limitesDoPeriodo(periodo)
+  const { data, error } = await requireSupabase()
+    .from('vw_dre_competencia')
+    .select('*')
+    .gte('mes', inicio)
+    .lte('mes', fim)
+  if (error) throw error
+  return data
+}
+
+/** Entradas previstas (a receber), já com bucket de vencimento calculado no banco. */
+export async function listarContasAReceber() {
+  const { data, error } = await requireSupabase()
+    .from('vw_contas_a_receber')
+    .select('*')
+    .order('vencimento')
+  if (error) throw error
+  return data
+}
+
+/** Recorrentes pendentes + saídas 'prevista' (inclui a folha automática de professora). */
+export async function listarContasAPagar() {
+  const { data, error } = await requireSupabase()
+    .from('vw_contas_a_pagar')
+    .select('*')
+    .order('vencimento')
+  if (error) throw error
+  return data
 }

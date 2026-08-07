@@ -144,7 +144,13 @@ function NovaSaidaModal({ onFechar }: { onFechar: () => void }) {
       )
     } else {
       criar.mutate(
-        { descricao: descricao.trim() || null, valor_centavos: centavos, categoria_id: categoriaId, data_caixa: data },
+        {
+          descricao: descricao.trim() || null,
+          valor_centavos: centavos,
+          categoria_id: categoriaId,
+          data_caixa: data,
+          data_competencia: `${data.slice(0, 7)}-01`,
+        },
         { onSuccess: onFechar },
       )
     }

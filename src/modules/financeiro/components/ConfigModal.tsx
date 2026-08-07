@@ -19,6 +19,8 @@ export function ConfigModal({
   const [metaMeses, setMetaMeses] = useState(String(config.meta_reserva_meses))
   const [saldoInicial, setSaldoInicial] = useState(String(config.saldo_inicial_centavos / 100))
   const [saldoData, setSaldoData] = useState(config.saldo_inicial_data)
+  const [metaMes, setMetaMes] = useState(String(config.meta_faturamento_mensal_centavos / 100))
+  const [metaAno, setMetaAno] = useState(String(config.meta_faturamento_anual_centavos / 100))
 
   function salvar(e: FormEvent) {
     e.preventDefault()
@@ -26,7 +28,11 @@ export function ConfigModal({
     const saldoCentavos = saldoInicial.trim() === '0' ? 0 : parseCentavos(saldoInicial)
     const pct = Number(percentual.replace(',', '.'))
     const meses = Number(metaMeses)
+    // Metas são opcionais: campo vazio ou "0" = sem meta (0 centavos).
+    const metaMesCentavos = metaMes.trim() === '' || metaMes.trim() === '0' ? 0 : parseCentavos(metaMes)
+    const metaAnoCentavos = metaAno.trim() === '' || metaAno.trim() === '0' ? 0 : parseCentavos(metaAno)
     if (!limiteCentavos || saldoCentavos === null || !Number.isFinite(pct) || !meses) return
+    if (metaMesCentavos === null || metaAnoCentavos === null) return
     atualizar.mutate(
       {
         limite_mei_centavos: limiteCentavos,
@@ -34,6 +40,8 @@ export function ConfigModal({
         meta_reserva_meses: meses,
         saldo_inicial_centavos: saldoCentavos,
         saldo_inicial_data: saldoData,
+        meta_faturamento_mensal_centavos: metaMesCentavos,
+        meta_faturamento_anual_centavos: metaAnoCentavos,
       },
       { onSuccess: onFechar },
     )
@@ -58,6 +66,20 @@ export function ConfigModal({
             value={metaMeses}
             onChange={(e) => setMetaMeses(e.target.value)}
           />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              label="Meta faturamento/mês (R$)"
+              value={metaMes}
+              onChange={(e) => setMetaMes(e.target.value)}
+              placeholder="0 = sem meta"
+            />
+            <Input
+              label="Meta faturamento/ano (R$)"
+              value={metaAno}
+              onChange={(e) => setMetaAno(e.target.value)}
+              placeholder="0 = sem meta"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <Input
               label="Saldo inicial de caixa (R$)"

@@ -1,0 +1,33 @@
+name: Sync PROD → DEV (dados de negócio)
+
+# OPCIONAL e CONTROLADO. Dispara só na mão (workflow_dispatch) e exige digitar
+# SYNC. Copia dados de negócio da produção para o DEV, ESTRITAMENTE num sentido:
+# a produção é lida por um papel READ-ONLY, então é impossível escrever nela.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Digite SYNC para confirmar a cópia PROD → DEV'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: ${{ github.event.inputs.confirmar == 'SYNC' }}
+    runs-on: ubuntu-latest
+    environment: Development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar cliente Postgres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Sync (data-only, tabelas de negócio)
+        env:
+          # papel READ-ONLY da produção → garante o sentido único
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL_READONLY }}
+          DEV_DB_URL: ${{ secrets.DEV_DB_URL }}
+        run: bash scripts/sync-prod-to-dev.sh

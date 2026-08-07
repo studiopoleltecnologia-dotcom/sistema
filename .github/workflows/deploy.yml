@@ -1,5 +1,7 @@
-name: Deploy no GitHub Pages
+name: Deploy PRODUÇÃO (Supabase + GitHub Pages)
 
+# Entrou em `main` (promoção via PR develop→main): aplica schema + functions
+# na PRODUÇÃO e publica o frontend no GitHub Pages.
 on:
   push:
     branches: [main]
@@ -14,9 +16,38 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+# `workflow_dispatch` deixa escolher QUALQUER branch no "Use workflow from".
+# Sem esta trava, daria para rodar o deploy de PRODUÇÃO a partir de uma branch
+# de feature — aplicando migration e publicando o site dela sem PR, sem CI e
+# sem passar por develop. Branch protection não pega isso: ela protege o
+# ponteiro da branch, não a execução de workflow que não toca esse ponteiro.
 jobs:
-  build:
+  # 1) Schema + Edge Functions na produção ANTES do frontend (o site novo já
+  #    encontra o banco no formato esperado).
+  supabase-prod:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: Production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: supabase link --project-ref "$REF"
+      - run: supabase db push
+      - run: |
+          supabase functions deploy wellhub-webhook --no-verify-jwt --project-ref "$REF"
+          supabase functions deploy enviar-emails --project-ref "$REF"
+
+  build:
+    needs: supabase-prod
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: Production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,17 +57,24 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          # Base path = nome do repositório (GitHub Pages serve em /<repo>/)
-          VITE_BASE: /${{ github.event.repository.name }}/
-          # Segredos configurados em Settings → Secrets and variables → Actions
+          VITE_BASE: /
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      # Domínio próprio (CNAME) serve a raiz — sem servidor para rewrite de
+      # SPA, então /agendamentos e /portalequipe (portais aluna/professora,
+      # App.tsx jornadaAtual()) precisam de um index.html físico próprio.
+      # É cópia do mesmo bundle: a jornada é decidida em runtime pelo path.
+      - run: |
+          mkdir -p dist/agendamentos dist/portalequipe
+          cp dist/index.html dist/agendamentos/index.html
+          cp dist/index.html dist/portalequipe/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

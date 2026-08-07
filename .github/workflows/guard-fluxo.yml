@@ -1,0 +1,90 @@
+name: Guard — fluxo de branches
+
+# Trava o ciclo documentado: feat/* → develop → main.
+#
+# ATENÇÃO ao alcance real desta camada: workflow NÃO impede o push, ele
+# reprova DEPOIS que o código já entrou. Quem impede de verdade é o branch
+# protection do GitHub (Settings → Branches), que exige admin e é aplicado
+# pela Caroline na UI. Este arquivo é a rede de baixo: versionado no repo,
+# funciona sem admin, e deixa a violação visível e vermelha no histórico.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # PR para main só pode vir de develop. Feature indo direto para main pula
+  # a homologação em DEV (dev.yml) e o Supabase de desenvolvimento inteiro.
+  pr-so-de-develop:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Origem do PR
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          ESTE_REPO: ${{ github.repository }}
+        run: |
+          # O repo e publico (CLAUDE.md secao 3): qualquer um pode dar fork,
+          # criar uma branch chamada 'develop' la dentro e abrir PR para a
+          # nossa main. So o nome bateria. Por isso o repo tambem e checado.
+          if [ "$HEAD_REPO" != "$ESTE_REPO" ]; then
+            echo "::error::PR para main veio de fork ($HEAD_REPO). Promocao para main so sai de '$ESTE_REPO'."
+            exit 1
+          fi
+          if [ "$HEAD_REF" != "develop" ]; then
+            echo "::error::PR para main veio de '$HEAD_REF'. Só 'develop' pode abrir PR para main."
+            echo "Ciclo obrigatório: feat/* -> develop -> main (CLAUDE.md secao 14)."
+            echo "Abra o PR para develop; depois promova develop -> main."
+            exit 1
+          fi
+          echo "OK: PR para main veio de develop, neste repo."
+
+  # Todo commit que entra em main tem que já existir em develop. Um merge de
+  # PR develop→main satisfaz isso naturalmente (o merge commit é ignorado, e
+  # o conteúdo dele já está em develop). Um push direto em main não satisfaz —
+  # é exatamente o caso que queremos flagrar.
+  commit-tem-que-vir-de-develop:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rastrear commits novos até develop
+        env:
+          ANTES: ${{ github.event.before }}
+          AGORA: ${{ github.sha }}
+        run: |
+          git fetch origin develop --quiet
+
+          # Push inicial ou histórico reescrito: não há base para comparar.
+          if [ -z "$ANTES" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ]; then
+            echo "::warning::Sem commit base (push inicial ou force-push). Comparação pulada."
+            exit 0
+          fi
+
+          # --no-merges: o merge commit do PR develop→main é criado no main e
+          # por definição não existe em develop. O que importa é o conteúdo.
+          orfaos=""
+          for sha in $(git rev-list --no-merges "$ANTES..$AGORA"); do
+            if ! git merge-base --is-ancestor "$sha" origin/develop; then
+              orfaos="$orfaos $sha"
+            fi
+          done
+
+          if [ -n "$orfaos" ]; then
+            echo "::error::Commit(s) entraram em main sem passar por develop:"
+            for sha in $orfaos; do
+              echo "  - $(git log -1 --format='%h %an: %s' "$sha")"
+            done
+            echo ""
+            echo "Ciclo obrigatorio: feat/* -> develop -> main (CLAUDE.md secao 14)."
+            echo "Producao pode ter recebido codigo nao homologado em DEV."
+            exit 1
+          fi
+          echo "OK: todo commit novo em main ja existia em develop."

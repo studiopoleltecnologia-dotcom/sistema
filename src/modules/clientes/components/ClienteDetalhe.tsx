@@ -1,11 +1,18 @@
 import { useState } from 'react'
+import { KeyRound } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
+import { TempoDeCasa } from './TempoDeCasa'
 import { fmtData, fmtDataHora } from '../../../lib/datas'
+import { fmtCentavos } from '../../../lib/dinheiro'
+import { useMinhaFuncao } from '../../../lib/funcao'
+import { CATEGORIA_ENTRADA_LABEL } from '../../financeiro/types'
 import {
+  useAcessoPortal,
   useAdicionarInteracao,
   useAtualizarCliente,
   useInteracoes,
   useMatriculasDoCliente,
+  usePagamentosDoCliente,
   usePlanosNomes,
   useProximasAulasDoCliente,
 } from '../hooks/useClientes'
@@ -25,6 +32,11 @@ const CANAL_CURTO: Record<string, string> = {
   classpass: 'ClassPass',
   avulsa: 'Avulsa',
 }
+const STATUS_ENTRADA_LABEL: Record<string, string> = {
+  prevista: 'Prevista',
+  recebida: 'Recebida',
+  cancelada: 'Cancelada',
+}
 
 /**
  * Painel lateral: dados da cliente, mudança de estágio (1 clique) e
@@ -41,10 +53,14 @@ export function ClienteDetalhe({
   onEditar: () => void
   onFechar: () => void
 }) {
+  const { data: funcao } = useMinhaFuncao()
+  const gestao = funcao === 'gestao'
   const { data: interacoes } = useInteracoes(cliente.id)
   const { data: matriculas } = useMatriculasDoCliente(cliente.id)
   const { data: aulas } = useProximasAulasDoCliente(cliente.id)
   const { data: planosNomes } = usePlanosNomes()
+  const { data: pagamentos } = usePagamentosDoCliente(cliente.id, gestao)
+  const { data: acessoPortal } = useAcessoPortal(cliente.id)
   const atualizar = useAtualizarCliente()
   const adicionarInteracao = useAdicionarInteracao()
 
@@ -84,6 +100,14 @@ export function ClienteDetalhe({
             {cliente.vip && (
               <span className="rounded bg-brand-50 px-1.5 text-[10px] font-semibold text-brand-600">
                 VIP
+              </span>
+            )}
+            {acessoPortal && (
+              <span
+                title={`Acesso ao portal desde ${fmtData(acessoPortal.criada_em)}`}
+                className="flex items-center gap-0.5 rounded bg-success-50 px-1.5 text-[10px] font-semibold text-success-700"
+              >
+                <KeyRound className="size-2.5" /> portal
               </span>
             )}
           </h2>
@@ -155,6 +179,8 @@ export function ClienteDetalhe({
           </p>
         )}
 
+        <TempoDeCasa clienteId={cliente.id} />
+
         <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">
           PLANO &amp; CRÉDITOS
         </h3>
@@ -184,6 +210,37 @@ export function ClienteDetalhe({
               </li>
             ))}
           </ul>
+        )}
+
+        {gestao && (
+          <>
+            <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">
+              PAGAMENTOS
+            </h3>
+            {(pagamentos ?? []).length === 0 ? (
+              <p className="text-xs text-neutral-400">Nenhum lançamento financeiro ainda.</p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {(pagamentos ?? []).map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center gap-2 rounded-md border border-neutral-100 px-2.5 py-2 text-xs"
+                  >
+                    <span className="text-neutral-400">{fmtData(p.data_competencia)}</span>
+                    <span className="flex-1 truncate text-neutral-600">
+                      {p.descricao || CATEGORIA_ENTRADA_LABEL[p.categoria]}
+                    </span>
+                    <Badge variant={p.status === 'recebida' ? 'success' : p.status === 'cancelada' ? 'danger' : 'brand'}>
+                      {STATUS_ENTRADA_LABEL[p.status] ?? p.status}
+                    </Badge>
+                    <span className="font-semibold tabular-nums text-neutral-800">
+                      {fmtCentavos(p.valor_centavos)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
 
         <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">

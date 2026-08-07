@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, RotateCcw, X } from 'lucide-react'
+import { Check, Landmark, RotateCcw, X } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { Select } from '../../../components/ui/Select'
@@ -7,16 +7,19 @@ import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { fmtDataHora } from '../../../lib/datas'
 import type { Tables } from '../../../lib/database.types'
 import {
-  useLancarPagamento,
-  usePagamentosLancados,
-} from '../../professoras/hooks/useProfessoras'
-import {
   useAdicionarAjuste,
   useAprovarFechamento,
   useReabrirFechamento,
   useRemoverAjuste,
 } from '../hooks/useFechamento'
 import type { TipoAjuste } from '../api/fechamento'
+
+// Dia 15 do mês seguinte à competência 'YYYY-MM' — o dia de pagamento da folha.
+function vencimentoFolha(competencia: string): string {
+  const [ano, mes] = competencia.split('-').map(Number)
+  const d = new Date(ano, mes, 15) // mes 1-based vira índice 0-based do mês seguinte
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 type Ajuste = Tables<'fechamento_ajustes'>
 type Fechamento = Tables<'fechamentos_professora'> & { ajustes: Ajuste[] }
@@ -52,8 +55,6 @@ export function FechamentoDetalhe({
   const remover = useRemoverAjuste()
   const aprovar = useAprovarFechamento()
   const reabrir = useReabrirFechamento()
-  const lancar = useLancarPagamento()
-  const { data: lancados } = usePagamentosLancados(competencia)
 
   const [tipo, setTipo] = useState<TipoAjuste>('bonus')
   const [descricao, setDescricao] = useState('')
@@ -69,8 +70,6 @@ export function FechamentoDetalhe({
   const ajustes = fechamento?.ajustes ?? []
   const ajustesTotal = ajustes.reduce((s, a) => s + a.valor_centavos, 0)
   const final = bruto + ajustesTotal
-
-  const jaLancado = lancados?.has(`Pagamento ${professora.nome} (${competencia})`) ?? false
 
   function addAjuste() {
     const c = parseCentavos(valor)
@@ -208,42 +207,33 @@ export function FechamentoDetalhe({
       {/* Ações */}
       <div className="flex flex-col gap-2 border-t border-neutral-100 px-5 py-4">
         {!aprovado ? (
-          <Button
-            onClick={() =>
-              aprovar.mutate({
-                professoraId: professora.id,
-                competencia,
-                aulas,
-                horas,
-                alunas,
-                bruto_centavos: bruto,
-              })
-            }
-            loading={aprovar.isPending}
-          >
-            <Check className="size-4" />
-            Aprovar fechamento
-          </Button>
+          <>
+            <Button
+              onClick={() =>
+                aprovar.mutate({
+                  professoraId: professora.id,
+                  competencia,
+                  aulas,
+                  horas,
+                  alunas,
+                  bruto_centavos: bruto,
+                })
+              }
+              loading={aprovar.isPending}
+            >
+              <Check className="size-4" />
+              Aprovar fechamento
+            </Button>
+            <p className="text-center text-[11px] text-neutral-400">
+              Ao aprovar, {fmtCentavos(final)} entra no Financeiro vencendo {vencimentoFolha(competencia)}.
+            </p>
+          </>
         ) : (
           <>
-            {jaLancado ? (
-              <p className="text-center text-xs font-medium text-neutral-400">
-                Já lançado no Financeiro ✓
-              </p>
-            ) : (
-              <Button
-                onClick={() =>
-                  lancar.mutate({
-                    professora: professora.nome,
-                    mes: competencia,
-                    total_centavos: final,
-                  })
-                }
-                loading={lancar.isPending}
-              >
-                Lançar {fmtCentavos(final)} no Financeiro
-              </Button>
-            )}
+            <div className="flex items-center justify-center gap-1.5 rounded-md bg-success-50 py-2 text-xs font-medium text-success-700">
+              <Landmark className="size-3.5" />
+              Lançado no Financeiro · vence {vencimentoFolha(competencia)}
+            </div>
             <Button
               variant="ghost"
               size="sm"

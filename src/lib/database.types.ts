@@ -69,11 +69,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
             foreignKeyName: "agendamentos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "agendamentos_matricula_id_fkey"
@@ -154,6 +175,65 @@ export type Database = {
           id?: string
           nome?: string
           tipo?: Database["public"]["Enums"]["tipo_saida"]
+        }
+        Relationships: []
+      }
+      checklist_execucoes: {
+        Row: {
+          data: string
+          feito_em: string
+          feito_por: string | null
+          id: string
+          item_id: string
+        }
+        Insert: {
+          data?: string
+          feito_em?: string
+          feito_por?: string | null
+          id?: string
+          item_id: string
+        }
+        Update: {
+          data?: string
+          feito_em?: string
+          feito_por?: string | null
+          id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_execucoes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_itens: {
+        Row: {
+          ativo: boolean
+          criada_em: string
+          id: string
+          ordem: number
+          rotina: Database["public"]["Enums"]["rotina_checklist"]
+          titulo: string
+        }
+        Insert: {
+          ativo?: boolean
+          criada_em?: string
+          id?: string
+          ordem?: number
+          rotina: Database["public"]["Enums"]["rotina_checklist"]
+          titulo: string
+        }
+        Update: {
+          ativo?: boolean
+          criada_em?: string
+          id?: string
+          ordem?: number
+          rotina?: Database["public"]["Enums"]["rotina_checklist"]
+          titulo?: string
         }
         Relationships: []
       }
@@ -273,6 +353,8 @@ export type Database = {
           atualizada_em: string
           id: boolean
           limite_mei_centavos: number
+          meta_faturamento_anual_centavos: number
+          meta_faturamento_mensal_centavos: number
           meta_reserva_meses: number
           percentual_reserva: number
           saldo_inicial_centavos: number
@@ -282,6 +364,8 @@ export type Database = {
           atualizada_em?: string
           id?: boolean
           limite_mei_centavos?: number
+          meta_faturamento_anual_centavos?: number
+          meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number
@@ -291,6 +375,8 @@ export type Database = {
           atualizada_em?: string
           id?: boolean
           limite_mei_centavos?: number
+          meta_faturamento_anual_centavos?: number
+          meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number
@@ -328,6 +414,20 @@ export type Database = {
             referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contas_aluna_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "contas_aluna_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
         ]
       }
       contas_professora: {
@@ -353,6 +453,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "professoras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: true
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
           },
           {
             foreignKeyName: "contas_professora_professora_id_fkey"
@@ -413,6 +520,13 @@ export type Database = {
             foreignKeyName: "creditos_eventos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "creditos_eventos_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
             referencedRelation: "vw_saldo_creditos"
             referencedColumns: ["matricula_id"]
           },
@@ -458,6 +572,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      emails_fila: {
+        Row: {
+          criado_em: string
+          dados: Json
+          destinatario: string
+          enviado_em: string | null
+          id: string
+          ref: string | null
+          status: Database["public"]["Enums"]["status_email"]
+          tentativas: number
+          tipo: string
+          ultimo_erro: string | null
+        }
+        Insert: {
+          criado_em?: string
+          dados?: Json
+          destinatario: string
+          enviado_em?: string | null
+          id?: string
+          ref?: string | null
+          status?: Database["public"]["Enums"]["status_email"]
+          tentativas?: number
+          tipo: string
+          ultimo_erro?: string | null
+        }
+        Update: {
+          criado_em?: string
+          dados?: Json
+          destinatario?: string
+          enviado_em?: string | null
+          id?: string
+          ref?: string | null
+          status?: Database["public"]["Enums"]["status_email"]
+          tentativas?: number
+          tipo?: string
+          ultimo_erro?: string | null
+        }
+        Relationships: []
       }
       entradas_financeiras: {
         Row: {
@@ -509,6 +662,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "entradas_financeiras_presenca_id_fkey"
@@ -639,6 +806,13 @@ export type Database = {
             foreignKeyName: "fechamentos_professora_professora_id_fkey"
             columns: ["professora_id"]
             isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
+          },
+          {
+            foreignKeyName: "fechamentos_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
             referencedRelation: "vw_professoras_nomes"
             referencedColumns: ["id"]
           },
@@ -708,10 +882,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "followups_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "followups_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
             foreignKeyName: "followups_entrada_id_fkey"
             columns: ["entrada_id"]
             isOneToOne: false
             referencedRelation: "entradas_financeiras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followups_entrada_id_fkey"
+            columns: ["entrada_id"]
+            isOneToOne: false
+            referencedRelation: "vw_contas_a_receber"
             referencedColumns: ["id"]
           },
           {
@@ -729,6 +924,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inscricoes_evento: {
+        Row: {
+          confirmado_por: string | null
+          criado_em: string
+          evento: string
+          id: string
+          nome: string
+          nome_acompanhante: string | null
+          observacoes: string | null
+          pago: boolean
+          pago_em: string | null
+          telefone: string
+          tipo_ingresso: string
+          valor_centavos: number
+        }
+        Insert: {
+          confirmado_por?: string | null
+          criado_em?: string
+          evento?: string
+          id?: string
+          nome: string
+          nome_acompanhante?: string | null
+          observacoes?: string | null
+          pago?: boolean
+          pago_em?: string | null
+          telefone: string
+          tipo_ingresso: string
+          valor_centavos: number
+        }
+        Update: {
+          confirmado_por?: string | null
+          criado_em?: string
+          evento?: string
+          id?: string
+          nome?: string
+          nome_acompanhante?: string | null
+          observacoes?: string | null
+          pago?: boolean
+          pago_em?: string | null
+          telefone?: string
+          tipo_ingresso?: string
+          valor_centavos?: number
+        }
+        Relationships: []
       }
       interacoes_crm: {
         Row: {
@@ -762,6 +1002,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interacoes_crm_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "interacoes_crm_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "interacoes_crm_socia_id_fkey"
@@ -817,6 +1071,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lista_espera_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "lista_espera_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "lista_espera_turma_id_fkey"
@@ -886,6 +1154,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
             foreignKeyName: "matriculas_plano_id_fkey"
             columns: ["plano_id"]
             isOneToOne: false
@@ -953,6 +1235,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_funil_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_funil_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "movimentacoes_funil_socia_id_fkey"
@@ -1062,11 +1358,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "presencas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "presencas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
             foreignKeyName: "presencas_professora_id_fkey"
             columns: ["professora_id"]
             isOneToOne: false
             referencedRelation: "professoras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
           },
           {
             foreignKeyName: "presencas_professora_id_fkey"
@@ -1181,9 +1498,13 @@ export type Database = {
           categoria_id: string
           criada_em: string
           data_caixa: string
+          data_competencia: string
+          data_prevista: string | null
           descricao: string | null
+          fechamento_id: string | null
           id: string
           recorrente_id: string | null
+          status_saida: Database["public"]["Enums"]["status_saida"]
           valor_centavos: number
         }
         Insert: {
@@ -1191,9 +1512,13 @@ export type Database = {
           categoria_id: string
           criada_em?: string
           data_caixa?: string
+          data_competencia: string
+          data_prevista?: string | null
           descricao?: string | null
+          fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
+          status_saida?: Database["public"]["Enums"]["status_saida"]
           valor_centavos: number
         }
         Update: {
@@ -1201,9 +1526,13 @@ export type Database = {
           categoria_id?: string
           criada_em?: string
           data_caixa?: string
+          data_competencia?: string
+          data_prevista?: string | null
           descricao?: string | null
+          fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
+          status_saida?: Database["public"]["Enums"]["status_saida"]
           valor_centavos?: number
         }
         Relationships: [
@@ -1212,6 +1541,13 @@ export type Database = {
             columns: ["categoria_id"]
             isOneToOne: false
             referencedRelation: "categorias_saida"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_financeiras_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "fechamentos_professora"
             referencedColumns: ["id"]
           },
           {
@@ -1268,6 +1604,57 @@ export type Database = {
         }
         Relationships: []
       }
+      tarefas: {
+        Row: {
+          concluida: boolean
+          concluida_em: string | null
+          criada_em: string
+          criada_por: string | null
+          descricao: string | null
+          id: string
+          prazo: string | null
+          responsavel_id: string | null
+          titulo: string
+        }
+        Insert: {
+          concluida?: boolean
+          concluida_em?: string | null
+          criada_em?: string
+          criada_por?: string | null
+          descricao?: string | null
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          titulo: string
+        }
+        Update: {
+          concluida?: boolean
+          concluida_em?: string | null
+          criada_em?: string
+          criada_por?: string | null
+          descricao?: string | null
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "socias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "vw_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       turmas: {
         Row: {
           ativa: boolean
@@ -1320,11 +1707,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_modalidade"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
             foreignKeyName: "turmas_professora_id_fkey"
             columns: ["professora_id"]
             isOneToOne: false
             referencedRelation: "professoras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
           },
           {
             foreignKeyName: "turmas_professora_id_fkey"
@@ -1344,6 +1752,17 @@ export type Database = {
       }
     }
     Views: {
+      vw_alertas: {
+        Row: {
+          acao_sugerida: string | null
+          categoria: string | null
+          origem_id: string | null
+          origem_tipo: string | null
+          severidade: string | null
+          texto: string | null
+        }
+        Relationships: []
+      }
       vw_alunas_da_aula: {
         Row: {
           agendamento_id: string | null
@@ -1353,6 +1772,169 @@ export type Database = {
           data: string | null
           presente: boolean | null
           turma_id: string | null
+        }
+        Relationships: []
+      }
+      vw_analise_clientes_ranking: {
+        Row: {
+          aluno_desde: string | null
+          aulas_frequentadas: number | null
+          ciclos_renovados: number | null
+          cliente_id: string | null
+          faturamento_centavos: number | null
+          matriculas_total: number | null
+          nome: string | null
+          workshops_eventos: number | null
+        }
+        Insert: {
+          aluno_desde?: never
+          aulas_frequentadas?: never
+          ciclos_renovados?: never
+          cliente_id?: string | null
+          faturamento_centavos?: never
+          matriculas_total?: never
+          nome?: string | null
+          workshops_eventos?: never
+        }
+        Update: {
+          aluno_desde?: never
+          aulas_frequentadas?: never
+          ciclos_renovados?: never
+          cliente_id?: string | null
+          faturamento_centavos?: never
+          matriculas_total?: never
+          nome?: string | null
+          workshops_eventos?: never
+        }
+        Relationships: []
+      }
+      vw_analise_clientes_risco: {
+        Row: {
+          cliente_id: string | null
+          data_fim: string | null
+          faltas_atual: number | null
+          faltas_recentes: boolean | null
+          matricula_id: string | null
+          nome: string | null
+          plano_id: string | null
+          poucos_creditos: boolean | null
+          presentes_anterior: number | null
+          presentes_atual: number | null
+          prioridade: string | null
+          queda_frequencia: boolean | null
+          saldo_creditos: number | null
+          score: number | null
+          sem_interacao: boolean | null
+          telefone: string | null
+          ultima_conversa: string | null
+          vencimento_proximo: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriculas_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_analise_modalidade: {
+        Row: {
+          alunas_novas_periodo: number | null
+          delta_pp: number | null
+          faltas_periodo: number | null
+          modalidade: string | null
+          modalidade_id: string | null
+          ocupacao_anterior_pct: number | null
+          ocupacao_atual_pct: number | null
+          presentes_periodo: number | null
+          taxa_falta_pct: number | null
+          tendencia: string | null
+          turmas: number | null
+        }
+        Relationships: []
+      }
+      vw_analise_professora: {
+        Row: {
+          alunas_novas_periodo: number | null
+          delta_pp: number | null
+          faltas_periodo: number | null
+          media_modalidade_pct: number | null
+          modalidade: string | null
+          modalidade_id: string | null
+          ocupacao_anterior_pct: number | null
+          ocupacao_atual_pct: number | null
+          presentes_periodo: number | null
+          professora: string | null
+          professora_id: string | null
+          taxa_falta_pct: number | null
+          tendencia: string | null
+          turmas: number | null
+          vs_modalidade_pp: number | null
+        }
+        Relationships: []
+      }
+      vw_analise_resumo: {
+        Row: {
+          alunos_ativos: number | null
+          novos_alunos_periodo: number | null
+          taxa_cancelamento_pct: number | null
+        }
+        Relationships: []
+      }
+      vw_contas_a_pagar: {
+        Row: {
+          bucket: string | null
+          categoria: string | null
+          categoria_id: string | null
+          competencia: string | null
+          descricao: string | null
+          id: string | null
+          origem: string | null
+          valor_centavos: number | null
+          vencimento: string | null
+        }
+        Relationships: []
+      }
+      vw_contas_a_receber: {
+        Row: {
+          bucket: string | null
+          categoria: string | null
+          competencia: string | null
+          descricao: string | null
+          id: string | null
+          valor_centavos: number | null
+          vencimento: string | null
+        }
+        Insert: {
+          bucket?: never
+          categoria?: never
+          competencia?: string | null
+          descricao?: string | null
+          id?: string | null
+          valor_centavos?: number | null
+          vencimento?: never
+        }
+        Update: {
+          bucket?: never
+          categoria?: never
+          competencia?: string | null
+          descricao?: string | null
+          id?: string | null
+          valor_centavos?: number | null
+          vencimento?: never
+        }
+        Relationships: []
+      }
+      vw_dre_competencia: {
+        Row: {
+          categoria: string | null
+          lancamentos: number | null
+          mes: string | null
+          subtipo: string | null
+          tipo: string | null
+          total_centavos: number | null
         }
         Relationships: []
       }
@@ -1397,6 +1979,53 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_mrr: {
+        Row: {
+          clientes_ativos: number | null
+          inadimplentes: number | null
+          mrr_centavos: number | null
+          mrr_em_risco_centavos: number | null
+          mrr_novos_centavos: number | null
+          mrr_renovacoes_centavos: number | null
+          novos_mes: number | null
+          renovacoes_mes: number | null
+          ticket_medio_centavos: number | null
+        }
+        Relationships: []
+      }
+      vw_ocupacao_turma: {
+        Row: {
+          capacidade: number | null
+          dia_semana: number | null
+          horario: string | null
+          modalidade: string | null
+          ocorrencias: number | null
+          ocupacao_pct: number | null
+          reservas: number | null
+          turma_id: string | null
+        }
+        Relationships: []
+      }
+      vw_ocupacao_turma_tendencia: {
+        Row: {
+          capacidade: number | null
+          delta_pp: number | null
+          dia_semana: number | null
+          horario: string | null
+          modalidade: string | null
+          modalidade_id: string | null
+          ocorrencias_anterior: number | null
+          ocorrencias_atual: number | null
+          ocupacao_anterior_pct: number | null
+          ocupacao_atual_pct: number | null
+          professora_id: string | null
+          reservas_anterior: number | null
+          reservas_atual: number | null
+          tendencia: string | null
+          turma_id: string | null
+        }
+        Relationships: []
+      }
       vw_pagamento_professoras: {
         Row: {
           alunas_presentes: number | null
@@ -1415,6 +2044,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "professoras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
           },
           {
             foreignKeyName: "presencas_professora_id_fkey"
@@ -1442,6 +2078,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lista_espera_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "lista_espera_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "lista_espera_turma_id_fkey"
@@ -1490,6 +2140,7 @@ export type Database = {
         Row: {
           previsto_em_aberto_centavos: number | null
           recorrentes_pendentes_mes_centavos: number | null
+          saidas_previstas_centavos: number | null
           saldo_atual_centavos: number | null
           saldo_projetado_centavos: number | null
         }
@@ -1515,6 +2166,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "matriculas_plano_id_fkey"
@@ -1610,9 +2275,61 @@ export type Database = {
         }
         Returns: undefined
       }
+      enfileirar_email: {
+        Args: {
+          p_dados?: Json
+          p_destinatario: string
+          p_ref?: string
+          p_tipo: string
+        }
+        Returns: undefined
+      }
+      enfileirar_lembretes_aula: { Args: never; Returns: number }
+      enfileirar_vencimentos: { Args: never; Returns: number }
       entrar_lista_espera: {
         Args: { p_data: string; p_turma: string }
         Returns: string
+      }
+      fn_analise_clientes_sumidos: {
+        Args: { p_dias?: number }
+        Returns: {
+          cliente_id: string
+          data_fim: string
+          dias_sem_aula: number
+          matricula_id: string
+          nome: string
+          plano_id: string
+          saldo_creditos: number
+          telefone: string
+          ultima_aula: string
+        }[]
+      }
+      fn_evolucao_semanal: {
+        Args: { p_semanas?: number }
+        Returns: {
+          cancelamentos: number
+          faltas: number
+          novos_alunos: number
+          ocupacao_pct: number
+          presentes: number
+          semana_fim: string
+          semana_inicio: string
+        }[]
+      }
+      fn_ocupacao_turma: {
+        Args: { p_fim: string; p_inicio: string }
+        Returns: {
+          capacidade: number
+          dia_semana: number
+          horario: string
+          modalidade: string
+          modalidade_id: string
+          ocorrencias: number
+          ocupacao_pct: number
+          professora_id: string
+          reservas: number
+          turma_id: string
+        }[]
       }
       gerar_followups: { Args: never; Returns: number }
       is_cliente: { Args: never; Returns: boolean }
@@ -1688,7 +2405,9 @@ export type Database = {
         | "outros"
         | "portal_aluna"
       plano_tipo: "creditos" | "semanal"
+      rotina_checklist: "abertura" | "fechamento"
       status_agendamento: "agendado" | "cancelado"
+      status_email: "pendente" | "enviado" | "erro"
       status_entrada: "prevista" | "recebida" | "cancelada"
       status_fechamento: "aberto" | "aprovado"
       status_followup: "pendente" | "concluido" | "dispensado"
@@ -1699,6 +2418,7 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      status_saida: "prevista" | "paga" | "cancelada"
       tipo_ajuste_folha:
         | "bonus"
         | "desconto"
@@ -1887,7 +2607,9 @@ export const Constants = {
         "portal_aluna",
       ],
       plano_tipo: ["creditos", "semanal"],
+      rotina_checklist: ["abertura", "fechamento"],
       status_agendamento: ["agendado", "cancelado"],
+      status_email: ["pendente", "enviado", "erro"],
       status_entrada: ["prevista", "recebida", "cancelada"],
       status_fechamento: ["aberto", "aprovado"],
       status_followup: ["pendente", "concluido", "dispensado"],
@@ -1899,6 +2621,7 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      status_saida: ["prevista", "paga", "cancelada"],
       tipo_ajuste_folha: [
         "bonus",
         "desconto",

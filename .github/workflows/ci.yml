@@ -1,0 +1,41 @@
+name: CI — build + smoke
+
+# Checks obrigatórios em todo PR (para develop ou main). Buildar o ARTEFATO
+# de produção + smoke test do bundle real pega o que a homologação local
+# (dev server) não pega: erro de tipo, base path errado, tela branca, crash.
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-smoke:
+    runs-on: ubuntu-latest
+    environment: Development
+    env:
+      # Tem que ser o MESMO base do deploy.yml, senão o smoke valida um bundle
+      # que não é o que vai ao ar. Desde o domínio próprio, produção serve a
+      # raiz (sistema.studiopolel.com.br), não /sistema/.
+      VITE_BASE: /
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # tsc -b && vite build → erro de tipo/build derruba o PR aqui
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Smoke test (bundle real via preview)
+        run: |
+          npm run preview -- --port 4173 --strictPort &
+          for i in $(seq 1 30); do
+            curl -sf "http://localhost:4173${VITE_BASE}" >/dev/null && break || sleep 1
+          done
+          SMOKE_BASE_URL=http://localhost:4173 node scripts/smoke.mjs

@@ -3,13 +3,14 @@ import { fmtCentavos, parseCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
 import { DiaView } from './components/DiaView'
 import { GradeView } from './components/GradeView'
+import { OcupacaoView } from './components/OcupacaoView'
 import { useAtualizarConfigAgendamento, useConfigAgendamento } from './hooks/useAgenda'
 import { DIAS_SEMANA } from './types'
 
 export function AgendaPage() {
   const hoje = new Date().toISOString().slice(0, 10)
   const [data, setData] = useState(hoje)
-  const [aba, setAba] = useState<'dia' | 'grade' | 'config'>('dia')
+  const [aba, setAba] = useState<'dia' | 'grade' | 'ocupacao' | 'config'>('dia')
   // Config = regras de agendamento (só gestão). Secretária opera a agenda
   // mas não muda a política; o menu esconde e a RLS recusa a gravação.
   const { data: funcao } = useMinhaFuncao()
@@ -33,6 +34,9 @@ export function AgendaPage() {
             <button className={abaCls(aba === 'grade')} onClick={() => setAba('grade')}>
               Grade
             </button>
+            <button className={abaCls(aba === 'ocupacao')} onClick={() => setAba('ocupacao')}>
+              Ocupação
+            </button>
             {ehGestao && (
               <button className={abaCls(aba === 'config')} onClick={() => setAba('config')}>
                 Config
@@ -55,6 +59,7 @@ export function AgendaPage() {
 
       {aba === 'dia' && <DiaView data={data} />}
       {aba === 'grade' && <GradeView />}
+      {aba === 'ocupacao' && <OcupacaoView />}
       {aba === 'config' && ehGestao && <ConfigAgendamentoForm />}
     </div>
   )

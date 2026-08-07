@@ -6,15 +6,14 @@ import { EmptyState } from '../../../components/ui/EmptyState'
 import { cn } from '../../../components/ui/cn'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos } from '../../../lib/dinheiro'
-import { mesAtual, periodoMes } from '../periodo'
 import {
   useAtualizarEntrada,
-  useEntradas,
+  useAtualizarSaida,
+  useContasAPagar,
+  useContasAReceber,
   useLancarRecorrente,
-  useRecorrentes,
-  useSaidas,
 } from '../hooks/useFinanceiro'
-import { CATEGORIA_ENTRADA_LABEL } from '../types'
+import { CATEGORIA_ENTRADA_LABEL, type CategoriaEntrada } from '../types'
 
 type BucketKey = 'atrasada' | 'hoje' | 'semana' | 'mes' | 'depois'
 
@@ -33,72 +32,56 @@ const TOM_CLS = {
   neutral: 'text-neutral-600 bg-neutral-100',
 } as const
 
-function addDias(iso: string, n: number) {
-  const d = new Date(iso + 'T00:00:00')
-  d.setDate(d.getDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-function fimDoMes(iso: string) {
-  const d = new Date(iso + 'T00:00:00')
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)
-}
-
-type Item = { id: string; valor: number; categoria: string; descricao: string; venc: string; acao: () => void; acaoLabel: string }
+type Item = { id: string; valor: number; categoria: string; descricao: string; venc: string; bucket: BucketKey; acao: () => void; acaoLabel: string }
 
 export function ContasPage() {
   const [aba, setAba] = useState<'receber' | 'pagar'>('receber')
   const hoje = new Date().toISOString().slice(0, 10)
-  const fimSemana = addDias(hoje, 6)
-  const fimMes = fimDoMes(hoje)
 
-  const bucketOf = (iso: string): BucketKey => {
-    if (iso < hoje) return 'atrasada'
-    if (iso === hoje) return 'hoje'
-    if (iso <= fimSemana) return 'semana'
-    if (iso <= fimMes) return 'mes'
-    return 'depois'
-  }
-
-  const atualizar = useAtualizarEntrada()
+  const atualizarEntrada = useAtualizarEntrada()
+  const atualizarSaida = useAtualizarSaida()
   const lancar = useLancarRecorrente()
-  const { data: entradas } = useEntradas(periodoMes(mesAtual()))
-  const { data: recorrentes } = useRecorrentes()
-  const { data: saidasMes } = useSaidas(periodoMes(mesAtual()))
-
-  const pagasIds = useMemo(
-    () => new Set((saidasMes ?? []).map((s) => s.recorrente_id).filter(Boolean) as string[]),
-    [saidasMes],
-  )
+  const { data: receber } = useContasAReceber()
+  const { data: pagar } = useContasAPagar()
 
   const itens = useMemo<Item[]>(() => {
     if (aba === 'receber') {
-      return (entradas ?? [])
-        .filter((e) => e.status === 'prevista')
-        .map((e) => ({
-          id: e.id,
-          valor: e.valor_centavos,
-          categoria: CATEGORIA_ENTRADA_LABEL[e.categoria],
-          descricao: e.descricao || '—',
-          venc: e.data_prevista ?? hoje,
-          acaoLabel: 'Recebi',
-          acao: () => atualizar.mutate({ id: e.id, patch: { status: 'recebida', data_caixa: hoje } }),
-        }))
-    }
-    const mes = mesAtual()
-    return (recorrentes ?? [])
-      .filter((r) => !pagasIds.has(r.id))
-      .map((r) => ({
-        id: r.id,
-        valor: r.valor_centavos,
-        categoria: r.categoria?.nome ?? '—',
-        descricao: r.descricao,
-        venc: `${mes}-${String(r.dia_vencimento).padStart(2, '0')}`,
-        acaoLabel: 'Pagar',
-        acao: () => lancar.mutate({ recorrente: r, mes }),
+      return (receber ?? []).map((e) => ({
+        id: e.id!,
+        valor: e.valor_centavos!,
+        categoria: CATEGORIA_ENTRADA_LABEL[e.categoria as CategoriaEntrada] ?? e.categoria ?? '—',
+        descricao: e.descricao || '—',
+        venc: e.vencimento!,
+        bucket: e.bucket as BucketKey,
+        acaoLabel: 'Recebi',
+        acao: () => atualizarEntrada.mutate({ id: e.id!, patch: { status: 'recebida', data_caixa: hoje } }),
       }))
-  }, [aba, entradas, recorrentes, pagasIds, hoje, atualizar, lancar])
+    }
+    return (pagar ?? []).map((p) => ({
+      id: p.id!,
+      valor: p.valor_centavos!,
+      categoria: p.categoria ?? '—',
+      descricao: p.descricao || '—',
+      venc: p.vencimento!,
+      bucket: p.bucket as BucketKey,
+      acaoLabel: 'Pagar',
+      acao: () =>
+        p.origem === 'recorrente'
+          ? lancar.mutate({
+              recorrente: {
+                id: p.id!,
+                descricao: p.descricao ?? '',
+                valor_centavos: p.valor_centavos!,
+                categoria_id: p.categoria_id!,
+                dia_vencimento: Number(p.vencimento!.slice(8, 10)),
+              },
+              mes: p.vencimento!.slice(0, 7),
+            })
+          : atualizarSaida.mutate({ id: p.id!, patch: { status_saida: 'paga', data_caixa: hoje } }),
+    }))
+  }, [aba, receber, pagar, hoje, atualizarEntrada, atualizarSaida, lancar])
 
-  const porBucket = (k: BucketKey) => itens.filter((i) => bucketOf(i.venc) === k)
+  const porBucket = (k: BucketKey) => itens.filter((i) => i.bucket === k)
   const total = itens.reduce((s, i) => s + i.valor, 0)
 
   return (
@@ -128,7 +111,7 @@ export function ContasPage() {
         <EmptyState
           icon={aba === 'receber' ? Inbox : CheckCircle2}
           title={aba === 'receber' ? 'Nada a receber' : 'Nada a pagar'}
-          description={aba === 'receber' ? 'Nenhum recebimento previsto em aberto.' : 'Todas as recorrências do mês estão pagas.'}
+          description={aba === 'receber' ? 'Nenhum recebimento previsto em aberto.' : 'Nada pendente de pagamento.'}
         />
       ) : (
         BUCKETS.map((b) => {
