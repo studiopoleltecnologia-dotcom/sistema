@@ -427,3 +427,110 @@ Ao propor automações que dependam de MCP (migrations via `mcp__supabase__*`,
 PRs/issues via `mcp__github__*`), lembrar que a disponibilidade do GitHub MCP
 depende da máquina local de quem está rodando a sessão — não assumir que está
 disponível em outro ambiente ou em CI.
+
+⚠️ **Armadilha do `apply_migration` do MCP.** Ele grava em
+`supabase_migrations.schema_migrations` a versão do **momento da aplicação**
+(`20260805173742`), não a versão do nome do arquivo (`20260805010000`). O CLI
+então enxerga versão remota sem arquivo local e o `supabase db push` do CI
+aborta com *"Remote migration versions not found in local migrations
+directory"*. Depois de qualquer `apply_migration`, **conferir e corrigir**:
+
+```sql
+select version, name from supabase_migrations.schema_migrations order by version;
+-- comparar com `ls supabase/migrations/` e alinhar a coluna `version`
+```
+
+Regra prática: se o arquivo **já existe no repo**, aplicar pelo CLI
+(`supabase db push`), não pelo MCP. MCP é para exploração.
+
+---
+
+## 14. Fluxo de branches e ambientes (obrigatório)
+
+Existem **dois** projetos Supabase e **dois** ambientes, e eles não são
+intercambiáveis:
+
+| Ambiente | Projeto Supabase | Branch | Workflow | Frontend |
+|---|---|---|---|---|
+| **DEV** | `nhoircibjcxsakjimisp` (sistema-dev) | `develop` | `dev.yml` | local (`npm run dev`) |
+| **PROD** | `fgvxhwpqsxohqrccrlfn` (sistema) | `main` | `deploy.yml` | Pages, `sistema.studiopolel.com.br` |
+
+### 14.1 O ciclo — sem exceção
+
+```
+feat/<assunto>  →  PR  →  develop  →  PR  →  main
+                          (dev.yml)         (deploy.yml)
+                          Supabase DEV      Supabase PROD + Pages
+```
+
+1. Toda feature e **toda correção** nasce em `feat/<assunto>` a partir de
+   `develop`. Nunca a partir de `main`.
+2. PR para `develop`. O `ci.yml` (build + smoke do bundle real) é o portão.
+3. Merge em `develop` → `dev.yml` aplica migrations e functions no Supabase
+   **DEV**. É aqui que se homologa.
+4. Só depois, PR `develop` → `main`. Merge → `deploy.yml` aplica em
+   **PRODUÇÃO** e publica o site.
+
+**Nada entra em `main` que não tenha passado por `develop`.** Não existe
+"correção pequena direto na main" — produção não é lugar de primeira execução.
+
+### 14.2 As duas camadas de bloqueio
+
+Uma não substitui a outra:
+
+- **Versionada no repo:** `.github/workflows/guard-fluxo.yml`. Reprova PR para
+  `main` que não venha de `develop`, e reprova commit que entrou em `main` sem
+  existir em `develop`. Funciona sem admin, mas é **detecção, não prevenção** —
+  ele fica vermelho *depois* que o código já entrou.
+- **Branch protection do GitHub** (Settings → Branches, precisa de admin): é o
+  que de fato **impede**. Em `main` e `develop`: exigir PR, exigir o check
+  `build-smoke`, bloquear force-push e deleção.
+
+Se alguma das duas estiver desligada, o ciclo é só combinado verbal.
+
+### 14.3 Dados: produção é a fonte da verdade
+
+- Os **dados de negócio de PRODUÇÃO nunca são descartados**. Equalizar
+  ambientes significa alinhar **schema**, jamais recriar/resetar banco com
+  dado.
+- O DEV é populado **a partir da produção**, um caminho só, via
+  `sync-prod-to-dev.yml`. Nunca o contrário.
+- Consequência prática: o dev pode conter dado real de aluno. Tratar o dev
+  com o mesmo cuidado de LGPD que a produção, e garantir que integrações de
+  envio (Resend, Wellhub) estejam em modo sandbox lá.
+
+### 14.4 Segredo que varia por ambiente mora no Vault, não na migration
+
+Migration é o **mesmo arquivo** nos dois ambientes. Então **nada que varia por
+ambiente pode estar escrito nela** — URL de projeto, chave, endpoint de
+parceiro. Isso já custou caro: `20260724120000_cron_disparo_emails.sql` tinha a
+URL e a anon key de produção fixas no texto e era aplicada nos dois lados, então
+o cron do DEV chamava a Edge Function da **produção** a cada 2 min (medido em
+05/08/2026: 180 chamadas com HTTP 200 em ~6h, com risco de e-mail duplicado
+para aluna real, já que `enviar-emails` não usa `for update skip locked`).
+
+O padrão, a partir de `20260806120000_cron_emails_via_vault.sql`:
+
+- Cada projeto Supabase guarda os próprios valores no **Vault**
+  (`vault.create_secret`), hoje `project_url` e `anon_key`.
+- A migration só lê por nome (`vault.decrypted_secrets`) — é idêntica nos dois
+  ambientes e não carrega segredo nenhum para o repo público.
+- **Ambiente sem o segredo não faz nada, de propósito.** É essa a trava de
+  isolamento: o DEV fica inerte até alguém semear o Vault dele de caso pensado.
+- ⚠️ Consequência: o Vault da **produção** precisa estar semeado **antes** de a
+  migration chegar lá, senão o envio para. Semear é passo de runbook, não de
+  migration.
+
+### 14.5 O ledger de migrations é parte do contrato
+
+`supabase db push` compara `supabase_migrations.schema_migrations` do banco
+com os arquivos de `supabase/migrations/`. Se divergir, ele **aborta sem
+aplicar nada** (falha segura, mas trava o deploy). Duas causas já vividas:
+
+- migration aplicada via MCP (seção 13);
+- arquivos **consolidados** no repo depois de já aplicados no banco — aí o
+  ledger tem 2 linhas para 1 arquivo e renomear versão não resolve; a
+  reconciliação tem que ser por **efeito de schema**.
+
+Antes de qualquer promoção para `main`, o ledger de produção precisa bater
+1:1 com os arquivos. Sempre com **backup da tabela** antes de mexer.

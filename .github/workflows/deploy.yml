@@ -16,10 +16,16 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+# `workflow_dispatch` deixa escolher QUALQUER branch no "Use workflow from".
+# Sem esta trava, daria para rodar o deploy de PRODUÇÃO a partir de uma branch
+# de feature — aplicando migration e publicando o site dela sem PR, sem CI e
+# sem passar por develop. Branch protection não pega isso: ela protege o
+# ponteiro da branch, não a execução de workflow que não toca esse ponteiro.
 jobs:
   # 1) Schema + Edge Functions na produção ANTES do frontend (o site novo já
   #    encontra o banco no formato esperado).
   supabase-prod:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: Production
     env:
@@ -39,6 +45,7 @@ jobs:
 
   build:
     needs: supabase-prod
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: Production
     steps:
@@ -67,6 +74,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

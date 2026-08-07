@@ -37,6 +37,17 @@ create trigger saidas_preencher_competencia
   before insert on public.saidas_financeiras
   for each row execute function public.preencher_competencia_saida();
 
+-- Backfill antes do NOT NULL. A trigger acima é BEFORE INSERT: ela não
+-- alcança linha que já existe. Sem este update, a migration só passa se a
+-- tabela estiver vazia no momento em que rodar — o que é verdade na
+-- produção hoje, mas deixaria a migration refém do estado do banco. Uma
+-- única saída lançada antes da promoção travaria o deploy.
+update public.saidas_financeiras
+   set data_competencia = date_trunc(
+         'month', coalesce(data_caixa, data_prevista, current_date)
+       )::date
+ where data_competencia is null;
+
 alter table public.saidas_financeiras
   alter column data_competencia set not null;
 
