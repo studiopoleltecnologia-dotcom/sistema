@@ -499,7 +499,29 @@ Se alguma das duas estiver desligada, o ciclo é só combinado verbal.
   com o mesmo cuidado de LGPD que a produção, e garantir que integrações de
   envio (Resend, Wellhub) estejam em modo sandbox lá.
 
-### 14.4 O ledger de migrations é parte do contrato
+### 14.4 Segredo que varia por ambiente mora no Vault, não na migration
+
+Migration é o **mesmo arquivo** nos dois ambientes. Então **nada que varia por
+ambiente pode estar escrito nela** — URL de projeto, chave, endpoint de
+parceiro. Isso já custou caro: `20260724120000_cron_disparo_emails.sql` tinha a
+URL e a anon key de produção fixas no texto e era aplicada nos dois lados, então
+o cron do DEV chamava a Edge Function da **produção** a cada 2 min (medido em
+05/08/2026: 180 chamadas com HTTP 200 em ~6h, com risco de e-mail duplicado
+para aluna real, já que `enviar-emails` não usa `for update skip locked`).
+
+O padrão, a partir de `20260806120000_cron_emails_via_vault.sql`:
+
+- Cada projeto Supabase guarda os próprios valores no **Vault**
+  (`vault.create_secret`), hoje `project_url` e `anon_key`.
+- A migration só lê por nome (`vault.decrypted_secrets`) — é idêntica nos dois
+  ambientes e não carrega segredo nenhum para o repo público.
+- **Ambiente sem o segredo não faz nada, de propósito.** É essa a trava de
+  isolamento: o DEV fica inerte até alguém semear o Vault dele de caso pensado.
+- ⚠️ Consequência: o Vault da **produção** precisa estar semeado **antes** de a
+  migration chegar lá, senão o envio para. Semear é passo de runbook, não de
+  migration.
+
+### 14.5 O ledger de migrations é parte do contrato
 
 `supabase db push` compara `supabase_migrations.schema_migrations` do banco
 com os arquivos de `supabase/migrations/`. Se divergir, ele **aborta sem
