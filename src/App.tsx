@@ -26,6 +26,7 @@ import { PlanosPage } from './modules/planos/PlanosPage'
 import { PortalApp } from './modules/portal-aluna/PortalApp'
 import { ProfessoraApp } from './modules/portal-professora/ProfessoraApp'
 import { DashboardPage } from './modules/dashboard/DashboardPage'
+import { EventoShell } from './modules/eventos/EventoShell'
 import { InscricoesEventoPage } from './modules/eventos/InscricoesEventoPage'
 import { AnalisesPage } from './modules/analises/AnalisesPage'
 import { TarefasPage } from './modules/tarefas/TarefasPage'
@@ -89,6 +90,29 @@ export default function App() {
         <AuthGate>
           <HashRouter>
             <Routes>
+              {/*
+                Fora do <Layout> de propósito: esta página tem casca própria,
+                sem o menu lateral. Quem confere as inscrições recebe o link
+                direto e não tem o que fazer no resto do ERP.
+
+                Vale o que já valia para a rota não estar no menu: isto é
+                enquadramento, não permissão. A conta continua podendo digitar
+                /clientes e entrar, porque a RLS daquelas tabelas responde a
+                is_operacional() e is_socia(). Restringir de verdade exige um
+                papel próprio em funcao_interna — e antes disso migrar as 25
+                policies em 19 tabelas que ainda usam is_socia(), senão o papel
+                novo herda tudo (a pendência do §5.2 do CLAUDE.md).
+              */}
+              <Route
+                path="eventos/pcnc26"
+                element={
+                  <EventoShell>
+                    <RotaFuncao permitido={['gestao', 'secretaria']}>
+                      <InscricoesEventoPage />
+                    </RotaFuncao>
+                  </EventoShell>
+                }
+              />
               <Route element={<Layout />}>
                 <Route index element={<DashboardPage />} />
                 <Route path="clientes" element={<ClientesPage />} />
@@ -137,23 +161,6 @@ export default function App() {
                   element={
                     <RotaFuncao permitido={['gestao']}>
                       <EquipePage />
-                    </RotaFuncao>
-                  }
-                />
-                {/*
-                  Rota não listada: de propósito não tem entrada no menu do
-                  Layout, porque quem confere as inscrições recebe o link
-                  direto. Isso NÃO é controle de acesso — a tabela de rotas
-                  viaja dentro do bundle, que é servido de repositório
-                  público, então o caminho é achável por quem procurar. Quem
-                  barra é o AuthGate acima, o RotaFuncao aqui e, por último,
-                  a RLS: sem sessão de operação o banco não devolve linha.
-                */}
-                <Route
-                  path="eventos/pcnc26"
-                  element={
-                    <RotaFuncao permitido={['gestao', 'secretaria']}>
-                      <InscricoesEventoPage />
                     </RotaFuncao>
                   }
                 />
