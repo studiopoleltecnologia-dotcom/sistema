@@ -26,6 +26,7 @@ import { PlanosPage } from './modules/planos/PlanosPage'
 import { PortalApp } from './modules/portal-aluna/PortalApp'
 import { ProfessoraApp } from './modules/portal-professora/ProfessoraApp'
 import { DashboardPage } from './modules/dashboard/DashboardPage'
+import { InscricoesEventoPage } from './modules/eventos/InscricoesEventoPage'
 import { AnalisesPage } from './modules/analises/AnalisesPage'
 import { TarefasPage } from './modules/tarefas/TarefasPage'
 import { RotaFuncao } from './components/RotaFuncao'
@@ -136,6 +137,23 @@ export default function App() {
                   element={
                     <RotaFuncao permitido={['gestao']}>
                       <EquipePage />
+                    </RotaFuncao>
+                  }
+                />
+                {/*
+                  Rota não listada: de propósito não tem entrada no menu do
+                  Layout, porque quem confere as inscrições recebe o link
+                  direto. Isso NÃO é controle de acesso — a tabela de rotas
+                  viaja dentro do bundle, que é servido de repositório
+                  público, então o caminho é achável por quem procurar. Quem
+                  barra é o AuthGate acima, o RotaFuncao aqui e, por último,
+                  a RLS: sem sessão de operação o banco não devolve linha.
+                */}
+                <Route
+                  path="eventos/pcnc26"
+                  element={
+                    <RotaFuncao permitido={['gestao', 'secretaria']}>
+                      <InscricoesEventoPage />
                     </RotaFuncao>
                   }
                 />

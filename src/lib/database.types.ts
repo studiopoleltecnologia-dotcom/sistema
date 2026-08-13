@@ -2239,6 +2239,14 @@ export type Database = {
         Returns: boolean
       }
       cliente_atual: { Args: never; Returns: string }
+      confirmar_pagamento_inscricao: {
+        Args: {
+          p_confirmado: boolean
+          p_inscricao: string
+          p_observacao?: string
+        }
+        Returns: undefined
+      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string
