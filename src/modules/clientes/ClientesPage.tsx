@@ -73,7 +73,7 @@ export function ClientesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <div className="flex gap-1">
             <button className={abaCls(visao === 'funil')} onClick={() => setVisao('funil')}>
@@ -84,12 +84,12 @@ export function ClientesPage() {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 items-center gap-2 sm:flex-none">
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar…"
-            className="w-48 rounded-md border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500"
+            className="w-full min-w-0 rounded-md sm:w-48 border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500"
           />
           <button
             onClick={() => setFormAberto(true)}

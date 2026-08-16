@@ -42,7 +42,7 @@ export function ReservaTab({ recebidoMes }: { recebidoMes: number }) {
 
   return (
     <div>
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:w-2/3">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-2/3">
         <Card className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5 text-xs text-neutral-400">
             <PiggyBank className="size-3.5" />

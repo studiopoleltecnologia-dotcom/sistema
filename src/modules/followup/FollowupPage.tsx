@@ -35,7 +35,7 @@ export function FollowupPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-3">
           <span className="text-sm text-neutral-400">
             {pendencias?.length ?? 0} pendente{(pendencias?.length ?? 0) === 1 ? '' : 's'}

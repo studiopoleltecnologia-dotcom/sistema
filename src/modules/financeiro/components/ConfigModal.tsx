@@ -66,7 +66,7 @@ export function ConfigModal({
             value={metaMeses}
             onChange={(e) => setMetaMeses(e.target.value)}
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input
               label="Meta faturamento/mês (R$)"
               value={metaMes}
@@ -80,7 +80,7 @@ export function ConfigModal({
               placeholder="0 = sem meta"
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input
               label="Saldo inicial de caixa (R$)"
               value={saldoInicial}

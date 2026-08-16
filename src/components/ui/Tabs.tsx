@@ -10,7 +10,7 @@ export function Tabs<T extends string>({
   items: { value: T; label: string }[]
 }) {
   return (
-    <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
+    <div className="flex flex-wrap gap-1 rounded-lg bg-neutral-100 p-1">
       {items.map((item) => (
         <button
           key={item.value}

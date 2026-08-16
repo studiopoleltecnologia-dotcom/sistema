@@ -15,7 +15,9 @@ export function ClientesLista({
     socias.find((s) => s.id === id)?.nome ?? '—'
 
   return (
-    <table className="w-full text-left text-sm">
+    // 6 colunas não cabem em 360px: rola a tabela em vez de espremer a página.
+    <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+      <table className="w-full min-w-[42rem] text-left text-sm">
       <thead>
         <tr className="border-b border-neutral-100 text-xs text-neutral-400">
           <th className="py-2 pr-4 font-medium">Nome</th>
@@ -55,6 +57,7 @@ export function ClientesLista({
           </tr>
         ))}
       </tbody>
-    </table>
+      </table>
+    </div>
   )
 }

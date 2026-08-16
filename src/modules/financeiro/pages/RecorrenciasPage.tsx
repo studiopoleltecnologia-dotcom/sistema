@@ -155,7 +155,7 @@ function NovaRecorrenciaModal({ onFechar }: { onFechar: () => void }) {
             <label className={labelCls}>Descrição</label>
             <Input value={descricao} onChange={(ev) => setDescricao(ev.target.value)} placeholder="Ex.: Aluguel" autoFocus />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Valor mensal *</label>
               <Input value={valor} onChange={(ev) => setValor(ev.target.value)} placeholder="R$ 0,00" required />

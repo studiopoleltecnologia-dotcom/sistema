@@ -154,7 +154,7 @@ export function TurmaForm({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={campoCls}>Sala</label>
               <Select value={salaId} onChange={(e) => setSalaId(e.target.value)} className="w-full">
@@ -183,7 +183,7 @@ export function TurmaForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={campoCls}>Dia da semana</label>
               <Select value={dia} onChange={(e) => setDia(e.target.value)} className="w-full">
@@ -205,7 +205,7 @@ export function TurmaForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={campoCls}>Duração (min)</label>
               <Input

@@ -93,7 +93,7 @@ export function RemuneracaoModal({
           </div>
 
           {modelo === 'por_aluna' && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className={campoCls}>R$ / aluno</label>
                 <Input value={valorAluno} onChange={(e) => setValorAluno(e.target.value)} className="w-full" />
@@ -123,7 +123,7 @@ export function RemuneracaoModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 border-t border-neutral-100 pt-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 border-t border-neutral-100 pt-4">
             <div>
               <label className={campoCls}>Passagem por dia (R$)</label>
               <Input

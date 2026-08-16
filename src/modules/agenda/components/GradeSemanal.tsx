@@ -59,7 +59,7 @@ function CartaoTurma({
       <div className="truncate text-[10px] text-neutral-500">
         {turma.professora.nome} · {turma.capacidade} vagas
       </div>
-      <div className="mt-1 hidden justify-end gap-0.5 group-hover:flex">
+      <div className="mt-1 flex justify-end gap-0.5 md:hidden md:group-hover:flex">
         <IconeAcao title="Editar" onClick={() => onEditar(turma)}>
           <Pencil className="size-3" />
         </IconeAcao>
