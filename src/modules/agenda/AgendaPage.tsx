@@ -25,9 +25,9 @@ export function AgendaPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex gap-1">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap gap-1">
             <button className={abaCls(aba === 'dia')} onClick={() => setAba('dia')}>
               Dia
             </button>

@@ -266,7 +266,7 @@ function NovaEntradaModal({ onFechar }: { onFechar: () => void }) {
             <label className={labelCls}>Descrição</label>
             <Input value={descricao} onChange={(ev) => setDescricao(ev.target.value)} placeholder="Opcional" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Categoria</label>
               <Select value={categoria} onChange={(ev) => setCategoria(ev.target.value as CategoriaEntrada)}>

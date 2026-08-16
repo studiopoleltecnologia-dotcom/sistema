@@ -25,13 +25,15 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-20 flex items-center justify-center bg-ink/30 p-4 backdrop-blur-[2px]"
+      // No mobile o formulário costuma passar da altura da tela: ancora no
+      // topo e deixa o overlay rolar, senão o botão de salvar fica fora.
+      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-ink/30 p-4 backdrop-blur-[2px] sm:items-center"
       onClick={onFechar}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          'w-full rounded-xl bg-white p-6 shadow-lg',
+          'my-auto w-full rounded-xl bg-white p-5 shadow-lg sm:p-6',
           SIZE_CLS[size],
         )}
       >
