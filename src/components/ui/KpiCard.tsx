@@ -49,8 +49,10 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-neutral-200/80 bg-white shadow-sm transition hover:shadow-md',
-        lg ? 'p-5' : 'p-4',
+        // min-w-0: como item de grid o default é min-width:auto, que impede o
+        // card de encolher abaixo do texto e estoura a linha no mobile.
+        'min-w-0 rounded-xl border border-neutral-200/80 bg-white shadow-sm transition hover:shadow-md',
+        lg ? 'p-4 sm:p-5' : 'p-3.5 sm:p-4',
         className,
       )}
     >
@@ -66,8 +68,14 @@ export function KpiCard({
       </div>
       <div
         className={cn(
-          'mt-2 font-display font-bold tracking-tight',
-          lg ? `text-[2.15rem] leading-none ${VALUE_TONE_CLS[tone]}` : 'text-xl text-neutral-900',
+          // Meia tela de 360px deixa 124px úteis aqui. O maior valor real é
+          // "R$ 81.000,00" (teto do MEI), que mede 122px a 1.375rem e 134px a
+          // 1.5rem — daí o tamanho quebrado: é o maior que não quebra linha.
+          // O destaque de 2.15rem volta a partir do sm.
+          'mt-2 break-words font-display font-bold tracking-tight',
+          lg
+            ? `text-[1.375rem] leading-none sm:text-[2.15rem] ${VALUE_TONE_CLS[tone]}`
+            : 'text-lg text-neutral-900 sm:text-xl',
         )}
       >
         {value}

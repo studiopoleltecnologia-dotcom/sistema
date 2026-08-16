@@ -62,7 +62,7 @@ function RotinasDoDia() {
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-neutral-400">
           As rotinas reiniciam a cada dia. Marque conforme for fazendo.
         </p>
@@ -117,7 +117,7 @@ function RotinasDoDia() {
                       </button>
                       <button
                         onClick={() => removerItem.mutate(item.id)}
-                        className="rounded p-0.5 text-neutral-200 opacity-0 transition hover:text-danger-500 group-hover:opacity-100"
+                        className="rounded p-0.5 text-neutral-200 transition hover:text-danger-500 md:opacity-0 md:group-hover:opacity-100"
                         title="Remover do checklist"
                       >
                         <X className="size-3.5" />
@@ -304,7 +304,7 @@ function ListaTarefas() {
               </div>
               <button
                 onClick={() => excluir.mutate(t.id)}
-                className="rounded p-1 text-neutral-200 opacity-0 transition hover:text-danger-500 group-hover:opacity-100"
+                className="rounded p-1 text-neutral-200 transition hover:text-danger-500 md:opacity-0 md:group-hover:opacity-100"
                 title="Excluir"
               >
                 <Trash2 className="size-4" />

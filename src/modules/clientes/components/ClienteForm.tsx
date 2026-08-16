@@ -73,8 +73,8 @@ export function ClienteForm({
           {cliente ? 'Editar aluno' : 'Novo aluno'}
         </h2>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <label className={labelCls}>Nome *</label>
             <input
               autoFocus
@@ -134,7 +134,7 @@ export function ClienteForm({
           </div>
 
           {form.origem === 'wellhub' && (
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className={labelCls}>ID Gympass/Wellhub</label>
               <input
                 className={inputCls}
@@ -189,11 +189,11 @@ export function ClienteForm({
             />
           </div>
 
-          <div className="col-span-2 mt-1 border-t border-neutral-100 pt-3">
+          <div className="sm:col-span-2 mt-1 border-t border-neutral-100 pt-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
               Contato de emergência *
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>Nome *</label>
                 <input
@@ -217,7 +217,7 @@ export function ClienteForm({
             </div>
           </div>
 
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className={labelCls}>Observações</label>
             <textarea
               rows={2}
@@ -227,7 +227,7 @@ export function ClienteForm({
             />
           </div>
 
-          <label className="col-span-2 flex items-center gap-2 text-sm text-neutral-600">
+          <label className="sm:col-span-2 flex items-center gap-2 text-sm text-neutral-600">
             <input
               type="checkbox"
               checked={form.vip ?? false}
