@@ -187,3 +187,59 @@ export async function atualizarConfigAgendamento(patch: {
   if (error) throw error
   return data
 }
+
+// ------------------------------------------------------------
+// Fila de check-ins sem turma atribuída (migration 20260808120000).
+// Duas salas na mesma hora tornam o horário insuficiente para dizer
+// a que turma o check-in pertence — o sistema enfileira em vez de
+// adivinhar, porque turma errada paga a professora errada.
+// ------------------------------------------------------------
+
+/** Uma turma que o horário do check-in não conseguiu descartar. */
+export type CandidataCheckin = {
+  turma_id: string
+  horario: string
+  modalidade: string
+  sala: string | null
+  professora: string | null
+}
+
+export type CheckinPendente = {
+  id: string
+  cliente_id: string
+  cliente: string
+  gympass_id: string | null
+  momento: string
+  data_checkin: string
+  dia_semana: number
+  turmas_candidatas: string[]
+  motivo: 'ambiguo' | 'sem_turma'
+  candidatas: CandidataCheckin[]
+}
+
+export async function listarCheckinsPendentes() {
+  const { data, error } = await requireSupabase()
+    .from('vw_checkins_pendentes')
+    .select('*')
+    .order('data_checkin', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as unknown as CheckinPendente[]
+}
+
+/** `turma_id` nulo = descartar (aí a observação é obrigatória). */
+export async function resolverCheckinPendente(args: {
+  pendencia_id: string
+  turma_id: string | null
+  observacao?: string | null
+}) {
+  // `p_turma` e `p_observacao` são nuláveis no banco, mas o gerador de tipos
+  // do Supabase declara todo argumento de RPC como não-nulo. O cast é só para
+  // conseguir passar o null que a função espera (turma nula = descarte).
+  const { data, error } = await requireSupabase().rpc('resolver_checkin_pendente', {
+    p_pendencia: args.pendencia_id,
+    p_turma: args.turma_id,
+    p_observacao: args.observacao ?? null,
+  } as unknown as { p_pendencia: string; p_turma: string; p_observacao?: string })
+  if (error) throw error
+  return data
+}

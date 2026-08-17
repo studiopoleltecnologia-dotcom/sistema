@@ -4,13 +4,22 @@ import { useMinhaFuncao } from '../../lib/funcao'
 import { DiaView } from './components/DiaView'
 import { GradeView } from './components/GradeView'
 import { OcupacaoView } from './components/OcupacaoView'
-import { useAtualizarConfigAgendamento, useConfigAgendamento } from './hooks/useAgenda'
+import { PendenciasView } from './components/PendenciasView'
+import {
+  useAtualizarConfigAgendamento,
+  useCheckinsPendentes,
+  useConfigAgendamento,
+} from './hooks/useAgenda'
 import { DIAS_SEMANA } from './types'
 
 export function AgendaPage() {
   const hoje = new Date().toISOString().slice(0, 10)
   const [data, setData] = useState(hoje)
-  const [aba, setAba] = useState<'dia' | 'grade' | 'ocupacao' | 'config'>('dia')
+  const [aba, setAba] = useState<'dia' | 'grade' | 'ocupacao' | 'pendencias' | 'config'>('dia')
+  // Fila de check-ins sem turma: a aba só aparece quando há o que resolver,
+  // para não virar mais um item morto no topo da Agenda.
+  const { data: pendencias } = useCheckinsPendentes()
+  const nPendencias = pendencias?.length ?? 0
   // Config = regras de agendamento (só gestão). Secretária opera a agenda
   // mas não muda a política; o menu esconde e a RLS recusa a gravação.
   const { data: funcao } = useMinhaFuncao()
@@ -37,6 +46,17 @@ export function AgendaPage() {
             <button className={abaCls(aba === 'ocupacao')} onClick={() => setAba('ocupacao')}>
               Ocupação
             </button>
+            {nPendencias > 0 && (
+              <button
+                className={abaCls(aba === 'pendencias')}
+                onClick={() => setAba('pendencias')}
+              >
+                Pendências
+                <span className="ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[10px] font-semibold text-warning-700">
+                  {nPendencias}
+                </span>
+              </button>
+            )}
             {ehGestao && (
               <button className={abaCls(aba === 'config')} onClick={() => setAba('config')}>
                 Config
@@ -60,6 +80,7 @@ export function AgendaPage() {
       {aba === 'dia' && <DiaView data={data} />}
       {aba === 'grade' && <GradeView />}
       {aba === 'ocupacao' && <OcupacaoView />}
+      {aba === 'pendencias' && <PendenciasView />}
       {aba === 'config' && ehGestao && <ConfigAgendamentoForm />}
     </div>
   )

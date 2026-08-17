@@ -8,6 +8,7 @@ import {
   criarTurma,
   desativarTurma,
   listarDia,
+  listarCheckinsPendentes,
   listarModalidades,
   listarNomesProfessoras,
   listarOcupacao,
@@ -15,6 +16,7 @@ import {
   listarTurmas,
   obterConfigAgendamento,
   registrarPresenca,
+  resolverCheckinPendente,
 } from '../api/agenda'
 
 export function useTurmas() {
@@ -103,6 +105,22 @@ export function useCancelarAgendamento() {
 export function useRegistrarPresenca() {
   const invalidar = useInvalidarAgenda()
   return useMutation({ mutationFn: registrarPresenca, onSuccess: invalidar })
+}
+
+export function useCheckinsPendentes() {
+  return useQuery({ queryKey: ['checkins-pendentes'], queryFn: listarCheckinsPendentes })
+}
+
+export function useResolverCheckinPendente() {
+  const qc = useQueryClient()
+  const invalidar = useInvalidarAgenda()
+  return useMutation({
+    mutationFn: resolverCheckinPendente,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['checkins-pendentes'] })
+      invalidar()
+    },
+  })
 }
 
 export function useAtualizarConfigAgendamento() {
