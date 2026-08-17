@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Card } from './Card'
 import { cn } from './cn'
@@ -13,17 +13,21 @@ function useAberto(key: string, inicial = true) {
       return inicial
     }
   })
+  const gravar = (n: boolean) => {
+    try {
+      localStorage.setItem(key, n ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }
   const alternar = () =>
     setAberto((a) => {
-      const n = !a
-      try {
-        localStorage.setItem(key, n ? '1' : '0')
-      } catch {
-        /* ignore */
-      }
-      return n
+      gravar(!a)
+      return !a
     })
-  return [aberto, alternar] as const
+  /** Abre sem gravar: é decisão do sistema, não preferência da pessoa. */
+  const abrir = () => setAberto(true)
+  return [aberto, alternar, abrir] as const
 }
 
 /**
@@ -36,6 +40,7 @@ export function CardColapsavel({
   subtitle,
   persistKey,
   defaultOpen = true,
+  forcarAberto = false,
   right,
   className,
   children,
@@ -44,11 +49,25 @@ export function CardColapsavel({
   subtitle?: ReactNode
   persistKey: string
   defaultOpen?: boolean
+  /**
+   * Abre a seção mesmo que a pessoa a tenha deixado fechada — para quando o
+   * conteúdo passou a exigir atenção (MEI estourando, aluna inadimplente).
+   * Não sobrescreve a preferência salva: se ela fechar de novo, fica fechada
+   * até a próxima visita.
+   */
+  forcarAberto?: boolean
   right?: ReactNode
   className?: string
   children: ReactNode
 }) {
-  const [aberto, alternar] = useAberto(persistKey, defaultOpen)
+  const [aberto, alternar, abrir] = useAberto(persistKey, defaultOpen)
+
+  // O dado chega depois da montagem, então não dá para resolver isso só no
+  // estado inicial do useState.
+  useEffect(() => {
+    if (forcarAberto) abrir()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcarAberto])
 
   return (
     <Card className={className}>

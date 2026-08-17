@@ -1,15 +1,11 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Activity,
-  ArrowDownToLine,
   ArrowRight,
-  ArrowUpFromLine,
   CalendarClock,
   Landmark,
-  PiggyBank,
   Repeat,
   Scale,
-  Sparkles,
   Target,
   TrendingDown,
   TrendingUp,
@@ -32,8 +28,19 @@ import {
 } from 'recharts'
 import { KpiCard } from '../../../components/ui/KpiCard'
 import { CardColapsavel } from '../../../components/ui/CardColapsavel'
+import { cn } from '../../../components/ui/cn'
 import { fmtCentavos } from '../../../lib/dinheiro'
-import { deslocarMes, mesAtual, periodoMes, rotuloPeriodo } from '../periodo'
+import { LinhaDoCaixa } from '../components/LinhaDoCaixa'
+import { SeletorPeriodo } from '../components/SeletorPeriodo'
+import {
+  deslocarMes,
+  ehMesUnico,
+  mesAtual,
+  periodoMes,
+  qtdMeses,
+  rotuloPeriodo,
+  type Periodo,
+} from '../periodo'
 import {
   useConfigFinanceiro,
   useEntradas,
@@ -66,41 +73,55 @@ const hojeISO = () => new Date().toISOString().slice(0, 10)
 
 const secaoCls = 'mb-3 font-display text-xs font-semibold uppercase tracking-wide text-neutral-400'
 
-function BarraMeta({ label, realizado, meta }: { label: string; realizado: number; meta: number }) {
-  const pctReal = meta > 0 ? Math.round((realizado / meta) * 100) : 0
-  const largura = Math.min(100, Math.max(pctReal, 2))
-  const bateu = realizado >= meta && meta > 0
+const FAIXA_TOM = {
+  brand: 'bg-brand-500',
+  success: 'bg-success-500',
+  warning: 'bg-warning-500',
+  danger: 'bg-danger-500',
+} as const
+
+/**
+ * Progresso como faixa fina, não como card. Um percentual é uma posição
+ * dentro de um limite — a barra mostra isso de relance; o card em volta só
+ * somaria peso visual competindo com os números que importam.
+ */
+function Faixa({
+  label,
+  pct,
+  detalhe,
+  tom,
+}: {
+  label: string
+  pct: number
+  detalhe: string
+  tom: keyof typeof FAIXA_TOM
+}) {
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium text-neutral-700">{label}</span>
-        <span className="text-xs tabular-nums text-neutral-400">
-          {fmtCentavos(realizado)}
-          <span className="text-neutral-300"> / {fmtCentavos(meta)}</span>
-        </span>
-      </div>
-      <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-neutral-100">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="w-20 shrink-0 text-xs font-medium text-neutral-500">{label}</span>
+      <div className="h-1.5 min-w-[100px] flex-1 overflow-hidden rounded-full bg-neutral-100">
         <div
-          className={`h-full rounded-full transition-all ${bateu ? 'bg-success-500' : 'bg-brand-500'}`}
-          style={{ width: `${largura}%` }}
+          className={cn('h-full rounded-full transition-all', FAIXA_TOM[tom])}
+          style={{ width: `${Math.min(100, Math.max(pct, 1.5))}%` }}
         />
       </div>
-      <div className="mt-1 flex justify-between text-xs">
-        <span className={bateu ? 'font-semibold text-success-600' : 'text-neutral-400'}>
-          {pctReal}%{bateu ? ' · meta batida 🎉' : ''}
-        </span>
-        {!bateu && (
-          <span className="text-neutral-400">faltam {fmtCentavos(Math.max(meta - realizado, 0))}</span>
-        )}
-      </div>
+      <span className="shrink-0 text-xs tabular-nums text-neutral-400">
+        <strong className="font-semibold text-neutral-600">{Math.round(pct)}%</strong> · {detalhe}
+      </span>
     </div>
   )
 }
 
 export function DashboardFinanceiro() {
-  const mes = mesAtual()
-  const periodo = periodoMes(mes)
-  const janela = { inicio: deslocarMes(mes, -5), fim: mes }
+  // O Resumo era o único lugar do módulo com o mês fixo no código — as demais
+  // abas já deixavam escolher. Se todos os números vêm de um recorte, o
+  // recorte precisa estar visível e ser trocável.
+  const [periodo, setPeriodo] = useState<Periodo>(() => periodoMes(mesAtual()))
+
+  // Para o gráfico: se a pessoa já pediu vários meses, mostra os dela;
+  // se pediu um mês só, mostra os 6 que terminam nele (um ponto não é linha).
+  const janela: Periodo =
+    qtdMeses(periodo) >= 2 ? periodo : { inicio: deslocarMes(periodo.fim, -5), fim: periodo.fim }
 
   const { data: saldo } = useSaldoCaixa()
   const { data: mei } = useMei()
@@ -113,12 +134,10 @@ export function DashboardFinanceiro() {
 
   const es = entradas ?? []
   const hoje = hojeISO()
+  const mesUnico = ehMesUnico(periodo)
 
   const recebido = es.filter((e) => e.status === 'recebida').reduce((s, e) => s + e.valor_centavos, 0)
   const previstas = es.filter((e) => e.status === 'prevista')
-  const aVencer = previstas
-    .filter((e) => (e.data_prevista ?? '') >= hoje)
-    .reduce((s, e) => s + e.valor_centavos, 0)
   const vencidasLista = previstas.filter((e) => e.data_prevista != null && e.data_prevista < hoje)
   const vencidas = vencidasLista.reduce((s, e) => s + e.valor_centavos, 0)
 
@@ -130,7 +149,6 @@ export function DashboardFinanceiro() {
 
   const pctMei = mei?.percentual_limite ?? 0
   const nivelMei = nivelAlertaMei(pctMei)
-  const MEI_TOM = { ok: 'success', atencao: 'warning', alerta: 'warning', critico: 'danger' } as const
 
   // Receita recorrente (MRR): valor mensalizado das matrículas ativas.
   const mrrCentavos = mrr?.mrr_centavos ?? 0
@@ -143,13 +161,18 @@ export function DashboardFinanceiro() {
   const inadimplentes = mrr?.inadimplentes ?? 0
   const mrrEmRisco = mrr?.mrr_em_risco_centavos ?? 0
 
-  // Metas de faturamento (regime de caixa). 0 = não definida → barra escondida.
+  // Metas de faturamento (regime de caixa). 0 = não definida → faixa escondida.
   const metaMes = config?.meta_faturamento_mensal_centavos ?? 0
   const metaAno = config?.meta_faturamento_anual_centavos ?? 0
   const faturamentoAno = mei?.faturamento_ano_centavos ?? 0
   const temMeta = metaMes > 0 || metaAno > 0
 
-  // Série de evolução (6 meses): receita recebida x despesa paga.
+  // Wellhub a reconciliar: check-in já registrado que ainda não virou repasse.
+  const wellhubAReconciliar = previstas
+    .filter((e) => e.categoria === 'wellhub')
+    .reduce((s, e) => s + e.valor_centavos, 0)
+
+  // Série de evolução: receita recebida x despesa paga.
   const recPorMes = new Map<string, number>()
   for (const r of mixMensal ?? []) if (r.mes) recPorMes.set(r.mes, (recPorMes.get(r.mes) ?? 0) + (r.total_centavos ?? 0))
   const despPorMes = new Map<string, number>()
@@ -161,7 +184,7 @@ export function DashboardFinanceiro() {
     despesa: (despPorMes.get(m) ?? 0) / 100,
   }))
 
-  // Composição da receita recebida no mês, por categoria.
+  // Composição da receita recebida no período, por categoria.
   const porCat = new Map<CategoriaEntrada, number>()
   for (const e of es) {
     if (e.status !== 'recebida') continue
@@ -170,10 +193,19 @@ export function DashboardFinanceiro() {
   const composicao = [...porCat.entries()]
     .map(([cat, v]) => ({ name: CATEGORIA_ENTRADA_LABEL[cat], value: v / 100 }))
     .sort((a, b) => b.value - a.value)
+  const totalComposicao = composicao.reduce((s, c) => s + c.value, 0)
+  const lider = composicao[0]
 
   const alertas: { icon: typeof TriangleAlert; texto: string; tom: 'danger' | 'warning'; to: string }[] = []
   if (saldoAtual < 0)
     alertas.push({ icon: Wallet, texto: `Caixa negativo em ${fmtCentavos(saldoAtual)}`, tom: 'danger', to: 'fluxo' })
+  else if (saldoProjetado < 0)
+    alertas.push({
+      icon: Wallet,
+      texto: `Caixa fica negativo em ${fmtCentavos(saldoProjetado)} depois de pagar o que está em aberto`,
+      tom: 'warning',
+      to: 'contas',
+    })
   if (vencidasLista.length > 0)
     alertas.push({
       icon: TriangleAlert,
@@ -196,136 +228,19 @@ export function DashboardFinanceiro() {
       to: 'entradas',
     })
 
-  const atalhos = [
-    { to: 'entradas', icon: ArrowDownToLine, titulo: 'Entradas', desc: 'Recebimentos e a receber', valor: fmtCentavos(recebido) },
-    { to: 'saidas', icon: ArrowUpFromLine, titulo: 'Saídas', desc: 'Despesas fixas e variáveis', valor: fmtCentavos(despesasPagas) },
-    { to: 'fluxo', icon: Activity, titulo: 'Fluxo de caixa', desc: 'Entradas x saídas no tempo', valor: null },
-    { to: 'fiscal', icon: Landmark, titulo: 'Fiscal', desc: 'Teto do MEI e projeção', valor: `${pctMei.toFixed(0)}%` },
-    { to: 'reserva', icon: PiggyBank, titulo: 'Reserva', desc: 'Colchão de segurança', valor: null },
-    { to: 'wellhub', icon: Sparkles, titulo: 'Wellhub', desc: 'Repasse a reconciliar', valor: null },
-  ]
-
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <p className={secaoCls}>Visão geral · {rotuloPeriodo(periodo)}</p>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <KpiCard
-            size="lg"
-            label="Saldo disponível"
-            value={fmtCentavos(saldoAtual)}
-            icon={Wallet}
-            tone={saldoAtual < 0 ? 'danger' : 'brand'}
-            hint={`${fmtCentavos(saldoProjetado)} projetado`}
-          />
-          <KpiCard
-            size="lg"
-            label="Receitas do mês"
-            value={fmtCentavos(recebido)}
-            icon={TrendingUp}
-            tone="success"
-            hint={aVencer > 0 ? `+ ${fmtCentavos(aVencer)} a receber` : undefined}
-          />
-          <KpiCard
-            size="lg"
-            label="Despesas do mês"
-            value={fmtCentavos(despesasPagas)}
-            icon={TrendingDown}
-            tone="danger"
-          />
-          <KpiCard
-            size="lg"
-            label="Lucro do mês"
-            value={fmtCentavos(lucro)}
-            icon={Scale}
-            tone={lucro >= 0 ? 'success' : 'danger'}
-            hint="recebido − despesas pagas"
-          />
-        </div>
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-base font-semibold text-neutral-900">Resumo</h2>
+        <SeletorPeriodo periodo={periodo} onChange={setPeriodo} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Saldo previsto" value={fmtCentavos(saldoProjetado)} icon={Scale} tone="neutral" hint="após pendências" />
-        <KpiCard label="Contas a vencer" value={fmtCentavos(aVencer)} icon={CalendarClock} tone="brand" hint="ainda no prazo" />
-        <KpiCard
-          label="Contas vencidas"
-          value={fmtCentavos(vencidas)}
-          icon={TriangleAlert}
-          tone={vencidas > 0 ? 'danger' : 'neutral'}
-          hint={vencidas > 0 ? `${vencidasLista.length} em atraso` : 'nada em atraso'}
-        />
-        <KpiCard
-          label="Teto MEI"
-          value={`${pctMei.toFixed(0)}%`}
-          icon={Landmark}
-          tone={MEI_TOM[nivelMei]}
-          hint={`faltam ${fmtCentavos(mei?.falta_para_limite_centavos ?? 0)}`}
-        />
-      </div>
-
-      <div>
-        <p className={secaoCls}>Receita recorrente · mensalistas</p>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <KpiCard
-            size="lg"
-            label="MRR — receita previsível"
-            value={fmtCentavos(mrrCentavos)}
-            icon={Repeat}
-            tone="brand"
-            hint={
-              clientesAtivos > 0
-                ? `${clientesAtivos} mensalista(s) ativo(s)`
-                : 'sem mensalistas ativos'
-            }
-          />
-          <KpiCard
-            label="Ticket médio"
-            value={fmtCentavos(ticketMedio)}
-            icon={Users}
-            tone="neutral"
-            hint="por mensalista/mês"
-          />
-          <KpiCard
-            label="Novos no mês"
-            value={novosMes > 0 ? `+ ${fmtCentavos(mrrNovos)}` : fmtCentavos(0)}
-            icon={UserPlus}
-            tone={novosMes > 0 ? 'success' : 'neutral'}
-            hint={`${novosMes} nova(s) matrícula(s)`}
-          />
-          <KpiCard
-            label="Renovam este mês"
-            value={fmtCentavos(mrrRenovacoes)}
-            icon={CalendarClock}
-            tone={renovacoesMes > 0 ? 'warning' : 'neutral'}
-            hint={
-              renovacoesMes > 0
-                ? `${renovacoesMes} ciclo(s) a renovar`
-                : 'nenhum ciclo vence agora'
-            }
-          />
-        </div>
-      </div>
-
-      <div>
-        <p className={secaoCls}>Metas de faturamento</p>
-        {temMeta ? (
-          <div className="grid grid-cols-1 gap-5 rounded-xl border border-neutral-200/80 bg-white p-5 shadow-sm sm:grid-cols-2">
-            {metaMes > 0 && (
-              <BarraMeta label={`Mês · ${rotuloPeriodo(periodo)}`} realizado={recebido} meta={metaMes} />
-            )}
-            {metaAno > 0 && <BarraMeta label={`Ano · ${new Date().getFullYear()}`} realizado={faturamentoAno} meta={metaAno} />}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-neutral-200 bg-white p-5 text-sm text-neutral-400">
-            <Target className="size-4 shrink-0" />
-            <span>
-              Defina metas de faturamento em{' '}
-              <strong className="font-medium text-neutral-500">Config</strong> para acompanhar o progresso aqui.
-            </span>
-          </div>
-        )}
-      </div>
-
+      {/*
+        Nível 0 — acima de tudo. Antes este bloco era renderizado por último,
+        depois de 12 cards: "3 contas vencidas" aparecia perto de 1.400px de
+        rolagem no celular. Alerta que não é a primeira coisa vista não é
+        alerta.
+      */}
       {alertas.length > 0 && (
         <div className="flex flex-col gap-2">
           {alertas.map((a) => (
@@ -346,61 +261,186 @@ export function DashboardFinanceiro() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <CardColapsavel
-          className="lg:col-span-2"
-          title="Evolução"
-          subtitle="Receita recebida x despesa paga, últimos meses"
-          persistKey="fin-dash-evolucao"
-        >
-          {evolucao.length < 2 ? (
-            <p className="py-12 text-center text-sm text-neutral-400">
-              Ainda sem histórico suficiente para o gráfico.
-            </p>
+      {/* Nível 1 — o herói. */}
+      <LinhaDoCaixa saldo={saldo} />
+
+      {/* Nível 2 — desempenho do recorte escolhido. */}
+      <div>
+        <p className={secaoCls}>{mesUnico ? 'O mês' : 'O período'} · {rotuloPeriodo(periodo)}</p>
+        <div className="grid grid-cols-3 gap-3">
+          {/*
+            Tom neutro de propósito: pagar aluguel não é perigo, é terça-feira.
+            Antes Receitas era sempre `success` e Despesas sempre `danger`, o
+            que gastava o vermelho na categoria e o deixava sem força para
+            dizer "isto está errado". Cor agora é estado, não direção.
+          */}
+          <KpiCard label="Receitas" value={fmtCentavos(recebido)} icon={TrendingUp} tone="neutral" />
+          <KpiCard label="Despesas" value={fmtCentavos(despesasPagas)} icon={TrendingDown} tone="neutral" />
+          <KpiCard
+            label="Lucro"
+            value={fmtCentavos(lucro)}
+            icon={Scale}
+            tone={lucro >= 0 ? 'success' : 'danger'}
+          />
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2.5">
+          {temMeta ? (
+            <>
+              {metaMes > 0 && mesUnico && (
+                <Faixa
+                  label="Meta do mês"
+                  pct={(recebido / metaMes) * 100}
+                  detalhe={
+                    recebido >= metaMes
+                      ? 'meta batida 🎉'
+                      : `faltam ${fmtCentavos(metaMes - recebido)}`
+                  }
+                  tom={recebido >= metaMes ? 'success' : 'brand'}
+                />
+              )}
+              {metaAno > 0 && (
+                <Faixa
+                  label="Meta do ano"
+                  pct={(faturamentoAno / metaAno) * 100}
+                  detalhe={
+                    faturamentoAno >= metaAno
+                      ? 'meta batida 🎉'
+                      : `faltam ${fmtCentavos(metaAno - faturamentoAno)}`
+                  }
+                  tom={faturamentoAno >= metaAno ? 'success' : 'brand'}
+                />
+              )}
+            </>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={evolucao} margin={{ left: -18, right: 4, top: 4 }}>
-                <defs>
-                  <linearGradient id="gReceita" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-success-500)" stopOpacity={0.28} />
-                    <stop offset="100%" stopColor="var(--color-success-500)" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gDespesa" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-danger-500)" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="var(--color-danger-500)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke="var(--color-neutral-100)" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke="var(--color-neutral-300)" />
-                <YAxis tick={{ fontSize: 11 }} stroke="var(--color-neutral-300)" width={64} />
-                <Tooltip formatter={(v) => fmtCentavos(Math.round(Number(v) * 100))} />
-                <Area
-                  type="monotone"
-                  dataKey="receita"
-                  name="Receita"
-                  stroke="var(--color-success-600)"
-                  strokeWidth={2}
-                  fill="url(#gReceita)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="despesa"
-                  name="Despesa"
-                  stroke="var(--color-danger-500)"
-                  strokeWidth={2}
-                  fill="url(#gDespesa)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <p className="flex items-center gap-2 text-xs text-neutral-400">
+              <Target className="size-3.5 shrink-0" />
+              Defina metas de faturamento em <strong className="font-medium text-neutral-500">Config</strong>.
+            </p>
+          )}
+
+          {/* Nível 3 — o teto do MEI é uma posição dentro de um limite. */}
+          <Faixa
+            label="Teto do MEI"
+            pct={pctMei}
+            detalhe={`faltam ${fmtCentavos(mei?.falta_para_limite_centavos ?? 0)}`}
+            tom={nivelMei === 'ok' ? 'success' : nivelMei === 'critico' ? 'danger' : 'warning'}
+          />
+        </div>
+      </div>
+
+      {/* Nível 4 — o único gráfico que muda decisão fica aberto. */}
+      <CardColapsavel
+        title="Tendência"
+        subtitle="Receita recebida x despesa paga"
+        persistKey="fin-dash-evolucao"
+      >
+        {evolucao.length < 2 ? (
+          <p className="py-12 text-center text-sm text-neutral-400">
+            Ainda sem histórico suficiente para o gráfico.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={evolucao} margin={{ left: -18, right: 4, top: 4 }}>
+              <defs>
+                <linearGradient id="gReceita" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-success-500)" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="var(--color-success-500)" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gDespesa" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-danger-500)" stopOpacity={0.22} />
+                  <stop offset="100%" stopColor="var(--color-danger-500)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="var(--color-neutral-100)" />
+              <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke="var(--color-neutral-300)" />
+              <YAxis tick={{ fontSize: 11 }} stroke="var(--color-neutral-300)" width={64} />
+              <Tooltip formatter={(v) => fmtCentavos(Math.round(Number(v) * 100))} />
+              <Area
+                type="monotone"
+                dataKey="receita"
+                name="Receita"
+                stroke="var(--color-success-600)"
+                strokeWidth={2}
+                fill="url(#gReceita)"
+              />
+              <Area
+                type="monotone"
+                dataKey="despesa"
+                name="Despesa"
+                stroke="var(--color-danger-500)"
+                strokeWidth={2}
+                fill="url(#gDespesa)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </CardColapsavel>
+
+      {/*
+        Nível 5 — camada estratégica, fechada por padrão.
+        Regra: seção fechada mostra o próprio número no cabeçalho (`right`).
+        Recolher esconde o detalhe, nunca o valor — senão a pessoa reabre
+        tudo na primeira semana e a tela volta ao que era.
+      */}
+      <div className="flex flex-col gap-3">
+        <CardColapsavel
+          title="Alunos e recorrência"
+          subtitle="Receita previsível dos mensalistas"
+          persistKey="fin-dash-mrr"
+          defaultOpen={false}
+          forcarAberto={inadimplentes > 0}
+          right={
+            <ResumoFechado
+              valor={`${fmtCentavos(mrrCentavos)}/mês`}
+              detalhe={clientesAtivos > 0 ? `${clientesAtivos} ativo(s)` : 'sem mensalistas'}
+            />
+          }
+        >
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <KpiCard label="MRR" value={fmtCentavos(mrrCentavos)} icon={Repeat} tone="brand" hint="receita previsível" />
+            <KpiCard label="Ticket médio" value={fmtCentavos(ticketMedio)} icon={Users} tone="neutral" hint="por mensalista/mês" />
+            <KpiCard
+              label="Novos no mês"
+              value={novosMes > 0 ? `+ ${fmtCentavos(mrrNovos)}` : fmtCentavos(0)}
+              icon={UserPlus}
+              tone={novosMes > 0 ? 'success' : 'neutral'}
+              hint={`${novosMes} nova(s) matrícula(s)`}
+            />
+            <KpiCard
+              label="Renovam este mês"
+              value={fmtCentavos(mrrRenovacoes)}
+              icon={CalendarClock}
+              tone="neutral"
+              hint={renovacoesMes > 0 ? `${renovacoesMes} ciclo(s) a renovar` : 'nenhum ciclo vence agora'}
+            />
+          </div>
+          {inadimplentes > 0 && (
+            <p className="mt-3 text-xs text-warning-700">
+              {inadimplentes} mensalista(s) inadimplente(s) — {fmtCentavos(mrrEmRisco)}/mês em risco.
+            </p>
           )}
         </CardColapsavel>
 
-        <CardColapsavel title="Receita do mês" subtitle="Composição por categoria" persistKey="fin-dash-composicao">
+        <CardColapsavel
+          title="De onde veio o dinheiro"
+          subtitle={`Composição da receita · ${rotuloPeriodo(periodo)}`}
+          persistKey="fin-dash-composicao-v2"
+          defaultOpen={false}
+          right={
+            lider && totalComposicao > 0 ? (
+              <ResumoFechado
+                valor={`${Math.round((lider.value / totalComposicao) * 100)}%`}
+                detalhe={lider.name}
+              />
+            ) : undefined
+          }
+        >
           {composicao.length === 0 ? (
-            <p className="py-12 text-center text-sm text-neutral-400">Nada recebido ainda este mês.</p>
+            <p className="py-8 text-center text-sm text-neutral-400">Nada recebido ainda no período.</p>
           ) : (
-            <>
-              <ResponsiveContainer width="100%" height={160}>
+            <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-2">
+              <ResponsiveContainer width="100%" height={170}>
                 <PieChart>
                   <Pie data={composicao} dataKey="value" nameKey="name" innerRadius={44} outerRadius={72} paddingAngle={2}>
                     {composicao.map((_, i) => (
@@ -410,8 +450,8 @@ export function DashboardFinanceiro() {
                   <Tooltip formatter={(v) => fmtCentavos(Math.round(Number(v) * 100))} />
                 </PieChart>
               </ResponsiveContainer>
-              <ul className="mt-3 flex flex-col gap-1.5">
-                {composicao.slice(0, 5).map((d, i) => (
+              <ul className="flex flex-col gap-1.5">
+                {composicao.slice(0, 6).map((d, i) => (
                   <li key={d.name} className="flex items-center gap-2 text-xs text-neutral-500">
                     <span className="size-2 shrink-0 rounded-full" style={{ background: CHART_CORES[i % CHART_CORES.length] }} />
                     <span className="truncate">{d.name}</span>
@@ -421,33 +461,85 @@ export function DashboardFinanceiro() {
                   </li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </CardColapsavel>
-      </div>
 
-      <div>
-        <p className={secaoCls}>Atalhos</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {atalhos.map(({ to, icon: Icon, titulo, desc, valor }) => (
-            <Link
-              key={to}
-              to={to}
-              className="group flex items-center gap-3 rounded-xl border border-neutral-200/80 bg-white p-4 shadow-sm transition hover:border-brand-200 hover:shadow-md"
-            >
-              <span className="rounded-lg bg-brand-50 p-2.5 text-brand-600 transition group-hover:bg-brand-100">
-                <Icon className="size-5" strokeWidth={2} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-neutral-900">{titulo}</p>
-                <p className="truncate text-xs text-neutral-400">{desc}</p>
-              </div>
-              {valor && <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-700">{valor}</span>}
-              <ArrowRight className="size-4 shrink-0 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-brand-500" />
-            </Link>
-          ))}
-        </div>
+        <CardColapsavel
+          title="Fiscal"
+          subtitle="Teto do MEI e projeção do ano"
+          persistKey="fin-dash-fiscal"
+          defaultOpen={false}
+          forcarAberto={nivelMei !== 'ok'}
+          right={<ResumoFechado valor={`${pctMei.toFixed(0)}%`} detalhe="do teto" />}
+        >
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <KpiCard label="Faturamento no ano" value={fmtCentavos(faturamentoAno)} icon={TrendingUp} tone="neutral" />
+            <KpiCard
+              label="Falta para o teto"
+              value={fmtCentavos(mei?.falta_para_limite_centavos ?? 0)}
+              icon={Landmark}
+              tone={nivelMei === 'ok' ? 'neutral' : nivelMei === 'critico' ? 'danger' : 'warning'}
+            />
+            <KpiCard
+              label="Projeção dezembro"
+              value={fmtCentavos(mei?.projecao_dezembro_centavos ?? 0)}
+              icon={Target}
+              tone={
+                (mei?.projecao_dezembro_centavos ?? 0) > (mei?.limite_mei_centavos ?? 0)
+                  ? 'danger'
+                  : 'neutral'
+              }
+              hint="no ritmo atual"
+            />
+            <KpiCard label="Limite anual" value={fmtCentavos(mei?.limite_mei_centavos ?? 0)} icon={Scale} tone="neutral" />
+          </div>
+          <LinkAba to="fiscal" texto="Ver Fiscal completo" />
+        </CardColapsavel>
+
+        <CardColapsavel
+          title="Wellhub"
+          subtitle="Check-ins registrados aguardando o repasse"
+          persistKey="fin-dash-wellhub"
+          defaultOpen={false}
+          right={<ResumoFechado valor={fmtCentavos(wellhubAReconciliar)} detalhe="a reconciliar" />}
+        >
+          {wellhubAReconciliar === 0 ? (
+            <p className="py-6 text-center text-sm text-neutral-400">
+              Nenhum check-in Wellhub a reconciliar no período.
+            </p>
+          ) : (
+            <p className="text-sm text-neutral-500">
+              <strong className="font-semibold text-neutral-900">{fmtCentavos(wellhubAReconciliar)}</strong> em
+              check-ins já registrados que ainda não bateram com o repasse. A Wellhub transfere todo dia 15,
+              referente ao mês anterior.
+            </p>
+          )}
+          <LinkAba to="wellhub" texto="Conciliar repasse" />
+        </CardColapsavel>
       </div>
     </div>
+  )
+}
+
+/** Valor-título que fica visível mesmo com a seção fechada. */
+function ResumoFechado({ valor, detalhe }: { valor: string; detalhe: string }) {
+  return (
+    <span className="shrink-0 text-right">
+      <span className="block text-sm font-semibold tabular-nums text-neutral-900">{valor}</span>
+      <span className="block text-[11px] text-neutral-400">{detalhe}</span>
+    </span>
+  )
+}
+
+function LinkAba({ to, texto }: { to: string; texto: string }) {
+  return (
+    <Link
+      to={to}
+      className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 transition hover:text-brand-700"
+    >
+      {texto}
+      <ArrowRight className="size-3.5" />
+    </Link>
   )
 }
