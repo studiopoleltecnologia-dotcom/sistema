@@ -4,8 +4,11 @@ Guia para desenvolvimento assistido por IA neste projeto. Leia antes de codar.
 Documentos de contexto: [docs/01-NEGOCIO.md](docs/01-NEGOCIO.md) (negócio),
 [docs/02-ARQUITETURA.md](docs/02-ARQUITETURA.md) (arquitetura/roadmap),
 [docs/04-PORTAL-ALUNA.md](docs/04-PORTAL-ALUNA.md) (especificação do módulo
-Portal da Aluna) e [docs/05-BACKLOG.md](docs/05-BACKLOG.md) (**tudo que está
-pendente** — ler antes de decidir o que fazer a seguir).
+Portal da Aluna), [docs/05-BACKLOG.md](docs/05-BACKLOG.md) (**tudo que está
+pendente** — ler antes de decidir o que fazer a seguir) e
+[docs/08-METODOLOGIA-IA.md](docs/08-METODOLOGIA-IA.md) (metodologia de
+desenvolvimento assistido por IA: SDD, escopo do pipeline de agentes,
+monitoramento de custo).
 
 ---
 
@@ -301,6 +304,42 @@ ver 5.1). Como ficou, para não reimplementar por engano:
 - Ela vê o próprio `valor_por_aluna_centavos` e a própria linha de
   `vw_pagamento_professoras` (aulas dadas + valor previsto) — nunca o das colegas.
 
+### 9.7 A qual turma pertence um check-in (09/08/2026)
+
+O estúdio tem **mais de uma sala**, então duas turmas podem acontecer no mesmo
+horário (10h: Pole na Sala 1, Treino Livre na Sala 2). **Horário sozinho não
+identifica a turma.** O webhook Wellhub escolhia pelo primeiro resultado de uma
+query sem `order by` — atribuição arbitrária, e como `registrar_presenca()`
+deriva a professora **da turma**, isso pagava a professora errada em silêncio.
+
+Desde `20260808120000_checkin_wellhub_atribuicao_turma.sql`, quem decide é o
+banco (`registrar_checkin_wellhub()`), nesta ordem:
+
+1. **agendamento ativo** do aluno no dia, restrito às turmas candidatas → exata;
+2. **exatamente uma** turma candidata pelo horário → atribui;
+3. **duas ou mais** → não escolhe: enfileira em `checkins_pendentes` (`ambiguo`);
+4. **nenhuma** → enfileira também (`sem_turma`) — antes isso era `200` mudo, com
+   o check-in sumindo apesar de a Wellhub ir pagar por ele.
+
+Candidatas = turmas ativas do dia da semana cuja janela
+`[horario - 30min, horario + duracao]` cobre o momento. **Os 30 min são
+literais de propósito**: baixar a tolerância mudaria o desfecho (o check-in
+ambíguo das 10:45 viraria candidata única), então virar config exige decidir o
+produto antes — a proposta é tolerância *assimétrica*, não um knob genérico.
+
+- A fila é **operacional** (`is_operacional()`), sem nenhuma coluna monetária:
+  a secretária resolve sem enxergar valor. Escrita só pelas RPCs.
+- `resolver_checkin_pendente(pendencia, turma, observacao)` — turma nula =
+  descartar, e aí a observação é obrigatória. Recusa turma de outro dia da
+  semana (`registrar_presenca()` não valida isso sozinha).
+- **Pendência aberta trava `conciliar_wellhub()` na competência.** Não é
+  burocracia: `fechamentos_professora` congela o snapshot na aprovação, então
+  resolver depois do fechamento não entra mais na folha.
+- Enquanto pendente, **não conta** presença, ocupação nem pagamento.
+- Tela: Agenda → **Pendências** (aba só aparece quando há fila).
+- A **Booking API** da Wellhub (12.3) é o fim estrutural disso — com reserva, a
+  turma vem no payload e a ambiguidade deixa de existir.
+
 ---
 
 ## 10. Skills do projeto (a criar conforme padrões surgem)
@@ -344,11 +383,20 @@ Financeiro (Fase 2) e Agenda & Presença (Fase 4) chegarem a essa integração.
 
 ### 12.2 Autenticação e segredos
 
-- OAuth 2.0 *client credentials flow*: `client_id` + `client_secret` → token de
-  acesso de curta duração → `Bearer` token em cada chamada às APIs.
-- Credenciais são geradas em "Wellhub for Companies" (Portal do Parceiro) →
-  Settings → OAuth credentials. O `client_secret` só é exibido **uma vez** na
-  criação.
+> 📖 **Referência completa das APIs:** [docs/interno/wellhub-api-referencia.md](docs/interno/wellhub-api-referencia.md),
+> levantada de `developers.wellhub.com` em 10/08/2026. O Postman antigo
+> (`documenter.getpostman.com`) está **desatualizado** — não usar.
+
+- **Um único `Bearer` estático** fornecido pela Wellhub (Technical Sales) serve
+  Access Control, Booking e Integration Setup. **Não** é OAuth
+  client-credentials com token de curta duração — essa nota anterior estava
+  errada. Access Control exige também `X-Gym-Id` em toda chamada.
+- ⏱️ **Orçamento de 1 segundo** para responder qualquer webhook; passando disso
+  a Wellhub faz **3 retentativas imediatas**. Medido em 10/08/2026: nosso
+  caminho de rejeição (só HMAC, sem I/O) leva ~260 ms morno e ~560 ms em cold
+  start, e cold starts de 1,2 s já apareceram em produção. O caminho feliz
+  ainda soma o `validate` externo + Supabase — **não cabe no orçamento**.
+  Ver backlog: responder cedo e processar depois.
 - **Mesma regra da seção 3:** `client_secret` da Wellhub nunca vai para o repo
   nem para o front. Guardar como secret de Edge Function do Supabase
   (`supabase secrets set`), chamada feita **server-side**.
@@ -372,17 +420,24 @@ Financeiro (Fase 2) e Agenda & Presença (Fase 4) chegarem a essa integração.
 |---|---|---|
 | **Access Control API** | Validar check-in de aluna Wellhub na hora da aula | Endpoint produção: `POST https://api.partners.gympass.com/access/v1/validate` com `gympass_id`. Essa chamada é o que gera a transação que origina o repasse. |
 | **Check-in Webhook** | Receber notificação quando a aluna faz check-in pelo app Wellhub | Wellhub faz `POST` na URL registrada pelo parceiro a cada check-in (assinado em `X-Gympass-Signature`). Fluxo esperado: recebe webhook → pré-registra a usuária → chama `validate` p/ confirmar ticket válido no dia → se positivo, libera. |
-| **Booking API** (opcional/futuro) | Sincronizar a agenda de turmas para reserva direta pelo app Wellhub | Evento de booking/cancelamento chega por webhook; parceiro tem **15 min** para responder com `PATCH` confirmando/recusando, senão é auto-rejeitado. Só faz sentido junto com Agenda & Turmas (Fase 4) — não é pré-requisito do check-in. |
+| **Booking API** | Publicar a grade para reserva pelo app Wellhub | Modelo **Class** (o quê) → **Slot** (quando/onde: `occur_date`, `room`, `instructors[]`, `total_capacity`/`total_booked`) → **Booking**. Reserva chega por webhook; **15 min** para `PATCH` confirmando/recusando, senão auto-rejeita. **É o que elimina a ambiguidade de turma na raiz:** com ela no ar, o evento `checkin-booking-occurred` traz o `booking_number` → slot → nossa aula. Depende da grade estar em `turmas` (hoje no Wix). |
 
 ### 12.4 Modelo de implementação recomendado
 
-Existem 3 modelos possíveis de acionar a Access Control API: *Gate System
-Trigger* (catraca física), *Attendance Trigger* (marca presença manualmente
-como um check-in comum) e *Automated Trigger* (consome o webhook de check-in e
-chama a Access Control API sozinho, sem intervenção humana). Studio Pole L não
-tem catraca — **Automated Trigger é o mais aderente**: aluna mostra o check-in
-no app, o sistema recebe o webhook e valida sozinho, sem clique manual
-(alinhado ao princípio de "poucos cliques" da seção 4).
+Existem 3 modelos de acionar a Access Control API: *Gate System Trigger*
+(catraca física), *Attendance Trigger* (chama o `validate` ao marcar o usuário
+como presente no sistema de gestão) e *Automated Trigger* (consome o webhook de
+check-in e chama o `validate` sozinho).
+
+⚠️ **A Wellhub exige DOIS modelos implementados, e um deles obrigatoriamente o
+Automated** (texto literal da doc oficial). A nota anterior — de que o
+Automated bastava — estava errada. Sem catraca, nossa combinação obrigatória é
+**Attendance Trigger + Automated Trigger**.
+
+O Attendance encaixa no que já existe: quando a equipe resolve uma pendência
+(`resolver_checkin_pendente`) ou a professora marca presença de aluna Wellhub
+no portal, essa marcação deve chamar o `validate`. **Ainda não implementado** —
+é pré-requisito de certificação, não melhoria.
 
 ### 12.5 Impacto no modelo de dados
 
@@ -395,6 +450,15 @@ no app, o sistema recebe o webhook e valida sozinho, sem clique manual
 - Valor por check-in pode ser **R$ 0** (primeira visita grátis da aluna ou teto
   de pagamento por visitante atingido no mês) — é caso de negócio válido, não
   pode travar o check-in nem ser tratado como erro.
+- **A turma do check-in não vem no payload.** A Access Control API notifica
+  *acesso ao estúdio*, não aula. Com duas salas, o horário não desambigua — daí
+  a fila `checkins_pendentes` (seção 9.7). O webhook responde JSON:
+  `{"resultado":"presenca"|"pendente"|"duplicado", …}`, sempre `200` para
+  desfecho de negócio; `500` só em falha de banco (a reentrega é segura agora
+  que a idempotência é garantida por índice único parcial).
+- ⚠️ **Pré-requisito de ativação em produção:** a grade precisa estar cadastrada
+  em `turmas` no Supabase. Hoje ela vive no Wix — ativar antes disso faz *todo*
+  check-in cair em `sem_turma` e a fila travar a conciliação do mês.
 
 ### 12.6 Conciliação financeira (Fase 2)
 
