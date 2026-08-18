@@ -44,6 +44,7 @@ const GRUPOS: Grupo[] = [
     ],
   },
   { to: 'fluxo', label: 'Fluxo de caixa', rotas: ['fluxo'] },
+  { to: 'dividas', label: 'Dívidas', rotas: ['dividas'] },
   {
     to: 'fiscal',
     label: 'Fiscal',

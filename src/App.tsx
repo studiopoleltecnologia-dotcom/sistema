@@ -18,6 +18,7 @@ import { FiscalPage } from './modules/financeiro/pages/FiscalPage'
 import { DrePage } from './modules/financeiro/pages/DrePage'
 import { ReservaPage } from './modules/financeiro/pages/ReservaPage'
 import { WellhubPage } from './modules/financeiro/pages/WellhubPage'
+import { DividasPage } from './modules/financeiro/pages/DividasPage'
 import { FollowupPage } from './modules/followup/FollowupPage'
 import { AgendaPage } from './modules/agenda/AgendaPage'
 import { ProfessorasPage } from './modules/professoras/ProfessorasPage'
@@ -131,6 +132,7 @@ export default function App() {
                   <Route path="contas" element={<ContasPage />} />
                   <Route path="calendario" element={<CalendarioPage />} />
                   <Route path="fluxo" element={<FluxoPage />} />
+                  <Route path="dividas" element={<DividasPage />} />
                   <Route path="fiscal" element={<FiscalPage />} />
                   <Route path="dre" element={<DrePage />} />
                   <Route path="reserva" element={<ReservaPage />} />

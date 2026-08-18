@@ -2,6 +2,8 @@ import { requireSupabase } from '../../../lib/supabase'
 import { limitesDoPeriodo, ultimosMeses, type Periodo } from '../periodo'
 import type {
   ConfigFinanceiroUpdate,
+  DividaInsert,
+  DividaUpdate,
   EntradaInsert,
   EntradaUpdate,
   ReservaMovimentoInsert,
@@ -311,6 +313,41 @@ export async function listarContasAPagar() {
     .from('vw_contas_a_pagar')
     .select('*')
     .order('vencimento')
+  if (error) throw error
+  return data
+}
+
+/**
+ * Dívidas (empréstimos a devolver) — visibilidade pura, fora do fluxo de
+ * caixa: ainda não há decisão de quando/como pagar mês a mês.
+ */
+export async function listarDividas() {
+  const { data, error } = await requireSupabase()
+    .from('dividas')
+    .select('*')
+    .order('quitada')
+    .order('criada_em')
+  if (error) throw error
+  return data
+}
+
+export async function criarDivida(input: DividaInsert) {
+  const { data, error } = await requireSupabase()
+    .from('dividas')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function atualizarDivida(id: string, patch: DividaUpdate) {
+  const { data, error } = await requireSupabase()
+    .from('dividas')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
   if (error) throw error
   return data
 }
