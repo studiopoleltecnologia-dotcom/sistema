@@ -20,6 +20,9 @@ export type DespesaRecorrente = Tables<'despesas_recorrentes'>
 export type DreCompetencia = Tables<'vw_dre_competencia'>
 export type ContaAReceber = Tables<'vw_contas_a_receber'>
 export type ContaAPagar = Tables<'vw_contas_a_pagar'>
+export type Divida = Tables<'dividas'>
+export type DividaInsert = TablesInsert<'dividas'>
+export type DividaUpdate = TablesUpdate<'dividas'>
 
 export type CategoriaEntrada = Enums<'categoria_entrada'>
 export type StatusEntrada = Enums<'status_entrada'>

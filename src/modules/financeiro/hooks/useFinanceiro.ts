@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   atualizarConfig,
+  atualizarDivida,
   atualizarEntrada,
   atualizarSaida,
   criarCategoriaSaida,
+  criarDivida,
   criarEntrada,
   criarRecorrente,
   criarReservaMovimento,
@@ -15,6 +17,7 @@ import {
   listarCategoriasSaida,
   listarContasAPagar,
   listarContasAReceber,
+  listarDividas,
   listarDreCompetencia,
   listarEntradas,
   listarMixReceitaMensal,
@@ -30,7 +33,14 @@ import {
   obterSaldoCaixa,
 } from '../api/financeiro'
 import type { Periodo } from '../periodo'
-import type { ConfigFinanceiroUpdate, EntradaInsert, EntradaUpdate, SaidaUpdate } from '../types'
+import type {
+  ConfigFinanceiroUpdate,
+  DividaInsert,
+  DividaUpdate,
+  EntradaInsert,
+  EntradaUpdate,
+  SaidaUpdate,
+} from '../types'
 
 // invalidações em bloco: qualquer lançamento mexe em MEI e resumo
 function useInvalidarFinanceiro() {
@@ -234,5 +244,25 @@ export function useCriarReservaMovimento() {
   return useMutation({
     mutationFn: criarReservaMovimento,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reserva'] }),
+  })
+}
+
+export function useDividas() {
+  return useQuery({ queryKey: ['dividas'], queryFn: listarDividas })
+}
+
+export function useCriarDivida() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DividaInsert) => criarDivida(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dividas'] }),
+  })
+}
+
+export function useAtualizarDivida() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: DividaUpdate }) => atualizarDivida(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dividas'] }),
   })
 }

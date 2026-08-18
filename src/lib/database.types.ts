@@ -658,6 +658,36 @@ export type Database = {
           },
         ]
       }
+      dividas: {
+        Row: {
+          atualizada_em: string
+          credor: string
+          criada_em: string
+          descricao: string | null
+          id: string
+          quitada: boolean
+          valor_centavos: number
+        }
+        Insert: {
+          atualizada_em?: string
+          credor: string
+          criada_em?: string
+          descricao?: string | null
+          id?: string
+          quitada?: boolean
+          valor_centavos: number
+        }
+        Update: {
+          atualizada_em?: string
+          credor?: string
+          criada_em?: string
+          descricao?: string | null
+          id?: string
+          quitada?: boolean
+          valor_centavos?: number
+        }
+        Relationships: []
+      }
       emails_fila: {
         Row: {
           criado_em: string
@@ -2361,14 +2391,6 @@ export type Database = {
         Returns: boolean
       }
       cliente_atual: { Args: never; Returns: string }
-      confirmar_pagamento_inscricao: {
-        Args: {
-          p_confirmado: boolean
-          p_inscricao: string
-          p_observacao?: string
-        }
-        Returns: undefined
-      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string
@@ -2376,6 +2398,14 @@ export type Database = {
           p_valor_total_centavos: number
         }
         Returns: number
+      }
+      confirmar_pagamento_inscricao: {
+        Args: {
+          p_confirmado: boolean
+          p_inscricao: string
+          p_observacao?: string
+        }
+        Returns: undefined
       }
       convidar_equipe: {
         Args: {
