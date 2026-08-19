@@ -3,6 +3,7 @@ import {
   atualizarConfig,
   atualizarDivida,
   atualizarEntrada,
+  atualizarRecorrente,
   atualizarSaida,
   criarCategoriaSaida,
   criarDivida,
@@ -16,12 +17,12 @@ import {
   lancarRecorrente,
   listarCategoriasSaida,
   listarContasAPagar,
-  listarContasAReceber,
   listarDividas,
   listarDreCompetencia,
   listarEntradas,
   listarMixReceitaMensal,
   listarMixReceitaPeriodo,
+  listarMovimentosDivida,
   listarRecorrentes,
   listarReserva,
   listarSaidas,
@@ -31,10 +32,14 @@ import {
   obterMei,
   obterMrr,
   obterSaldoCaixa,
+  programarParcelasDivida,
+  registrarPagamentoDivida,
+  reverterPagamentoSaida,
 } from '../api/financeiro'
 import type { Periodo } from '../periodo'
 import type {
   ConfigFinanceiroUpdate,
+  DespesaRecorrenteUpdate,
   DividaInsert,
   DividaUpdate,
   EntradaInsert,
@@ -52,7 +57,6 @@ function useInvalidarFinanceiro() {
     qc.invalidateQueries({ queryKey: ['reserva'] })
     qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
     qc.invalidateQueries({ queryKey: ['dre-competencia'] })
-    qc.invalidateQueries({ queryKey: ['contas-a-receber'] })
     qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
   }
 }
@@ -131,10 +135,6 @@ export function useDreCompetencia(periodo: Periodo) {
   })
 }
 
-export function useContasAReceber() {
-  return useQuery({ queryKey: ['contas-a-receber'], queryFn: listarContasAReceber })
-}
-
 export function useContasAPagar() {
   return useQuery({ queryKey: ['contas-a-pagar'], queryFn: listarContasAPagar })
 }
@@ -179,6 +179,20 @@ export function useExcluirSaida() {
   return useMutation({ mutationFn: excluirSaida, onSuccess: invalidar })
 }
 
+/** Desfaz o pagamento (volta para "a pagar") — nunca apaga o lançamento. */
+export function useReverterPagamentoSaida() {
+  const invalidar = useInvalidarFinanceiro()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: reverterPagamentoSaida,
+    onSuccess: () => {
+      invalidar()
+      qc.invalidateQueries({ queryKey: ['dividas'] })
+      qc.invalidateQueries({ queryKey: ['divida-movimentos'] })
+    },
+  })
+}
+
 export function useRecorrentes() {
   return useQuery({ queryKey: ['recorrentes'], queryFn: listarRecorrentes })
 }
@@ -191,6 +205,19 @@ export function useCriarRecorrente() {
       qc.invalidateQueries({ queryKey: ['recorrentes'] })
       qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
       qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
+    },
+  })
+}
+
+export function useAtualizarRecorrente() {
+  const invalidar = useInvalidarFinanceiro()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: DespesaRecorrenteUpdate }) =>
+      atualizarRecorrente(id, patch),
+    onSuccess: () => {
+      invalidar()
+      qc.invalidateQueries({ queryKey: ['recorrentes'] })
     },
   })
 }
@@ -265,4 +292,33 @@ export function useAtualizarDivida() {
     mutationFn: ({ id, patch }: { id: string; patch: DividaUpdate }) => atualizarDivida(id, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dividas'] }),
   })
+}
+
+export function useMovimentosDivida(dividaId: string | null) {
+  return useQuery({
+    queryKey: ['divida-movimentos', dividaId],
+    queryFn: () => listarMovimentosDivida(dividaId!),
+    enabled: dividaId != null,
+  })
+}
+
+/** Abatimento e cronograma criam saídas — precisam invalidar o financeiro todo. */
+function useInvalidarDivida() {
+  const invalidar = useInvalidarFinanceiro()
+  const qc = useQueryClient()
+  return () => {
+    invalidar()
+    qc.invalidateQueries({ queryKey: ['dividas'] })
+    qc.invalidateQueries({ queryKey: ['divida-movimentos'] })
+  }
+}
+
+export function useRegistrarPagamentoDivida() {
+  const invalidar = useInvalidarDivida()
+  return useMutation({ mutationFn: registrarPagamentoDivida, onSuccess: invalidar })
+}
+
+export function useProgramarParcelasDivida() {
+  const invalidar = useInvalidarDivida()
+  return useMutation({ mutationFn: programarParcelasDivida, onSuccess: invalidar })
 }

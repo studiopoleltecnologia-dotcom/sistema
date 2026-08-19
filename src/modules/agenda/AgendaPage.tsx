@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Button } from '../../components/ui/Button'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { Tabs } from '../../components/ui/Tabs'
 import { fmtCentavos, parseCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
-import { DiaView } from './components/DiaView'
-import { GradeView } from './components/GradeView'
+import { GradeHorarios } from './components/GradeHorarios'
 import { OcupacaoView } from './components/OcupacaoView'
 import { PendenciasView } from './components/PendenciasView'
 import {
@@ -10,12 +12,11 @@ import {
   useCheckinsPendentes,
   useConfigAgendamento,
 } from './hooks/useAgenda'
-import { DIAS_SEMANA } from './types'
 
 export function AgendaPage() {
-  const hoje = new Date().toISOString().slice(0, 10)
-  const [data, setData] = useState(hoje)
-  const [aba, setAba] = useState<'dia' | 'grade' | 'ocupacao' | 'pendencias' | 'config'>('dia')
+  // Abre na grade: a pergunta mais frequente é "como está a semana", e o dia
+  // agora vive ao lado dela, não numa aba concorrente.
+  const [aba, setAba] = useState<'grade' | 'ocupacao' | 'pendencias' | 'config'>('grade')
   // Fila de check-ins sem turma: a aba só aparece quando há o que resolver,
   // para não virar mais um item morto no topo da Agenda.
   const { data: pendencias } = useCheckinsPendentes()
@@ -25,60 +26,23 @@ export function AgendaPage() {
   const { data: funcao } = useMinhaFuncao()
   const ehGestao = funcao === 'gestao'
 
-  const abaCls = (ativa: boolean) =>
-    `rounded-md px-2.5 py-1 text-xs font-medium transition ${
-      ativa ? 'bg-brand-50 text-brand-700' : 'text-neutral-400 hover:text-neutral-700'
-    }`
-
-  const diaSemana = new Date(data + 'T00:00:00').getDay()
+  // Pendências só entra na lista quando há fila — aba morta no topo da
+  // Agenda seria mais um item competindo por atenção sem ter o que dizer.
+  const abas = [
+    { value: 'grade' as const, label: 'Grade' },
+    { value: 'ocupacao' as const, label: 'Ocupação' },
+    ...(nPendencias > 0 ? [{ value: 'pendencias' as const, label: `Pendências (${nPendencias})` }] : []),
+    ...(ehGestao ? [{ value: 'config' as const, label: 'Config' }] : []),
+  ]
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex flex-wrap gap-1">
-            <button className={abaCls(aba === 'dia')} onClick={() => setAba('dia')}>
-              Dia
-            </button>
-            <button className={abaCls(aba === 'grade')} onClick={() => setAba('grade')}>
-              Grade
-            </button>
-            <button className={abaCls(aba === 'ocupacao')} onClick={() => setAba('ocupacao')}>
-              Ocupação
-            </button>
-            {nPendencias > 0 && (
-              <button
-                className={abaCls(aba === 'pendencias')}
-                onClick={() => setAba('pendencias')}
-              >
-                Pendências
-                <span className="ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[10px] font-semibold text-warning-700">
-                  {nPendencias}
-                </span>
-              </button>
-            )}
-            {ehGestao && (
-              <button className={abaCls(aba === 'config')} onClick={() => setAba('config')}>
-                Config
-              </button>
-            )}
-          </div>
-        </div>
-        {aba === 'dia' && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-400">{DIAS_SEMANA[diaSemana]}</span>
-            <input
-              type="date"
-              value={data}
-              onChange={(e) => setData(e.target.value)}
-              className="rounded-md border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500"
-            />
-          </div>
-        )}
-      </div>
+      <PageHeader
+        titulo="Grade de horários"
+        filtros={<Tabs value={aba} onChange={setAba} items={abas} />}
+      />
 
-      {aba === 'dia' && <DiaView data={data} />}
-      {aba === 'grade' && <GradeView />}
+      {aba === 'grade' && <GradeHorarios />}
       {aba === 'ocupacao' && <OcupacaoView />}
       {aba === 'pendencias' && <PendenciasView />}
       {aba === 'config' && ehGestao && <ConfigAgendamentoForm />}
@@ -132,13 +96,9 @@ function ConfigAgendamentoForm() {
             className={input}
           />
         </div>
-        <button
-          onClick={salvar}
-          disabled={atualizar.isPending}
-          className="w-fit rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
-        >
-          {atualizar.isPending ? 'Salvando…' : 'Salvar'}
-        </button>
+        <Button onClick={salvar} loading={atualizar.isPending} className="w-fit">
+          Salvar
+        </Button>
       </div>
     </div>
   )

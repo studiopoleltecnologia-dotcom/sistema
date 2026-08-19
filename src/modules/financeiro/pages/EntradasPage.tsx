@@ -6,20 +6,23 @@ import {
   CheckCircle2,
   Plus,
   RotateCcw,
+  Trash2,
   TriangleAlert,
-  X,
 } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { EmptyState } from '../../../components/ui/EmptyState'
+import { FiltroChips } from '../../../components/ui/FiltroChips'
 import { Input } from '../../../components/ui/Input'
 import { KpiCard } from '../../../components/ui/KpiCard'
+import { PageHeader } from '../../../components/ui/PageHeader'
 import { Select } from '../../../components/ui/Select'
 import { cn } from '../../../components/ui/cn'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
 import { mesAtual, periodoMes, type Periodo } from '../periodo'
+import { LINHA_BASE, STATUS_FIN, type StatusFin } from '../statusVisual'
 import {
   useAtualizarEntrada,
   useCriarEntrada,
@@ -45,14 +48,22 @@ const FILTROS: { value: Filtro; label: string }[] = [
   { value: 'cancelada', label: 'Canceladas' },
 ]
 
-const STATUS_INFO: Record<StatusEntradaVis, { label: string; badge: 'success' | 'brand' | 'danger' | 'neutral' }> = {
-  recebida: { label: 'Recebida', badge: 'success' },
-  pendente: { label: 'A receber', badge: 'brand' },
-  atrasada: { label: 'Atrasada', badge: 'danger' },
-  cancelada: { label: 'Cancelada', badge: 'neutral' },
+/** Mesma escala de cor de Saídas (statusVisual.ts): verde entrou, âmbar vem, vermelho atrasou. */
+const STATUS_INFO: Record<StatusEntradaVis, { label: string; status: StatusFin }> = {
+  recebida: { label: 'Recebida', status: 'pago' },
+  pendente: { label: 'A receber', status: 'aberto' },
+  atrasada: { label: 'Atrasada', status: 'atrasado' },
+  cancelada: { label: 'Cancelada', status: 'cancelado' },
 }
 
 const hojeISO = () => new Date().toISOString().slice(0, 10)
+
+const MESES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+function mesAno(iso: string) {
+  const [ano, mes] = iso.slice(0, 7).split('-').map(Number)
+  return `${MESES_ABREV[mes - 1]}/${ano}`
+}
 
 /** Dia 15 do mês seguinte à competência — regra de repasse Wellhub. */
 function previsaoWellhub(competencia: string): string {
@@ -86,13 +97,17 @@ export function EntradasPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SeletorPeriodo periodo={periodo} onChange={setPeriodo} />
-        <Button onClick={() => setFormAberto(true)}>
-          <Plus className="size-4" />
-          Nova entrada
-        </Button>
-      </div>
+      <PageHeader
+        titulo="Entradas"
+        subtitulo="Tudo que entra no caixa — recebido e a receber"
+        acoes={
+          <Button onClick={() => setFormAberto(true)}>
+            <Plus className="size-4" />
+            Nova entrada
+          </Button>
+        }
+        filtros={<SeletorPeriodo periodo={periodo} onChange={setPeriodo} />}
+      />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Recebido" value={fmtCentavos(soma('recebida'))} icon={Banknote} tone="success" hint={`${conta('recebida')} lançamento(s)`} />
@@ -101,27 +116,14 @@ export function EntradasPage() {
         <KpiCard label="Canceladas" value={fmtCentavos(soma('cancelada'))} icon={Ban} tone="neutral" hint={`${conta('cancelada')} no período`} />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {FILTROS.map((f) => {
-          const qtd = f.value === 'todas' ? linhas.length : conta(f.value)
-          const ativo = filtro === f.value
-          return (
-            <button
-              key={f.value}
-              onClick={() => setFiltro(f.value)}
-              className={cn(
-                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition',
-                ativo ? 'bg-brand-600 text-white' : 'bg-white text-neutral-500 ring-1 ring-neutral-200 hover:text-neutral-800',
-              )}
-            >
-              {f.label}
-              <span className={cn('rounded-full px-1.5 text-xs tabular-nums', ativo ? 'bg-white/20' : 'bg-neutral-100 text-neutral-500')}>
-                {qtd}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <FiltroChips
+        value={filtro}
+        onChange={setFiltro}
+        items={FILTROS.map((f) => ({
+          ...f,
+          qtd: f.value === 'todas' ? linhas.length : conta(f.value),
+        }))}
+      />
 
       {isLoading ? (
         <p className="text-sm text-neutral-400">Carregando…</p>
@@ -136,8 +138,26 @@ export function EntradasPage() {
               vis={vis}
               onRecebi={() => atualizar.mutate({ id: e.id, patch: { status: 'recebida', data_caixa: hoje } })}
               onCancelar={() => atualizar.mutate({ id: e.id, patch: { status: 'cancelada' } })}
-              onReabrir={() => atualizar.mutate({ id: e.id, patch: { status: 'prevista' } })}
-              onExcluir={() => excluir.mutate(e.id)}
+              // Volta para "a receber": limpa a data de caixa (o dinheiro não
+              // entrou) e devolve um vencimento, senão a linha ficaria sem data.
+              onReabrir={() =>
+                atualizar.mutate({
+                  id: e.id,
+                  patch: {
+                    status: 'prevista',
+                    data_caixa: null,
+                    data_prevista: e.data_prevista ?? e.data_caixa,
+                  },
+                })
+              }
+              onExcluir={() => {
+                if (
+                  window.confirm(
+                    `Excluir definitivamente ${fmtCentavos(e.valor_centavos)} (${e.descricao || CATEGORIA_ENTRADA_LABEL[e.categoria]})?\n\nIsto apaga o lançamento. Para só desfazer o status, use os botões da linha.`,
+                  )
+                )
+                  excluir.mutate(e.id)
+              }}
             />
           ))}
         </ul>
@@ -171,46 +191,62 @@ function LinhaEntrada({
         ? `comp. ${fmtData(e.data_competencia)}`
         : `vence ${fmtData(e.data_prevista)}`
 
+  // Repasse Wellhub/ClassPass cai num mês mas é operação do mês anterior —
+  // sinalizar isso na própria linha (antes só existia numa tela separada).
+  const competenciaDiferente =
+    (vis === 'pendente' || vis === 'atrasada') &&
+    !!e.data_competencia &&
+    !!e.data_prevista &&
+    e.data_competencia.slice(0, 7) !== e.data_prevista.slice(0, 7)
+
+  const tokens = STATUS_FIN[info.status]
+
   return (
-    <li
-      className={cn(
-        'flex items-center gap-3 rounded-lg border bg-white px-3.5 py-2.5 text-sm',
-        vis === 'atrasada' ? 'border-danger-200' : 'border-neutral-200/80',
-      )}
-    >
-      <span
-        className={cn(
-          'w-24 shrink-0 font-semibold tabular-nums',
-          vis === 'cancelada' ? 'text-neutral-400 line-through' : 'text-neutral-900',
-        )}
-      >
+    <li className={cn(LINHA_BASE, tokens.barra)}>
+      <span className={cn('w-24 shrink-0 font-semibold tabular-nums', tokens.valor)}>
         {fmtCentavos(e.valor_centavos)}
       </span>
-      <Badge variant={info.badge}>{info.label}</Badge>
+      <Badge variant={tokens.badge}>{info.label}</Badge>
       <span className="hidden shrink-0 text-xs text-neutral-400 sm:inline">
         {CATEGORIA_ENTRADA_LABEL[e.categoria]}
       </span>
       <span className="flex-1 truncate text-neutral-500">{e.descricao}</span>
+      {competenciaDiferente && (
+        <span className="hidden shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500 sm:inline">
+          competência {mesAno(e.data_competencia!)}
+        </span>
+      )}
       <span className="hidden shrink-0 text-xs text-neutral-400 md:inline">{dataRotulo}</span>
 
       {(vis === 'pendente' || vis === 'atrasada') && (
         <>
-          <Button size="sm" variant="secondary" onClick={onRecebi}>
+          <Button size="sm" variant="secondary" onClick={onRecebi} title="Marcar como recebida">
             <CheckCircle2 className="size-3.5" />
-            Recebi
+            <span className="hidden sm:inline">Marcar como recebida</span>
           </Button>
           <button onClick={onCancelar} title="Cancelar" className="rounded p-1 text-neutral-300 transition hover:text-warning-600">
             <Ban className="size-3.5" />
           </button>
         </>
       )}
+      {/* Desfazer o recebimento marcado por engano — sem apagar o lançamento. */}
+      {vis === 'recebida' && (
+        <Button size="sm" variant="ghost" onClick={onReabrir} title="Voltar para A receber (não exclui)">
+          <RotateCcw className="size-3.5" />
+          <span className="hidden sm:inline">Marcar como não recebida</span>
+        </Button>
+      )}
       {vis === 'cancelada' && (
         <button onClick={onReabrir} title="Reabrir" className="rounded p-1 text-neutral-400 transition hover:text-brand-600">
           <RotateCcw className="size-3.5" />
         </button>
       )}
-      <button onClick={onExcluir} title="Excluir" className="rounded p-1 text-neutral-300 transition hover:text-danger-600">
-        <X className="size-3.5" />
+      <button
+        onClick={onExcluir}
+        title="Excluir lançamento"
+        className="ml-1 shrink-0 rounded p-1 text-neutral-300 transition hover:bg-danger-50 hover:text-danger-600"
+      >
+        <Trash2 className="size-3.5" />
       </button>
     </li>
   )

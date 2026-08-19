@@ -35,9 +35,21 @@ function useAberto(key: string, inicial = true) {
  * `persistKey` guarda o estado no navegador para a tela abrir do jeito
  * que a pessoa deixou.
  */
+/** Tons do chip de título — o mesmo vocabulário de cor do resto do app. */
+const CHIP_CLS = {
+  brand: 'bg-brand-100 text-brand-800',
+  success: 'bg-success-100 text-success-700',
+  warning: 'bg-warning-100 text-warning-700',
+  danger: 'bg-danger-100 text-danger-700',
+  neutral: 'bg-neutral-200 text-neutral-700',
+} as const
+
+export type ChipTom = keyof typeof CHIP_CLS
+
 export function CardColapsavel({
   title,
   subtitle,
+  chip,
   persistKey,
   defaultOpen = true,
   forcarAberto = false,
@@ -47,6 +59,11 @@ export function CardColapsavel({
 }: {
   title: ReactNode
   subtitle?: ReactNode
+  /**
+   * Renderiza o título dentro de uma caixinha tingida em vez de texto solto
+   * — marca a seção de longe, sem depender de o olho encontrar o negrito.
+   */
+  chip?: ChipTom
   persistKey: string
   defaultOpen?: boolean
   /**
@@ -84,10 +101,21 @@ export function CardColapsavel({
             )}
           />
           <div>
-            <h3 className="font-display text-sm font-semibold tracking-wide text-neutral-900">
-              {title}
-            </h3>
-            {subtitle && <p className="mt-0.5 text-xs text-neutral-400">{subtitle}</p>}
+            {chip ? (
+              <span
+                className={cn(
+                  'inline-block rounded-md px-2.5 py-1 font-display text-xs font-bold uppercase tracking-wider',
+                  CHIP_CLS[chip],
+                )}
+              >
+                {title}
+              </span>
+            ) : (
+              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-neutral-900">
+                {title}
+              </h3>
+            )}
+            {subtitle && <p className="mt-1 text-xs text-neutral-500">{subtitle}</p>}
           </div>
         </button>
         {right}

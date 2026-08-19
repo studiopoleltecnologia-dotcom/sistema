@@ -12,6 +12,7 @@ import {
   listarModalidades,
   listarNomesProfessoras,
   listarOcupacao,
+  listarOcupacaoPeriodo,
   listarSalas,
   listarTurmas,
   obterConfigAgendamento,
@@ -37,6 +38,14 @@ export function useModalidades() {
 
 export function useOcupacao() {
   return useQuery({ queryKey: ['ocupacao-turmas'], queryFn: listarOcupacao })
+}
+
+/** Ocupação real do intervalo exibido na grade (semana ou mês). */
+export function useOcupacaoPeriodo(inicio: string, fim: string) {
+  return useQuery({
+    queryKey: ['ocupacao-periodo', inicio, fim],
+    queryFn: () => listarOcupacaoPeriodo(inicio, fim),
+  })
 }
 
 export function useDia(data: string) {
