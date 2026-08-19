@@ -623,9 +623,12 @@ export type Database = {
           atualizada_em: string
           categoria_id: string
           criada_em: string
+          data_fim: string | null
+          data_inicio: string
           descricao: string
           dia_vencimento: number
           id: string
+          observacoes: string | null
           valor_centavos: number
         }
         Insert: {
@@ -633,9 +636,12 @@ export type Database = {
           atualizada_em?: string
           categoria_id: string
           criada_em?: string
+          data_fim?: string | null
+          data_inicio?: string
           descricao: string
           dia_vencimento?: number
           id?: string
+          observacoes?: string | null
           valor_centavos: number
         }
         Update: {
@@ -643,9 +649,12 @@ export type Database = {
           atualizada_em?: string
           categoria_id?: string
           criada_em?: string
+          data_fim?: string | null
+          data_inicio?: string
           descricao?: string
           dia_vencimento?: number
           id?: string
+          observacoes?: string | null
           valor_centavos?: number
         }
         Relationships: [
@@ -1616,6 +1625,7 @@ export type Database = {
           data_competencia: string
           data_prevista: string | null
           descricao: string | null
+          divida_id: string | null
           fechamento_id: string | null
           id: string
           recorrente_id: string | null
@@ -1630,6 +1640,7 @@ export type Database = {
           data_competencia: string
           data_prevista?: string | null
           descricao?: string | null
+          divida_id?: string | null
           fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
@@ -1644,6 +1655,7 @@ export type Database = {
           data_competencia?: string
           data_prevista?: string | null
           descricao?: string | null
+          divida_id?: string | null
           fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
@@ -1656,6 +1668,13 @@ export type Database = {
             columns: ["categoria_id"]
             isOneToOne: false
             referencedRelation: "categorias_saida"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_financeiras_divida_id_fkey"
+            columns: ["divida_id"]
+            isOneToOne: false
+            referencedRelation: "dividas"
             referencedColumns: ["id"]
           },
           {
@@ -2042,8 +2061,10 @@ export type Database = {
           categoria_id: string | null
           competencia: string | null
           descricao: string | null
+          divida_id: string | null
           id: string | null
           origem: string | null
+          tipo: string | null
           valor_centavos: number | null
           vencimento: string | null
         }

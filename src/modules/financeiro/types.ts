@@ -17,8 +17,8 @@ export type Mrr = Tables<'vw_mrr'>
 export type MixReceitaMensal = Tables<'vw_mix_receita_mensal'>
 export type SaidasMensal = Tables<'vw_saidas_mensal'>
 export type DespesaRecorrente = Tables<'despesas_recorrentes'>
+export type DespesaRecorrenteUpdate = TablesUpdate<'despesas_recorrentes'>
 export type DreCompetencia = Tables<'vw_dre_competencia'>
-export type ContaAReceber = Tables<'vw_contas_a_receber'>
 export type ContaAPagar = Tables<'vw_contas_a_pagar'>
 export type Divida = Tables<'dividas'>
 export type DividaInsert = TablesInsert<'dividas'>
@@ -44,18 +44,46 @@ export const CATEGORIA_ENTRADA_LABEL = Object.fromEntries(
 
 export const TIPO_SAIDA_LABEL: Record<TipoSaida, string> = {
   fixa: 'Fixo recorrente',
-  fixa_planejada: 'Fixo planejado',
+  fixa_planejada: 'Fixo recorrente',
   variavel: 'Variável',
 }
 
 export const TIPO_SAIDA_DESCRICAO: Record<TipoSaida, string> = {
   fixa: 'Todo mês, o custo de manter as portas abertas',
-  fixa_planejada: 'Previsto, mas não mensal — manutenção, marketing, eventos',
+  fixa_planejada: 'Todo mês, o custo de manter as portas abertas',
   variavel: 'Depende da operação — professoras, comissões, materiais',
 }
 
-/** Ordem de exibição: do mais previsível ao mais variável. */
-export const ORDEM_TIPO_SAIDA: TipoSaida[] = ['fixa', 'fixa_planejada', 'variavel']
+/**
+ * Ordem de exibição. `fixa_planejada` saiu: a gestão não distingue "fixo
+ * planejado" de "fixo recorrente" (18/08/2026), e a migration daquele dia
+ * migrou as categorias para 'fixa'. O valor segue no enum do Postgres —
+ * remover valor de enum exige recriar o tipo — mas nada novo o usa, e o
+ * LABEL acima ainda o mapeia caso apareça em dado histórico.
+ */
+export const ORDEM_TIPO_SAIDA: TipoSaida[] = ['fixa', 'variavel']
+
+/** Grupos de Saídas: dívida é decidida por divida_id, não por tipo. */
+export type GrupoSaida = 'fixa' | 'variavel' | 'divida'
+
+export const GRUPO_SAIDA_LABEL: Record<GrupoSaida, string> = {
+  fixa: 'Fixo recorrente',
+  variavel: 'Variável',
+  divida: 'Dívidas',
+}
+
+export const GRUPO_SAIDA_DESCRICAO: Record<GrupoSaida, string> = {
+  fixa: 'Todo mês, o custo de manter as portas abertas',
+  variavel: 'Depende da operação — professoras, comissões, materiais',
+  divida: 'Abatimento de empréstimos — sai do caixa, não conta como despesa',
+}
+
+export const ORDEM_GRUPO_SAIDA: GrupoSaida[] = ['fixa', 'variavel', 'divida']
+
+/** Um tipo_saida do banco cai em qual grupo de tela. */
+export function grupoDoTipo(tipo: TipoSaida | string | null | undefined): GrupoSaida {
+  return tipo === 'fixa' || tipo === 'fixa_planejada' ? 'fixa' : 'variavel'
+}
 
 /**
  * Status "de tela" de uma entrada. `atrasada` não existe no banco — é

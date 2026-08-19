@@ -28,6 +28,7 @@ import {
 } from 'recharts'
 import { KpiCard } from '../../../components/ui/KpiCard'
 import { CardColapsavel } from '../../../components/ui/CardColapsavel'
+import { PageHeader } from '../../../components/ui/PageHeader'
 import { cn } from '../../../components/ui/cn'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { LinhaDoCaixa } from '../components/LinhaDoCaixa'
@@ -204,7 +205,7 @@ export function DashboardFinanceiro() {
       icon: Wallet,
       texto: `Caixa fica negativo em ${fmtCentavos(saldoProjetado)} depois de pagar o que está em aberto`,
       tom: 'warning',
-      to: 'contas',
+      to: 'saidas',
     })
   if (vencidasLista.length > 0)
     alertas.push({
@@ -230,10 +231,12 @@ export function DashboardFinanceiro() {
 
   return (
     <div className="flex flex-col gap-7">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-base font-semibold text-neutral-900">Resumo</h2>
-        <SeletorPeriodo periodo={periodo} onChange={setPeriodo} />
-      </div>
+      <PageHeader
+        titulo="Resumo"
+        subtitulo="A saúde financeira do mês em uma tela"
+        acoes={<SeletorPeriodo periodo={periodo} onChange={setPeriodo} />}
+        className="mb-0"
+      />
 
       {/*
         Nível 0 — acima de tudo. Antes este bloco era renderizado por último,

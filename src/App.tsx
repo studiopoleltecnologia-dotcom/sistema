@@ -10,9 +10,6 @@ import { FinanceiroLayout } from './modules/financeiro/FinanceiroLayout'
 import { DashboardFinanceiro } from './modules/financeiro/pages/DashboardFinanceiro'
 import { EntradasPage } from './modules/financeiro/pages/EntradasPage'
 import { SaidasPage } from './modules/financeiro/pages/SaidasPage'
-import { RecorrenciasPage } from './modules/financeiro/pages/RecorrenciasPage'
-import { ContasPage } from './modules/financeiro/pages/ContasPage'
-import { CalendarioPage } from './modules/financeiro/pages/CalendarioPage'
 import { FluxoPage } from './modules/financeiro/pages/FluxoPage'
 import { FiscalPage } from './modules/financeiro/pages/FiscalPage'
 import { DrePage } from './modules/financeiro/pages/DrePage'
@@ -128,9 +125,6 @@ export default function App() {
                   <Route index element={<DashboardFinanceiro />} />
                   <Route path="entradas" element={<EntradasPage />} />
                   <Route path="saidas" element={<SaidasPage />} />
-                  <Route path="recorrencias" element={<RecorrenciasPage />} />
-                  <Route path="contas" element={<ContasPage />} />
-                  <Route path="calendario" element={<CalendarioPage />} />
                   <Route path="fluxo" element={<FluxoPage />} />
                   <Route path="dividas" element={<DividasPage />} />
                   <Route path="fiscal" element={<FiscalPage />} />
