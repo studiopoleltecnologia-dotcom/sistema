@@ -2,6 +2,9 @@ import { requireSupabase } from '../../../lib/supabase'
 import { limitesDoPeriodo, ultimosMeses, type Periodo } from '../periodo'
 import type {
   ConfigFinanceiroUpdate,
+  DespesaRecorrenteUpdate,
+  DividaInsert,
+  DividaUpdate,
   EntradaInsert,
   EntradaUpdate,
   ReservaMovimentoInsert,
@@ -57,11 +60,18 @@ export async function excluirEntrada(id: string) {
   if (error) throw error
 }
 
+/**
+ * Saídas já pagas no período. Só as pagas: as previstas vivem em
+ * vw_contas_a_pagar (seção "A pagar"), e como data_caixa é NOT NULL com
+ * default, sem o filtro de status uma parcela programada apareceria nas
+ * duas seções ao mesmo tempo.
+ */
 export async function listarSaidas(periodo: Periodo) {
   const { inicio, fim } = limitesDoPeriodo(periodo)
   const { data, error } = await requireSupabase()
     .from('saidas_financeiras')
     .select('*, categoria:categorias_saida(*)')
+    .eq('status_saida', 'paga')
     .gte('data_caixa', inicio)
     .lte('data_caixa', fim)
     .order('data_caixa', { ascending: false })
@@ -117,6 +127,45 @@ export async function criarRecorrente(input: {
   const { data, error } = await requireSupabase()
     .from('despesas_recorrentes')
     .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Devolve uma saída paga para "a pagar" — o desfazer de um clique errado.
+ *
+ * Não apaga nada: só troca o status. `data_prevista` recebe a data de
+ * caixa quando ainda está vazia, senão a linha voltaria para a fila sem
+ * vencimento (vw_contas_a_pagar cai em coalesce(data_prevista, data_caixa),
+ * mas deixar explícito evita que uma edição futura de data_caixa mova o
+ * vencimento junto).
+ */
+export async function reverterPagamentoSaida(id: string) {
+  const supabase = requireSupabase()
+  const { data: atual, error: erroLeitura } = await supabase
+    .from('saidas_financeiras')
+    .select('data_caixa, data_prevista')
+    .eq('id', id)
+    .single()
+  if (erroLeitura) throw erroLeitura
+
+  const { error } = await supabase
+    .from('saidas_financeiras')
+    .update({
+      status_saida: 'prevista',
+      data_prevista: atual.data_prevista ?? atual.data_caixa,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function atualizarRecorrente(id: string, patch: DespesaRecorrenteUpdate) {
+  const { data, error } = await requireSupabase()
+    .from('despesas_recorrentes')
+    .update(patch)
+    .eq('id', id)
     .select()
     .single()
   if (error) throw error
@@ -295,22 +344,138 @@ export async function listarDreCompetencia(periodo: Periodo) {
   return data
 }
 
-/** Entradas previstas (a receber), já com bucket de vencimento calculado no banco. */
-export async function listarContasAReceber() {
-  const { data, error } = await requireSupabase()
-    .from('vw_contas_a_receber')
-    .select('*')
-    .order('vencimento')
-  if (error) throw error
-  return data
-}
-
 /** Recorrentes pendentes + saídas 'prevista' (inclui a folha automática de professora). */
 export async function listarContasAPagar() {
   const { data, error } = await requireSupabase()
     .from('vw_contas_a_pagar')
     .select('*')
     .order('vencimento')
+  if (error) throw error
+  return data
+}
+
+/**
+ * Dívidas com o quanto já foi abatido. O total pago é derivado das saídas
+ * (`divida_id`), nunca guardado numa coluna: assim o saldo restante e o
+ * histórico não têm como divergir um do outro.
+ */
+export async function listarDividas() {
+  const supabase = requireSupabase()
+  const [{ data: dividas, error }, { data: pagamentos, error: erroPagamentos }] = await Promise.all([
+    supabase.from('dividas').select('*').order('quitada').order('criada_em'),
+    supabase
+      .from('saidas_financeiras')
+      .select('divida_id, valor_centavos, status_saida')
+      .not('divida_id', 'is', null),
+  ])
+  if (error) throw error
+  if (erroPagamentos) throw erroPagamentos
+
+  const pago = new Map<string, number>()
+  const programado = new Map<string, number>()
+  for (const p of pagamentos ?? []) {
+    if (!p.divida_id) continue
+    const alvo = p.status_saida === 'paga' ? pago : p.status_saida === 'prevista' ? programado : null
+    if (!alvo) continue
+    alvo.set(p.divida_id, (alvo.get(p.divida_id) ?? 0) + p.valor_centavos)
+  }
+
+  return (dividas ?? []).map((d) => ({
+    ...d,
+    pago_centavos: pago.get(d.id) ?? 0,
+    programado_centavos: programado.get(d.id) ?? 0,
+  }))
+}
+
+/** Histórico de uma dívida: abatimentos pagos e parcelas ainda programadas. */
+export async function listarMovimentosDivida(dividaId: string) {
+  const { data, error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .select('*')
+    .eq('divida_id', dividaId)
+    .order('data_prevista', { nullsFirst: false })
+    .order('data_caixa')
+  if (error) throw error
+  return data
+}
+
+async function categoriaDivida() {
+  const { data, error } = await requireSupabase()
+    .from('categorias_saida')
+    .select('id')
+    .eq('nome', 'Pagamento de dívida')
+    .single()
+  if (error) throw error
+  return data.id
+}
+
+/** Abatimento avulso: dinheiro que já saiu, sem ter sido programado antes. */
+export async function registrarPagamentoDivida(args: {
+  dividaId: string
+  descricao: string
+  valorCentavos: number
+  data: string
+}) {
+  const { error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .insert({
+      descricao: args.descricao,
+      valor_centavos: args.valorCentavos,
+      categoria_id: await categoriaDivida(),
+      divida_id: args.dividaId,
+      data_caixa: args.data,
+      data_competencia: `${args.data.slice(0, 7)}-01`,
+      status_saida: 'paga',
+    })
+  if (error) throw error
+}
+
+/**
+ * Cronograma: cada parcela nasce como saída 'prevista' no mês dela, então
+ * aparece sozinha em Saídas → Dívidas → A pagar, sem cadastro duplicado.
+ */
+export async function programarParcelasDivida(args: {
+  dividaId: string
+  descricao: string
+  parcelas: { mes: string; valorCentavos: number }[]
+}) {
+  const categoriaId = await categoriaDivida()
+  const { error } = await requireSupabase().from('saidas_financeiras').insert(
+    args.parcelas.map((p) => ({
+      descricao: args.descricao,
+      valor_centavos: p.valorCentavos,
+      categoria_id: categoriaId,
+      divida_id: args.dividaId,
+      data_competencia: `${p.mes}-01`,
+      data_prevista: `${p.mes}-05`,
+      // data_caixa é NOT NULL: sem valor explícito viria current_date, o que
+      // faria a parcela de outubro parecer paga hoje em qualquer tela que
+      // ordene por ela. Enquanto 'prevista' o número é ignorado (as views
+      // filtram por status), mas fica coerente com o vencimento.
+      data_caixa: `${p.mes}-05`,
+      status_saida: 'prevista' as const,
+    })),
+  )
+  if (error) throw error
+}
+
+export async function criarDivida(input: DividaInsert) {
+  const { data, error } = await requireSupabase()
+    .from('dividas')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function atualizarDivida(id: string, patch: DividaUpdate) {
+  const { data, error } = await requireSupabase()
+    .from('dividas')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
   if (error) throw error
   return data
 }

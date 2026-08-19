@@ -21,3 +21,58 @@ export function corModalidade(nome: string): CorCartao {
   for (let i = 0; i < nome.length; i++) h = (h * 31 + nome.charCodeAt(i)) >>> 0
   return PALETA[h % PALETA.length]
 }
+
+/**
+ * Escala de OCUPAÇÃO — uma escala sequencial só, no lugar dos 8 pastéis
+ * sorteados por modalidade. É o que permite bater o olho e achar a aula
+ * vazia sem decorar legenda.
+ *
+ * **Sem vermelho, de propósito.** A grade mostra as reservas reais da semana
+ * exibida, então toda semana futura começa vazia. Se vazio fosse vermelho, a
+ * tela viveria em alarme e o alarme deixaria de significar algo — vazio é
+ * cinza ("ninguém ainda"), estado neutro e não um erro.
+ */
+export type FaixaOcupacao = {
+  chave: 'vazia' | 'comecando' | 'saudavel' | 'cheia'
+  label: string
+  cor: CorCartao
+  /** Cor da barrinha de preenchimento — reforça sem depender de cor. */
+  barra: string
+}
+
+const OCUPACAO: Record<FaixaOcupacao['chave'], FaixaOcupacao> = {
+  vazia: {
+    chave: 'vazia',
+    label: 'Sem reservas',
+    cor: { bg: '#f7f7f8', borda: '#e2e2e6', texto: '#71717a' },
+    barra: '#c4c4cc',
+  },
+  comecando: {
+    chave: 'comecando',
+    label: 'Começando a encher',
+    cor: { bg: '#fcf1e6', borda: '#f8e1c7', texto: '#9c5a18' },
+    barra: '#db8735',
+  },
+  saudavel: {
+    chave: 'saudavel',
+    label: 'Saudável',
+    cor: { bg: '#eaf9f8', borda: '#d1f0ee', texto: '#1f726f' },
+    barra: '#2fa9a6',
+  },
+  cheia: {
+    chave: 'cheia',
+    label: 'Cheia',
+    cor: { bg: '#f6f5fa', borda: '#d3cfe6', texto: '#443a66' },
+    barra: '#6b6193',
+  },
+}
+
+export const FAIXAS_OCUPACAO = Object.values(OCUPACAO)
+
+export function faixaOcupacao(reservas: number, capacidade: number): FaixaOcupacao {
+  if (reservas <= 0) return OCUPACAO.vazia
+  const pct = capacidade > 0 ? (reservas / capacidade) * 100 : 0
+  if (pct >= 85) return OCUPACAO.cheia
+  if (pct >= 50) return OCUPACAO.saudavel
+  return OCUPACAO.comecando
+}

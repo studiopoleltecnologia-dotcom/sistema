@@ -16,10 +16,16 @@ scripts/ig/
 *.tsbuildinfo
 supabase/.temp/
 
+# Telemetria local de custo de agentes IA (não publicar no repo público)
+cost.txt
+
 # Scripts de teste local da integração Wellhub (não versionar)
 /validate.mjs
 /simular.mjs
 /webhook-e2e.mjs
+
+# Logs de workflow baixados para depuração (contêm dados de produção)
+logs_*/
 
 # Pessoais
 proximos-passos.txt

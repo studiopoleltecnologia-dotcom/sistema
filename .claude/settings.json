@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/log-cost.cjs 2>/dev/null || true",
+            "shell": "bash",
+            "timeout": 30,
+            "async": true,
+            "statusMessage": "Registrando custo em cost.txt"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/log-cost.cjs 2>/dev/null || true",
+            "shell": "bash",
+            "timeout": 30,
+            "async": true,
+            "statusMessage": "Registrando custo em cost.txt"
+          }
+        ]
+      }
+    ]
+  }
+}

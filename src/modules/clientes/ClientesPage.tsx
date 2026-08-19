@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import { Plus, Search } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { Tabs } from '../../components/ui/Tabs'
 import { ClienteDetalhe } from './components/ClienteDetalhe'
 import { ClienteForm } from './components/ClienteForm'
 import { ClientesLista } from './components/ClientesLista'
@@ -58,11 +62,6 @@ export function ClientesPage() {
     setEditando(null)
   }
 
-  const abaCls = (ativa: boolean) =>
-    `rounded-md px-2.5 py-1 text-xs font-medium transition ${
-      ativa ? 'bg-brand-50 text-brand-700' : 'text-neutral-400 hover:text-neutral-700'
-    }`
-
   if (error) {
     return (
       <p className="text-sm text-red-600">
@@ -73,32 +72,37 @@ export function ClientesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4">
-          <div className="flex gap-1">
-            <button className={abaCls(visao === 'funil')} onClick={() => setVisao('funil')}>
-              Funil
-            </button>
-            <button className={abaCls(visao === 'lista')} onClick={() => setVisao('lista')}>
-              Lista
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-1 items-center gap-2 sm:flex-none">
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar…"
-            className="w-full min-w-0 rounded-md sm:w-48 border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500"
-          />
-          <button
-            onClick={() => setFormAberto(true)}
-            className="rounded-md bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-brand-700"
-          >
+      <PageHeader
+        titulo="Clientes"
+        subtitulo={`${filtradas.length} de ${clientes?.length ?? 0} no filtro atual`}
+        acoes={
+          <Button onClick={() => setFormAberto(true)}>
+            <Plus className="size-4" />
             Novo aluno
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+        filtros={
+          <>
+            <Tabs
+              value={visao}
+              onChange={setVisao}
+              items={[
+                { value: 'lista', label: 'Lista' },
+                { value: 'funil', label: 'Funil' },
+              ]}
+            />
+            <div className="relative min-w-0 flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, telefone ou @…"
+                className="w-full min-w-0 rounded-md border border-neutral-300 bg-white py-2 pl-8 pr-3 text-sm outline-none transition hover:border-neutral-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              />
+            </div>
+          </>
+        }
+      />
 
       {isLoading ? (
         <p className="text-sm text-neutral-400">Carregando…</p>

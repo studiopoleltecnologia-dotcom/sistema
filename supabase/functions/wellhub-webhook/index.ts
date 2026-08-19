@@ -6,8 +6,14 @@
 //   2. Wellhub faz POST assinado nesta URL (X-Gympass-Signature)
 //   3. o sistema pré-registra a usuária
 //   4. chama a Access Control API `validate` p/ confirmar ticket válido no dia
-//   5. se positivo, libera → aqui isso vira presença (canal wellhub), que por
-//      trigger gera a entrada financeira "a reconciliar" (CLAUDE.md 8/12.5).
+//   5. se positivo, libera → `registrar_checkin_wellhub()` decide a turma.
+//
+// A ESCOLHA DA TURMA É DO BANCO, não daqui (migration 20260808120000). Este
+// arquivo já teve a regra e ela estava errada: escolhia pelo horário e
+// desempatava com o primeiro item de uma query sem `order by`, então duas
+// salas na mesma hora davam atribuição arbitrária — e turma errada paga a
+// professora errada. Agora: agendamento → turma única → fila de pendências.
+// Só a presença atribuída gera a entrada "a reconciliar" (CLAUDE.md 8/12.5).
 //
 // Segredos (supabase secrets set …; NUNCA no repo — é público, seção 3):
 //   WELLHUB_WEBHOOK_SECRET  secret HMAC gerado por NÓS e informado à Wellhub
@@ -124,14 +130,48 @@ Deno.serve(async (req) => {
       .select('id')
       .single()
     if (error) {
+      // 500 (e não 200): com a idempotência garantida no banco (índices
+      // únicos parciais + on conflict em presencas), deixar a Wellhub
+      // reentregar é melhor que perder o check-in em silêncio.
       console.error('erro ao criar cliente:', error.message)
-      return new Response('ok (erro interno registrado)', { status: 200 })
+      return new Response('erro interno', { status: 500 })
     }
     clienteId = nova.id as string
   }
 
-  // 4.3 — Presença: dispara sozinha ultima_aula + entrada "a reconciliar".
-  return await registrarCheckin(sb, clienteId)
+  // 4.3 — A decisão de turma é do banco (RPC), não daqui. Ver a migration
+  // 20260808120000: com duas salas na mesma hora o horário não identifica a
+  // turma, então o sistema atribui só quando tem certeza e enfileira o resto
+  // em `checkins_pendentes` para a equipe resolver. Presença atribuída
+  // dispara sozinha ultima_aula + entrada "a reconciliar".
+  const eventoId =
+    String(payload.id ?? payload.event_id ?? eventData?.id ?? '') || null
+  if (!eventoId) {
+    // sinaliza na homologação qual é o campo real de id do evento
+    console.warn('payload sem id de evento — idempotência cai no par (cliente, dia)')
+  }
+
+  const { data: desfecho, error: erroRpc } = await sb.rpc(
+    'registrar_checkin_wellhub',
+    {
+      p_cliente: clienteId,
+      p_momento: new Date().toISOString(),
+      p_evento_externo: eventoId,
+    },
+  )
+  if (erroRpc) {
+    console.error('registrar_checkin_wellhub falhou:', erroRpc.message)
+    return new Response('erro interno', { status: 500 })
+  }
+  if (desfecho?.resultado === 'pendente') {
+    console.warn(
+      `check-in pendente (${desfecho.motivo}) — pendencia ${desfecho.pendencia_id}`,
+    )
+  }
+  return new Response(JSON.stringify(desfecho), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
 })
 
 // ------------------------------------------------------------
@@ -179,55 +219,6 @@ async function validarAccessControl(
 // chegarem (client_id/secret → token curto). Mantido como ponto único de troca.
 function getBearer(): Promise<string> {
   return Promise.resolve(Deno.env.get('WELLHUB_API_TOKEN') ?? '')
-}
-
-/**
- * Marca presença na turma em andamento (ou prestes a começar).
- * A presença dispara sozinha, via triggers do banco: ultima_aula da
- * cliente + entrada financeira "a reconciliar".
- */
-async function registrarCheckin(
-  sb: ReturnType<typeof createClient>,
-  clienteId: string,
-): Promise<Response> {
-  const agora = new Date()
-  // fuso do estúdio (BRT = UTC-3) para casar dia da semana e horário
-  const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000)
-  const hoje = brt.toISOString().slice(0, 10)
-  const diaSemana = brt.getUTCDay()
-  const minutosAgora = brt.getUTCHours() * 60 + brt.getUTCMinutes()
-
-  const { data: turmas } = await sb
-    .from('turmas')
-    .select('id, horario, duracao_minutos')
-    .eq('ativa', true)
-    .eq('dia_semana', diaSemana)
-
-  // turma cujo horário envolve o momento do check-in (30 min de tolerância antes)
-  const turma = (turmas ?? []).find((t) => {
-    const [h, m] = String(t.horario).split(':').map(Number)
-    const inicio = h * 60 + m
-    return minutosAgora >= inicio - 30 && minutosAgora <= inicio + Number(t.duracao_minutos)
-  })
-
-  if (!turma) {
-    console.warn(`check-in de ${clienteId} fora do horário de qualquer turma`)
-    return new Response('ok (sem turma no horário)', { status: 200 })
-  }
-
-  const { error } = await sb.rpc('registrar_presenca', {
-    p_turma: turma.id,
-    p_data: hoje,
-    p_cliente: clienteId,
-    p_presente: true,
-    p_canal: 'wellhub',
-  })
-  if (error) {
-    console.error('erro ao registrar presença:', error.message)
-    return new Response('ok (erro interno registrado)', { status: 200 })
-  }
-
-  return new Response('ok', { status: 200 })
 }
 
 // ------------------------------------------------------------

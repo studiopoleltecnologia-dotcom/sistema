@@ -17,8 +17,13 @@ import { cn } from '../../../components/ui/cn'
  *    mais para o lado.
  *
  * As abas que eram irmãs mas respondem à mesma pergunta viraram grupo com
- * sub-abas: Contas/Calendário/Recorrências são "o que cai e quando" em três
- * formatos, e DRE é resultado apurado igual ao teto do MEI. De 11 para 8.
+ * sub-abas: DRE é resultado apurado igual ao teto do MEI, os dois formam
+ * "Fiscal". "Contas" (Lista/Calendário/Recorrências) existiu como grupo à
+ * parte até 18/08/2026 — era a mesma consulta (a pagar/a receber) reagrupada
+ * três formas diferentes, e escondia "a pagar" a três cliques de Saídas.
+ * Cada seção migrou para dentro de Entradas ou Saídas (a direção do dinheiro
+ * que já é o critério do menu), com o Lista/Calendário virando um alternador
+ * dentro da tela em vez de rota própria. Ver PendentesPagar/RecorrentesCard.
  */
 type Sub = { to: string; label: string }
 type Grupo = {
@@ -33,17 +38,8 @@ const GRUPOS: Grupo[] = [
   { to: '.', label: 'Resumo', rotas: [''] },
   { to: 'entradas', label: 'Entradas', rotas: ['entradas'] },
   { to: 'saidas', label: 'Saídas', rotas: ['saidas'] },
-  {
-    to: 'contas',
-    label: 'Contas',
-    rotas: ['contas', 'calendario', 'recorrencias'],
-    subs: [
-      { to: 'contas', label: 'Lista' },
-      { to: 'calendario', label: 'Calendário' },
-      { to: 'recorrencias', label: 'Recorrências' },
-    ],
-  },
   { to: 'fluxo', label: 'Fluxo de caixa', rotas: ['fluxo'] },
+  { to: 'dividas', label: 'Dívidas', rotas: ['dividas'] },
   {
     to: 'fiscal',
     label: 'Fiscal',

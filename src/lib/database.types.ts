@@ -178,6 +178,91 @@ export type Database = {
         }
         Relationships: []
       }
+      checkins_pendentes: {
+        Row: {
+          cliente_id: string
+          data_checkin: string
+          evento_externo_id: string | null
+          id: string
+          momento: string
+          observacao: string | null
+          presenca_id: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
+          turma_id: string | null
+          turmas_candidatas: string[]
+        }
+        Insert: {
+          cliente_id: string
+          data_checkin: string
+          evento_externo_id?: string | null
+          id?: string
+          momento?: string
+          observacao?: string | null
+          presenca_id?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          turma_id?: string | null
+          turmas_candidatas?: string[]
+        }
+        Update: {
+          cliente_id?: string
+          data_checkin?: string
+          evento_externo_id?: string | null
+          id?: string
+          momento?: string
+          observacao?: string | null
+          presenca_id?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          turma_id?: string | null
+          turmas_candidatas?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkins_pendentes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkins_pendentes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "checkins_pendentes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "checkins_pendentes_presenca_id_fkey"
+            columns: ["presenca_id"]
+            isOneToOne: false
+            referencedRelation: "presencas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkins_pendentes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkins_pendentes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
+          },
+        ]
+      }
       checklist_execucoes: {
         Row: {
           data: string
@@ -538,9 +623,12 @@ export type Database = {
           atualizada_em: string
           categoria_id: string
           criada_em: string
+          data_fim: string | null
+          data_inicio: string
           descricao: string
           dia_vencimento: number
           id: string
+          observacoes: string | null
           valor_centavos: number
         }
         Insert: {
@@ -548,9 +636,12 @@ export type Database = {
           atualizada_em?: string
           categoria_id: string
           criada_em?: string
+          data_fim?: string | null
+          data_inicio?: string
           descricao: string
           dia_vencimento?: number
           id?: string
+          observacoes?: string | null
           valor_centavos: number
         }
         Update: {
@@ -558,9 +649,12 @@ export type Database = {
           atualizada_em?: string
           categoria_id?: string
           criada_em?: string
+          data_fim?: string | null
+          data_inicio?: string
           descricao?: string
           dia_vencimento?: number
           id?: string
+          observacoes?: string | null
           valor_centavos?: number
         }
         Relationships: [
@@ -572,6 +666,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dividas: {
+        Row: {
+          atualizada_em: string
+          credor: string
+          criada_em: string
+          descricao: string | null
+          id: string
+          quitada: boolean
+          valor_centavos: number
+        }
+        Insert: {
+          atualizada_em?: string
+          credor: string
+          criada_em?: string
+          descricao?: string | null
+          id?: string
+          quitada?: boolean
+          valor_centavos: number
+        }
+        Update: {
+          atualizada_em?: string
+          credor?: string
+          criada_em?: string
+          descricao?: string | null
+          id?: string
+          quitada?: boolean
+          valor_centavos?: number
+        }
+        Relationships: []
       }
       emails_fila: {
         Row: {
@@ -1501,6 +1625,7 @@ export type Database = {
           data_competencia: string
           data_prevista: string | null
           descricao: string | null
+          divida_id: string | null
           fechamento_id: string | null
           id: string
           recorrente_id: string | null
@@ -1515,6 +1640,7 @@ export type Database = {
           data_competencia: string
           data_prevista?: string | null
           descricao?: string | null
+          divida_id?: string | null
           fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
@@ -1529,6 +1655,7 @@ export type Database = {
           data_competencia?: string
           data_prevista?: string | null
           descricao?: string | null
+          divida_id?: string | null
           fechamento_id?: string | null
           id?: string
           recorrente_id?: string | null
@@ -1541,6 +1668,13 @@ export type Database = {
             columns: ["categoria_id"]
             isOneToOne: false
             referencedRelation: "categorias_saida"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_financeiras_divida_id_fkey"
+            columns: ["divida_id"]
+            isOneToOne: false
+            referencedRelation: "dividas"
             referencedColumns: ["id"]
           },
           {
@@ -1883,6 +2017,43 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_checkins_pendentes: {
+        Row: {
+          candidatas: Json | null
+          cliente: string | null
+          cliente_id: string | null
+          data_checkin: string | null
+          dia_semana: number | null
+          gympass_id: string | null
+          id: string | null
+          momento: string | null
+          motivo: string | null
+          turmas_candidatas: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkins_pendentes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkins_pendentes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "checkins_pendentes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       vw_contas_a_pagar: {
         Row: {
           bucket: string | null
@@ -1890,8 +2061,10 @@ export type Database = {
           categoria_id: string | null
           competencia: string | null
           descricao: string | null
+          divida_id: string | null
           id: string | null
           origem: string | null
+          tipo: string | null
           valor_centavos: number | null
           vencimento: string | null
         }
@@ -2239,14 +2412,6 @@ export type Database = {
         Returns: boolean
       }
       cliente_atual: { Args: never; Returns: string }
-      confirmar_pagamento_inscricao: {
-        Args: {
-          p_confirmado: boolean
-          p_inscricao: string
-          p_observacao?: string
-        }
-        Returns: undefined
-      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string
@@ -2254,6 +2419,14 @@ export type Database = {
           p_valor_total_centavos: number
         }
         Returns: number
+      }
+      confirmar_pagamento_inscricao: {
+        Args: {
+          p_confirmado: boolean
+          p_inscricao: string
+          p_observacao?: string
+        }
+        Returns: undefined
       }
       convidar_equipe: {
         Args: {
@@ -2283,6 +2456,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      disparar_emails: { Args: never; Returns: undefined }
       enfileirar_email: {
         Args: {
           p_dados?: Json
@@ -2360,6 +2534,14 @@ export type Database = {
         Args: { p_data: string; p_turma: string }
         Returns: string
       }
+      registrar_checkin_wellhub: {
+        Args: {
+          p_cliente: string
+          p_evento_externo?: string
+          p_momento?: string
+        }
+        Returns: Json
+      }
       registrar_presenca: {
         Args: {
           p_canal?: Database["public"]["Enums"]["canal_aula"]
@@ -2372,6 +2554,10 @@ export type Database = {
       }
       remover_acesso: { Args: { p_id: string }; Returns: undefined }
       renovar_ciclo: { Args: { p_matricula: string }; Returns: number }
+      resolver_checkin_pendente: {
+        Args: { p_observacao?: string; p_pendencia: string; p_turma: string }
+        Returns: string
+      }
       sair_lista_espera: { Args: { p_id: string }; Returns: boolean }
     }
     Enums: {

@@ -8,13 +8,16 @@ import {
   criarTurma,
   desativarTurma,
   listarDia,
+  listarCheckinsPendentes,
   listarModalidades,
   listarNomesProfessoras,
   listarOcupacao,
+  listarOcupacaoPeriodo,
   listarSalas,
   listarTurmas,
   obterConfigAgendamento,
   registrarPresenca,
+  resolverCheckinPendente,
 } from '../api/agenda'
 
 export function useTurmas() {
@@ -35,6 +38,14 @@ export function useModalidades() {
 
 export function useOcupacao() {
   return useQuery({ queryKey: ['ocupacao-turmas'], queryFn: listarOcupacao })
+}
+
+/** Ocupação real do intervalo exibido na grade (semana ou mês). */
+export function useOcupacaoPeriodo(inicio: string, fim: string) {
+  return useQuery({
+    queryKey: ['ocupacao-periodo', inicio, fim],
+    queryFn: () => listarOcupacaoPeriodo(inicio, fim),
+  })
 }
 
 export function useDia(data: string) {
@@ -103,6 +114,22 @@ export function useCancelarAgendamento() {
 export function useRegistrarPresenca() {
   const invalidar = useInvalidarAgenda()
   return useMutation({ mutationFn: registrarPresenca, onSuccess: invalidar })
+}
+
+export function useCheckinsPendentes() {
+  return useQuery({ queryKey: ['checkins-pendentes'], queryFn: listarCheckinsPendentes })
+}
+
+export function useResolverCheckinPendente() {
+  const qc = useQueryClient()
+  const invalidar = useInvalidarAgenda()
+  return useMutation({
+    mutationFn: resolverCheckinPendente,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['checkins-pendentes'] })
+      invalidar()
+    },
+  })
 }
 
 export function useAtualizarConfigAgendamento() {
