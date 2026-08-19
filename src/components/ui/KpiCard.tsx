@@ -57,7 +57,14 @@ export function KpiCard({
       )}
     >
       <div className="flex items-start justify-between">
-        <span className={cn('font-medium text-neutral-400', lg ? 'text-[13px]' : 'text-xs')}>
+        {/* neutral-500 + uppercase: em neutral-400 o rótulo sumia ao lado do
+            valor, e sem ele o número perde o significado. */}
+        <span
+          className={cn(
+            'font-semibold uppercase tracking-wide text-neutral-500',
+            lg ? 'text-[11px]' : 'text-[10px]',
+          )}
+        >
           {label}
         </span>
         {Icon && (
@@ -97,7 +104,7 @@ export function KpiCard({
             {tendencia.valor}
           </span>
         )}
-        {hint && <span className="text-[11px] text-neutral-400">{hint}</span>}
+        {hint && <span className="text-[11px] text-neutral-500">{hint}</span>}
       </div>
     </div>
   )
