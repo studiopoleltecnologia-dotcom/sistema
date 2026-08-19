@@ -1,12 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   agendarAula,
+  arquivarCategoria,
+  atualizarCategoria,
   atualizarConfigAgendamento,
   atualizarTurma,
   cancelarAgendamento,
+  criarCategoria,
   criarModalidade,
   criarTurma,
+  definirCategoriaDaModalidade,
   desativarTurma,
+  listarCategorias,
   listarDia,
   listarCheckinsPendentes,
   listarModalidades,
@@ -97,7 +102,56 @@ export function useCriarModalidade() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: criarModalidade,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['modalidades'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['modalidades'] })
+      // a turma nova já nasce colorida pela categoria escolhida
+      qc.invalidateQueries({ queryKey: ['turmas'] })
+    },
+  })
+}
+
+export function useCategorias() {
+  return useQuery({ queryKey: ['categorias-modalidade'], queryFn: listarCategorias })
+}
+
+/**
+ * Toda escrita de categoria invalida `turmas` junto: a cor do cartão da
+ * grade vem daqui, e sem isso a tela só se atualizaria no próximo refetch.
+ */
+function useInvalidarCategorias() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['categorias-modalidade'] })
+    qc.invalidateQueries({ queryKey: ['modalidades'] })
+    qc.invalidateQueries({ queryKey: ['turmas'] })
+  }
+}
+
+export function useCriarCategoria() {
+  const invalidar = useInvalidarCategorias()
+  return useMutation({ mutationFn: criarCategoria, onSuccess: invalidar })
+}
+
+export function useAtualizarCategoria() {
+  const invalidar = useInvalidarCategorias()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof atualizarCategoria>[1] }) =>
+      atualizarCategoria(id, patch),
+    onSuccess: invalidar,
+  })
+}
+
+export function useArquivarCategoria() {
+  const invalidar = useInvalidarCategorias()
+  return useMutation({ mutationFn: arquivarCategoria, onSuccess: invalidar })
+}
+
+export function useDefinirCategoriaDaModalidade() {
+  const invalidar = useInvalidarCategorias()
+  return useMutation({
+    mutationFn: ({ modalidadeId, categoriaId }: { modalidadeId: string; categoriaId: string | null }) =>
+      definirCategoriaDaModalidade(modalidadeId, categoriaId),
+    onSuccess: invalidar,
   })
 }
 

@@ -1,26 +1,48 @@
 import { requireSupabase } from '../../../lib/supabase'
-import type { CanalAula, TurmaInsert, TurmaUpdate } from '../types'
+import type {
+  CanalAula,
+  CategoriaModalidade,
+  CategoriaModalidadeInsert,
+  CategoriaModalidadeUpdate,
+  TurmaInsert,
+  TurmaUpdate,
+} from '../types'
 
 export async function listarTurmas() {
   const sb = requireSupabase()
   // O nome da professora vem de vw_professoras_nomes (id/nome/ativa) e
   // não da tabela professoras, que virou gestão-only para não expor o
   // valor_por_aluna. A secretária opera a Agenda vendo só os nomes.
-  const [turmasRes, nomesRes, salasRes] = await Promise.all([
+  //
+  // A categoria chega em duas consultas (modalidades + categorias) e é
+  // costurada aqui, no mesmo padrão de professora e sala. Um join
+  // aninhado no PostgREST atravessaria duas RLS diferentes e devolveria
+  // a turma sem cor quando uma delas recusasse — silenciosamente.
+  const [turmasRes, nomesRes, salasRes, modsRes, catsRes] = await Promise.all([
     sb.from('turmas').select('*').eq('ativa', true).order('dia_semana').order('horario'),
     sb.from('vw_professoras_nomes').select('id, nome, ativa'),
     sb.from('salas').select('id, nome').eq('ativa', true),
+    sb.from('modalidades').select('id, categoria_id'),
+    sb.from('categorias_modalidade').select('*'),
   ])
   if (turmasRes.error) throw turmasRes.error
   if (nomesRes.error) throw nomesRes.error
   if (salasRes.error) throw salasRes.error
+  if (modsRes.error) throw modsRes.error
+  if (catsRes.error) throw catsRes.error
 
   const nomes = new Map((nomesRes.data ?? []).map((p) => [p.id, p]))
   const salas = new Map((salasRes.data ?? []).map((s) => [s.id, s]))
+  const cats = new Map((catsRes.data ?? []).map((c) => [c.id, c]))
+  const catDaModalidade = new Map(
+    (modsRes.data ?? []).map((m) => [m.id, m.categoria_id ? cats.get(m.categoria_id) ?? null : null]),
+  )
+
   return (turmasRes.data ?? []).map((t) => ({
     ...t,
     professora: nomes.get(t.professora_id) ?? { id: t.professora_id, nome: '—', ativa: true },
     sala: t.sala_id ? salas.get(t.sala_id) ?? null : null,
+    categoria: t.modalidade_id ? catDaModalidade.get(t.modalidade_id) ?? null : null,
   }))
 }
 
@@ -73,15 +95,86 @@ export async function listarModalidades() {
 }
 
 /** "+ criar nova" no formulário de turma — cadastra e devolve para já selecionar. */
-export async function criarModalidade(nome: string) {
+export async function criarModalidade({
+  nome,
+  categoriaId,
+}: {
+  nome: string
+  categoriaId: string | null
+}) {
   const { data, error } = await requireSupabase()
     .from('modalidades')
-    .insert({ nome: nome.trim(), ordem: 99 })
+    .insert({ nome: nome.trim(), ordem: 99, categoria_id: categoriaId })
     .select('id, nome')
     .single()
   if (error) throw error
   return data
 }
+
+// ------------------------------------------------------------
+// Categorias de modalidade — o agrupamento visual da grade.
+// Leitura liberada a qualquer conta autenticada (a cor também vale no
+// portal do aluno); escrita é da operação, pela RLS.
+// ------------------------------------------------------------
+
+export async function listarCategorias() {
+  const { data, error } = await requireSupabase()
+    .from('categorias_modalidade')
+    .select('*')
+    .eq('ativa', true)
+    .order('ordem')
+    .order('nome')
+  if (error) throw error
+  return data
+}
+
+export async function criarCategoria(input: CategoriaModalidadeInsert) {
+  const { data, error } = await requireSupabase()
+    .from('categorias_modalidade')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function atualizarCategoria(id: string, patch: CategoriaModalidadeUpdate) {
+  const { data, error } = await requireSupabase()
+    .from('categorias_modalidade')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Arquiva em vez de apagar. Categoria some da grade e do cadastro, mas as
+ * modalidades que apontam para ela continuam apontando — nada de histórico
+ * é perdido e reativar devolve a cor de todas de uma vez.
+ */
+export async function arquivarCategoria(id: string) {
+  const { error } = await requireSupabase()
+    .from('categorias_modalidade')
+    .update({ ativa: false })
+    .eq('id', id)
+  if (error) throw error
+}
+
+/** Move uma modalidade de categoria (ou a deixa sem categoria com null). */
+export async function definirCategoriaDaModalidade(
+  modalidadeId: string,
+  categoriaId: string | null,
+) {
+  const { error } = await requireSupabase()
+    .from('modalidades')
+    .update({ categoria_id: categoriaId })
+    .eq('id', modalidadeId)
+  if (error) throw error
+}
+
+export type { CategoriaModalidade }
 
 /** Nomes de professoras para o seletor de turma (sem dado financeiro). */
 export async function listarNomesProfessoras() {

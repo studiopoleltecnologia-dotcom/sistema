@@ -1,5 +1,6 @@
 import { cn } from '../../../components/ui/cn'
-import { faixaOcupacao } from '../cores'
+import { corDaCategoria, corModalidade, faixaOcupacao } from '../cores'
+import type { Exibicao } from '../exibicao'
 import { diaDoMes, dowDe, hojeISO, semanasDoMes } from '../semana'
 import { fmtHora, type TurmaComProfessora } from '../types'
 import type { OcupacaoTurma } from './GradeSemanal'
@@ -9,17 +10,20 @@ const CABECALHO = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 /**
  * Visão do mês: serve para enxergar padrão (que semana está fraca), não para
  * editar turma. Cada dia mostra as aulas em miniatura com o mesmo código de
- * cor da semana, então a leitura não muda ao trocar de visão.
+ * cor da semana, então a leitura não muda ao trocar de visão — inclusive o
+ * "colorir por", que antes era ignorado aqui e sempre desenhava ocupação.
  */
 export function GradeMensal({
   turmas,
   ocupacao,
+  exibicao,
   mesReferencia,
   diaSelecionado,
   onSelecionarDia,
 }: {
   turmas: TurmaComProfessora[]
   ocupacao: Map<string, OcupacaoTurma>
+  exibicao: Exibicao
   mesReferencia: string
   diaSelecionado: string
   onSelecionarDia: (dataISO: string) => void
@@ -74,11 +78,19 @@ export function GradeMensal({
                   aulas.slice(0, 3).map((t) => {
                     const oc = ocupacao.get(t.id)
                     const faixa = faixaOcupacao(oc?.reservas ?? 0, oc?.capacidade ?? t.capacidade)
+                    const cor =
+                      exibicao.colorirPor === 'categoria'
+                        ? corDaCategoria(t.categoria)
+                        : exibicao.colorirPor === 'modalidade'
+                          ? corModalidade(t.modalidade)
+                          : exibicao.colorirPor === 'professora'
+                            ? corModalidade(t.professora.nome ?? '—')
+                            : faixa.cor
                     return (
                       <span
                         key={t.id}
                         className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px]"
-                        style={{ background: faixa.cor.bg, color: faixa.cor.texto }}
+                        style={{ background: cor.bg, color: cor.texto }}
                         title={`${fmtHora(t.horario)} ${t.modalidade} — ${oc?.reservas ?? 0}/${oc?.capacidade ?? t.capacidade}`}
                       >
                         <span className="size-1.5 shrink-0 rounded-full" style={{ background: faixa.barra }} />

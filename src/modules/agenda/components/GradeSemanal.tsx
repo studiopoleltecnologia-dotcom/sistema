@@ -1,6 +1,6 @@
 import { Copy, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '../../../components/ui/cn'
-import { corModalidade, faixaOcupacao, type CorCartao } from '../cores'
+import { corDaCategoria, corModalidade, faixaOcupacao, type CorCartao } from '../cores'
 import { ALTURA_FAIXA, type Exibicao } from '../exibicao'
 import { diaDoMes, diasDaSemana, dowDe, hojeISO } from '../semana'
 import { DIAS_SEMANA, fmtHora, type SalaNome, type TurmaComProfessora } from '../types'
@@ -184,7 +184,8 @@ function CartaoTurma({
   const faixa = faixaOcupacao(reservas, capacidade)
 
   let cor: CorCartao = faixa.cor
-  if (exibicao.colorirPor === 'modalidade') cor = corModalidade(turma.modalidade)
+  if (exibicao.colorirPor === 'categoria') cor = corDaCategoria(turma.categoria)
+  else if (exibicao.colorirPor === 'modalidade') cor = corModalidade(turma.modalidade)
   else if (exibicao.colorirPor === 'professora') cor = corModalidade(turma.professora.nome ?? '—')
 
   const pct = capacidade > 0 ? Math.min((reservas / capacidade) * 100, 100) : 0
@@ -194,7 +195,14 @@ function CartaoTurma({
     <div
       className="group rounded-md border px-1.5 py-1"
       style={{ background: cor.bg, borderColor: cor.borda }}
-      title={`${turma.modalidade} · ${fmtHora(turma.horario)} · ${reservas}/${capacidade} — ${faixa.label}`}
+      title={[
+        turma.modalidade,
+        turma.categoria?.nome,
+        fmtHora(turma.horario),
+        `${reservas}/${capacidade} — ${faixa.label}`,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
     >
       <div className="flex items-baseline justify-between gap-1">
         <span className="text-[11px] font-bold" style={{ color: cor.texto }}>
@@ -206,8 +214,11 @@ function CartaoTurma({
       </div>
       <div className="truncate text-xs font-medium text-neutral-800">{turma.modalidade}</div>
 
+      {/* Professora na cor da categoria, modalidade em tinta escura — é a
+          hierarquia da grade impressa, onde a cor identifica o grupo e o
+          nome da aula continua sendo o que se lê primeiro. */}
       {!compacto && (
-        <div className="truncate text-[10px] text-neutral-500">
+        <div className="truncate text-[10px]" style={{ color: cor.texto }}>
           {turma.professora.nome}
           {mostrarSala && turma.sala && ` · ${turma.sala.nome}`}
         </div>

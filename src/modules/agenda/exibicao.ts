@@ -8,7 +8,7 @@ import { useState } from 'react'
  * diferentes na mesma conta.
  */
 export type Espacamento = 'compacto' | 'confortavel' | 'largo'
-export type ColorirPor = 'ocupacao' | 'modalidade' | 'professora'
+export type ColorirPor = 'categoria' | 'ocupacao' | 'modalidade' | 'professora'
 
 export type Exibicao = {
   espacamento: Espacamento
@@ -20,15 +20,21 @@ export type Exibicao = {
 
 export const EXIBICAO_PADRAO: Exibicao = {
   espacamento: 'confortavel',
-  // Ocupação é o padrão porque é o que a grade precisa responder de longe:
-  // "qual aula está vazia?". Modalidade continua disponível para quem
-  // preferir o visual antigo.
-  colorirPor: 'ocupacao',
+  // Categoria é o padrão porque é o código de cor que a equipe já lê na
+  // grade impressa — bater o olho e reconhecer "isso é Condicionamento"
+  // vale mais no dia a dia do que a escala de ocupação, que continua a um
+  // clique e responde outra pergunta ("qual aula está vazia?").
+  colorirPor: 'categoria',
   intervalo: 60,
   mostrarFimDeSemana: true,
 }
 
-const CHAVE = 'agenda-exibicao'
+// Chave versionada: a preferência antiga (colorirPor: 'ocupacao') está
+// gravada no navegador de quem já usa o sistema e venceria o padrão novo
+// no merge abaixo — a grade por categoria simplesmente não apareceria.
+// Trocar a chave aplica o padrão novo uma vez; quem preferir ocupação
+// volta a escolher e a escolha persiste daí em diante.
+const CHAVE = 'agenda-exibicao-v2'
 
 export function useExibicao() {
   const [exibicao, setExibicao] = useState<Exibicao>(() => {

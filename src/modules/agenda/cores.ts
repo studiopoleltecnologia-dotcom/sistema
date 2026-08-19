@@ -5,6 +5,46 @@
  */
 export type CorCartao = { bg: string; borda: string; texto: string }
 
+/**
+ * Cor por CATEGORIA — o código de cor da grade impressa que o estúdio
+ * publica (Pole · Dança · Projeto Casinha · Condicionamento).
+ *
+ * As cores não moram aqui: moram em `categorias_modalidade` no banco,
+ * porque a equipe precisa criar categoria e trocar cor sem deploy. Esta
+ * função só traduz a linha do banco para o formato do cartão.
+ *
+ * A borda é derivada (não cadastrada) de propósito: na grade impressa o
+ * cartão não tem contorno, e inventar uma quarta cor por categoria daria
+ * à equipe um campo a mais para errar. Escurecer o próprio fundo em
+ * direção ao acento mantém a família e nunca destoa.
+ */
+export type CorCategoria = {
+  nome: string
+  cor: string
+  cor_fundo: string
+  cor_texto: string
+}
+
+export function corDaCategoria(cat: CorCategoria | null | undefined): CorCartao {
+  if (!cat) return SEM_CATEGORIA
+  return {
+    bg: cat.cor_fundo,
+    borda: `color-mix(in srgb, ${cat.cor} 22%, ${cat.cor_fundo})`,
+    texto: cat.cor_texto,
+  }
+}
+
+/**
+ * Modalidade ainda sem categoria (Defesa Pessoal, Muay Thai, o que a
+ * equipe cadastrar amanhã). Cinza neutro, nunca uma das quatro cores:
+ * herdar a cor de outra categoria seria mentir sobre o agrupamento.
+ */
+export const SEM_CATEGORIA: CorCartao = {
+  bg: '#f7f7f8',
+  borda: '#e2e2e6',
+  texto: '#71717a',
+}
+
 const PALETA: CorCartao[] = [
   { bg: '#f5f3ff', borda: '#ddd6fe', texto: '#5b21b6' }, // violeta (marca)
   { bg: '#fdf2f8', borda: '#fbcfe8', texto: '#9d174d' }, // rosa

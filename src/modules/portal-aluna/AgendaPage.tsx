@@ -117,7 +117,17 @@ export function AgendaPage() {
           return (
             <div key={t.turma_id} className="rounded-lg border border-neutral-200 bg-white p-3.5">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm font-semibold text-neutral-900">
+                <span className="flex items-baseline gap-1.5 text-sm font-semibold text-neutral-900">
+                  {/* Mesma cor de categoria da grade do estúdio — só o ponto,
+                      sem preencher o cartão: aqui o aluno escolhe uma aula,
+                      não lê a composição da semana. */}
+                  {t.categoria_cor && (
+                    <span
+                      className="size-2 shrink-0 translate-y-[-1px] rounded-full"
+                      style={{ background: t.categoria_cor }}
+                      title={t.categoria_nome ?? undefined}
+                    />
+                  )}
                   {fmtHora(t.horario ?? '')} {t.modalidade}
                 </span>
                 <span
