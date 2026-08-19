@@ -24,6 +24,9 @@ cost.txt
 /simular.mjs
 /webhook-e2e.mjs
 
+# Logs de workflow baixados para depuração (contêm dados de produção)
+logs_*/
+
 # Pessoais
 proximos-passos.txt
 CLAUDE.md
