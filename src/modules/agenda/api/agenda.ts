@@ -34,6 +34,23 @@ export async function listarOcupacao() {
   return data
 }
 
+/**
+ * Ocupação real de cada turma num intervalo [inicio, fim) — usada pela grade
+ * para mostrar "2/6" da semana exibida.
+ *
+ * Reaproveita `fn_ocupacao_turma`, que já existia para as Análises: com a
+ * janela de uma semana, `ocorrencias` é 1 por turma e `reservas` vira a
+ * contagem daquela semana. Por isso a grade não precisou de view nova.
+ */
+export async function listarOcupacaoPeriodo(inicio: string, fim: string) {
+  const { data, error } = await requireSupabase().rpc('fn_ocupacao_turma', {
+    p_inicio: inicio,
+    p_fim: fim,
+  })
+  if (error) throw error
+  return data
+}
+
 export async function listarSalas() {
   const { data, error } = await requireSupabase()
     .from('salas')
