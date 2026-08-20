@@ -2,6 +2,7 @@ import { CheckCircle2, Clock, MessageCircle, Ticket, UserPlus, Users } from 'luc
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card, CardHeader } from '../../components/ui/Card'
+import { useConfirmar } from '../../components/ui/ConfirmarAcao'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { fmtDataHora } from '../../lib/datas'
@@ -138,14 +139,26 @@ function Linha({
   inscricao: InscricaoEvento
   confirmadaPor?: string
 }) {
-  const confirmar = useConfirmarPagamento()
+  const confirmarPagamento = useConfirmarPagamento()
+  const dialogo = useConfirmar()
   const wa = linkWhatsapp(i.telefone)
 
   function alternar() {
-    // Desfazer limpa autor e data — a tabela guarda só o estado atual, então
-    // a confirmação anterior não fica registrada em lugar nenhum.
-    if (i.pago && !window.confirm(`Desfazer a confirmação de pagamento de ${i.nome}?`)) return
-    confirmar.mutate({ id: i.id, confirmado: !i.pago })
+    // Confirmar é reversível e frequente: vai direto. Desfazer é que pede
+    // atenção — limpa autor e data, e a tabela guarda só o estado atual,
+    // então a confirmação anterior não fica registrada em lugar nenhum.
+    if (!i.pago) return confirmarPagamento.mutate({ id: i.id, confirmado: true })
+    dialogo.pedir({
+      titulo: `Desfazer a confirmação de ${i.nome}?`,
+      descricao: (
+        <>
+          Quem confirmou e quando são apagados — a inscrição volta a constar como não paga, sem
+          registro de que já esteve confirmada.
+        </>
+      ),
+      textoConfirmar: 'Desfazer',
+      aoConfirmar: () => confirmarPagamento.mutateAsync({ id: i.id, confirmado: false }),
+    })
   }
 
   return (
@@ -200,11 +213,13 @@ function Linha({
         <Button
           size="sm"
           variant={i.pago ? 'ghost' : 'primary'}
-          loading={confirmar.isPending}
+          loading={confirmarPagamento.isPending}
           onClick={alternar}
         >
           {i.pago ? 'Desfazer' : 'Confirmar pagamento'}
         </Button>
+        {/* Dentro do <td>: um <div> solto dentro de <tr> é HTML inválido. */}
+        {dialogo.dialogo}
       </td>
     </tr>
   )

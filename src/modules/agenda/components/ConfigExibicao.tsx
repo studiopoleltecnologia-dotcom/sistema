@@ -33,12 +33,18 @@ export function ConfigExibicao({
             valor={exibicao.colorirPor}
             onChange={(v) => onAlterar({ colorirPor: v })}
             itens={[
+              { valor: 'categoria', label: 'Categoria' },
               { valor: 'ocupacao', label: 'Ocupação' },
               { valor: 'modalidade', label: 'Modalidade' },
               { valor: 'professora', label: 'Professora' },
             ]}
           />
-          {exibicao.colorirPor === 'ocupacao' ? (
+          {exibicao.colorirPor === 'categoria' ? (
+            <p className="mt-2 text-[11px] text-neutral-500">
+              O mesmo código de cor da grade impressa. A legenda fica acima da grade, e as
+              cores se editam ali em “Categorias”.
+            </p>
+          ) : exibicao.colorirPor === 'ocupacao' ? (
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               {FAIXAS_OCUPACAO.map((f) => (
                 <span key={f.chave} className="inline-flex items-center gap-1.5 text-[11px] text-neutral-500">

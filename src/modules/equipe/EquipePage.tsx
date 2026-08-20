@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { UserPlus, X } from 'lucide-react'
+import { useConfirmar } from '../../components/ui/ConfirmarAcao'
 import { requireSupabase } from '../../lib/supabase'
 import type { Enums, Tables } from '../../lib/database.types'
 
@@ -54,6 +55,7 @@ export function EquipePage() {
   const qc = useQueryClient()
   const equipe = useEquipe()
   const convites = useConvitesPendentes()
+  const confirmar = useConfirmar()
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -206,7 +208,21 @@ export function EquipePage() {
               ))}
             </select>
             <button
-              onClick={() => m.id && remover.mutate(m.id)}
+              onClick={() =>
+                m.id &&
+                confirmar.pedir({
+                  titulo: `Remover o acesso de ${m.nome}?`,
+                  textoConfirmar: 'Remover acesso',
+                  descricao: (
+                    <>
+                      <b>{m.email}</b> perde o acesso ao sistema imediatamente. O histórico do que
+                      essa pessoa registrou continua no lugar — quem some é o login, não o
+                      trabalho.
+                    </>
+                  ),
+                  aoConfirmar: () => remover.mutateAsync(m.id!),
+                })
+              }
               title="Remover acesso"
               className="px-1 text-neutral-300 transition hover:text-red-500"
             >
@@ -239,7 +255,20 @@ export function EquipePage() {
                   {FUNCAO_LABEL[c.funcao]} · aguardando cadastro
                 </span>
                 <button
-                  onClick={() => cancelarConvite.mutate(c.email)}
+                  onClick={() =>
+                    confirmar.pedir({
+                      titulo: 'Cancelar este convite?',
+                      textoConfirmar: 'Cancelar convite',
+                      descricao: (
+                        <>
+                          <b>{c.email}</b> deixa de conseguir criar acesso. Se ela já tiver criado
+                          a conta com esse e-mail antes de você cancelar, o vínculo já existe e
+                          precisa ser removido na lista acima.
+                        </>
+                      ),
+                      aoConfirmar: () => cancelarConvite.mutateAsync(c.email),
+                    })
+                  }
                   title="Cancelar convite"
                   className="px-1 text-neutral-300 transition hover:text-red-500"
                 >
@@ -250,6 +279,7 @@ export function EquipePage() {
           </ul>
         </>
       )}
+      {confirmar.dialogo}
     </div>
   )
 }

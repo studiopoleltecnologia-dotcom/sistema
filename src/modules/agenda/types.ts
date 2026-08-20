@@ -7,6 +7,11 @@ export type TurmaUpdate = TablesUpdate<'turmas'>
 export type Professora = Tables<'professoras'>
 export type Sala = Tables<'salas'>
 export type Modalidade = Tables<'modalidades'>
+export type CategoriaModalidade = Tables<'categorias_modalidade'>
+export type CategoriaModalidadeInsert = TablesInsert<'categorias_modalidade'>
+export type CategoriaModalidadeUpdate = TablesUpdate<'categorias_modalidade'>
+/** Modalidade com a categoria já resolvida, como o formulário de turma usa. */
+export type ModalidadeComCategoria = Modalidade & { categoria: CategoriaModalidade | null }
 export type Agendamento = Tables<'agendamentos'>
 export type Presenca = Tables<'presencas'>
 export type CanalAula = Enums<'canal_aula'>
@@ -23,6 +28,12 @@ export type ProfessoraNome = { id: string | null; nome: string | null; ativa: bo
 export type TurmaComProfessora = Turma & {
   professora: ProfessoraNome
   sala: SalaNome | null
+  /**
+   * Categoria da modalidade da turma — é ela que dá a cor do cartão.
+   * Nula quando a turma é antiga (sem `modalidade_id`) ou quando a
+   * modalidade ainda não foi agrupada: nesse caso o cartão fica neutro.
+   */
+  categoria: CategoriaModalidade | null
 }
 export type AgendamentoComCliente = Agendamento & { cliente: Cliente }
 

@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button'
 import { Tabs } from '../../../components/ui/Tabs'
 import { cn } from '../../../components/ui/cn'
 import {
+  useCategorias,
   useDesativarTurma,
   useOcupacaoPeriodo,
   useSalas,
@@ -21,8 +22,11 @@ import {
   somarDias,
 } from '../semana'
 import { DIAS_SEMANA, fmtHora, type TurmaComProfessora } from '../types'
+import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
+import { CategoriasModal } from './CategoriasModal'
 import { ConfigExibicao } from './ConfigExibicao'
 import { DiaView } from './DiaView'
+import { LegendaCategorias } from './LegendaCategorias'
 import { GradeMensal } from './GradeMensal'
 import { GradeSemanal, type OcupacaoTurma } from './GradeSemanal'
 import { TurmaForm, type TurmaInicial } from './TurmaForm'
@@ -46,11 +50,14 @@ export function GradeHorarios() {
   const [dia, setDia] = useState(hojeISO())
   const [exibicao, alterarExibicao] = useExibicao()
   const [configAberta, setConfigAberta] = useState(false)
+  const [categoriasAbertas, setCategoriasAbertas] = useState(false)
   const [form, setForm] = useState<{ inicial: TurmaInicial; turmaId: string | null } | null>(null)
 
   const { data: turmas, isLoading } = useTurmas()
   const { data: salas } = useSalas()
+  const { data: categorias } = useCategorias()
   const desativar = useDesativarTurma()
+  const confirmar = useConfirmar()
 
   // Janela consultada = exatamente o que está na tela. No mês, pega as
   // semanas completas que a grade desenha, senão os dias das bordas (que
@@ -104,8 +111,20 @@ export function GradeHorarios() {
   })
 
   function excluir(t: TurmaComProfessora) {
-    const quando = `${DIAS_SEMANA[t.dia_semana]} ${fmtHora(t.horario)}`
-    if (window.confirm(`Excluir a turma de ${t.modalidade} (${quando})?`)) desativar.mutate(t.id)
+    const quando = `${DIAS_SEMANA[t.dia_semana]} às ${fmtHora(t.horario)}`
+    // "Excluir turma" sempre foi `ativa = false` — o diálogo passa a dizer
+    // isso em vez de prometer uma exclusão que nunca aconteceu.
+    confirmar.pedir({
+      titulo: `Arquivar a turma de ${t.modalidade}?`,
+      tom: 'arquivar',
+      descricao: (
+        <>
+          A aula de <b>{quando}</b> sai da grade e ninguém consegue mais reservar nela. As
+          reservas e presenças já registradas continuam no histórico e no pagamento da professora.
+        </>
+      ),
+      aoConfirmar: () => desativar.mutateAsync(t.id),
+    })
   }
 
   const navegar = (passo: number) =>
@@ -158,6 +177,14 @@ export function GradeHorarios() {
         </div>
       </div>
 
+      {exibicao.colorirPor === 'categoria' && (
+        <LegendaCategorias
+          categorias={categorias ?? []}
+          temSemCategoria={(turmas ?? []).some((t) => !t.categoria)}
+          onGerenciar={() => setCategoriasAbertas(true)}
+        />
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="min-w-0 lg:order-1">
           {isLoading ? (
@@ -178,6 +205,7 @@ export function GradeHorarios() {
             <GradeMensal
               turmas={turmas ?? []}
               ocupacao={ocupacao}
+              exibicao={exibicao}
               mesReferencia={dia}
               diaSelecionado={dia}
               onSelecionarDia={setDia}
@@ -203,6 +231,8 @@ export function GradeHorarios() {
           onFechar={() => setConfigAberta(false)}
         />
       )}
+      {categoriasAbertas && <CategoriasModal onFechar={() => setCategoriasAbertas(false)} />}
+      {confirmar.dialogo}
       {form && (
         <TurmaForm inicial={form.inicial} turmaId={form.turmaId} onFechar={() => setForm(null)} />
       )}
