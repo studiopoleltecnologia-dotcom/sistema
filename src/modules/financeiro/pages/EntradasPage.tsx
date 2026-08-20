@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
+import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { FiltroChips } from '../../../components/ui/FiltroChips'
 import { Input } from '../../../components/ui/Input'
@@ -80,6 +81,7 @@ export function EntradasPage() {
   const { data: entradas, isLoading } = useEntradas(periodo)
   const atualizar = useAtualizarEntrada()
   const excluir = useExcluirEntrada()
+  const confirmar = useConfirmar()
 
   const hoje = hojeISO()
   const linhas = useMemo(
@@ -150,20 +152,30 @@ export function EntradasPage() {
                   },
                 })
               }
-              onExcluir={() => {
-                if (
-                  window.confirm(
-                    `Excluir definitivamente ${fmtCentavos(e.valor_centavos)} (${e.descricao || CATEGORIA_ENTRADA_LABEL[e.categoria]})?\n\nIsto apaga o lançamento. Para só desfazer o status, use os botões da linha.`,
-                  )
-                )
-                  excluir.mutate(e.id)
-              }}
+              onExcluir={() =>
+                confirmar.pedir({
+                  titulo: 'Excluir este lançamento?',
+                  descricao: (
+                    <>
+                      <b>
+                        {fmtCentavos(e.valor_centavos)} —{' '}
+                        {e.descricao || CATEGORIA_ENTRADA_LABEL[e.categoria]}
+                      </b>{' '}
+                      sai do faturamento, do fluxo de caixa e do teto MEI.
+                      <br />
+                      Para só desfazer o status, use os botões da linha em vez de excluir.
+                    </>
+                  ),
+                  aoConfirmar: () => excluir.mutateAsync(e.id),
+                })
+              }
             />
           ))}
         </ul>
       )}
 
       {formAberto && <NovaEntradaModal onFechar={() => setFormAberto(false)} />}
+      {confirmar.dialogo}
     </div>
   )
 }

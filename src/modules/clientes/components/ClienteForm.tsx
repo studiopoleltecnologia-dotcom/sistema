@@ -41,6 +41,7 @@ export function ClienteForm({
     observacoes: cliente?.observacoes ?? null,
     contato_emergencia_nome: cliente?.contato_emergencia_nome ?? null,
     contato_emergencia_telefone: cliente?.contato_emergencia_telefone ?? null,
+    contato_emergencia_parentesco: cliente?.contato_emergencia_parentesco ?? null,
   })
 
   const set = <K extends keyof ClienteInsert>(campo: K, valor: ClienteInsert[K]) =>
@@ -193,7 +194,7 @@ export function ClienteForm({
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
               Contato de emergência *
             </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className={labelCls}>Nome *</label>
                 <input
@@ -212,6 +213,18 @@ export function ClienteForm({
                   value={form.contato_emergencia_telefone ?? ''}
                   onChange={(e) => set('contato_emergencia_telefone', texto(e.target.value))}
                   placeholder="(21) 9…"
+                />
+              </div>
+              {/* Opcional: saber que "João" é o marido faz ligar sem
+                  hesitar. Exigir seria mais um campo entre o aluno e a
+                  matrícula, e nome + telefone já resolvem a emergência. */}
+              <div>
+                <label className={labelCls}>Parentesco</label>
+                <input
+                  className={inputCls}
+                  value={form.contato_emergencia_parentesco ?? ''}
+                  onChange={(e) => set('contato_emergencia_parentesco', texto(e.target.value))}
+                  placeholder="mãe, cônjuge…"
                 />
               </div>
             </div>

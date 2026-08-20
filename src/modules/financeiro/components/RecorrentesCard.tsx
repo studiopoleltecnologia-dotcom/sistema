@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { ChevronDown, Pencil, Plus, Repeat, X } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
+import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
@@ -37,6 +38,7 @@ export function RecorrentesCard({
 }) {
   const { data: recorrentes, isLoading } = useRecorrentes()
   const desativar = useDesativarRecorrente()
+  const confirmar = useConfirmar()
   const [aberto, setAberto] = useState(false)
   const [editando, setEditando] = useState<DespesaRecorrente | null>(null)
 
@@ -99,7 +101,21 @@ export function RecorrentesCard({
                     <Pencil className="size-3.5" />
                   </button>
                   <button
-                    onClick={() => desativar.mutate(r.id)}
+                    onClick={() =>
+                      confirmar.pedir({
+                        titulo: `Encerrar a recorrência de ${r.descricao}?`,
+                        tom: 'arquivar',
+                        textoConfirmar: 'Encerrar',
+                        descricao: (
+                          <>
+                            Ela para de gerar “A pagar” todo mês, a partir de agora. Os
+                            lançamentos que já foram feitos continuam no financeiro — encerrar não
+                            mexe em nada do passado.
+                          </>
+                        ),
+                        aoConfirmar: () => desativar.mutateAsync(r.id),
+                      })
+                    }
                     title="Encerrar recorrência (não afeta lançamentos já feitos)"
                     className="rounded p-1 text-neutral-300 transition hover:text-danger-600"
                   >
@@ -114,6 +130,7 @@ export function RecorrentesCard({
 
       {novoAberto && <RecorrenteModal onFechar={onFecharNovo} />}
       {editando && <RecorrenteModal recorrente={editando} onFechar={() => setEditando(null)} />}
+      {confirmar.dialogo}
     </div>
   )
 }

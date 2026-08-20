@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useConfirmar } from '../../components/ui/ConfirmarAcao'
 import { requireSupabase } from '../../lib/supabase'
 import { fmtCentavos, parseCentavos } from '../../lib/dinheiro'
 import { fmtData } from '../../lib/datas'
@@ -55,6 +56,7 @@ export function PlanosPage() {
   // de plano; aqui escondemos as ações para não frustrar o clique.
   const { data: funcao } = useMinhaFuncao()
   const ehGestao = funcao === 'gestao'
+  const confirmar = useConfirmar()
 
   const [nome, setNome] = useState('')
   // Todo plano é por crédito desde 21/07/2026; o que varia é quantos
@@ -214,7 +216,21 @@ export function PlanosPage() {
             </span>
             {ehGestao && (
               <button
-                onClick={() => desativarPlano.mutate(p.id)}
+                onClick={() =>
+                  confirmar.pedir({
+                    titulo: `Arquivar o plano ${p.nome}?`,
+                    tom: 'arquivar',
+                    descricao: (
+                      <>
+                        Ele sai do catálogo e ninguém consegue mais contratá-lo — nem a equipe, nem
+                        o aluno pelo portal. <b>Quem já está matriculado não é afetado:</b> a
+                        matrícula segue valendo até o fim do compromisso.
+                      </>
+                    ),
+                    aoConfirmar: () => desativarPlano.mutateAsync(p.id),
+                  })
+                }
+                title="Arquivar plano"
                 className="px-1 text-xs text-neutral-300 transition hover:text-red-500"
               >
                 ×
@@ -325,6 +341,7 @@ export function PlanosPage() {
           <li className="py-2 text-sm text-neutral-300">Nenhuma matrícula ativa.</li>
         )}
       </ul>
+      {confirmar.dialogo}
     </div>
   )
 }
