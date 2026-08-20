@@ -84,7 +84,7 @@ export async function listarClientesRanking() {
 }
 
 export async function listarPlanosNomes() {
-  const { data, error } = await requireSupabase().from('planos').select('id, nome')
+  const { data, error } = await requireSupabase().from('produtos').select('id, nome')
   if (error) throw error
   return data
 }

@@ -10,11 +10,19 @@ import {
   usePlanos,
 } from './hooks/usePortalAluna'
 
-function descricaoPlano(tipo: string, quantidade: number, vigenciaDias: number) {
-  if (tipo === 'creditos') {
-    return `${quantidade} aulas para usar como quiser em ${vigenciaDias} dias`
-  }
-  return `${quantidade}x por semana durante ${vigenciaDias} dias`
+function descricaoPlano(p: {
+  gera_credito: boolean
+  creditos_por_ciclo: number
+  periodicidade_dias: number
+  validade_creditos_dias: number | null
+  renova_automaticamente: boolean
+}) {
+  if (!p.gera_credito) return 'Horário combinado com o estúdio'
+  const n = p.creditos_por_ciclo
+  const aulas = `${n} aula${n === 1 ? '' : 's'}`
+  if (p.renova_automaticamente) return `${aulas} por mês, em qualquer modalidade`
+  const dias = p.validade_creditos_dias ?? p.periodicidade_dias
+  return `${aulas} para usar em ${dias} dias`
 }
 
 export function PlanosPage() {
@@ -88,15 +96,34 @@ export function PlanosPage() {
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-semibold text-neutral-900">{p.nome}</span>
               <span className="text-sm font-semibold text-brand-700">
-                {fmtCentavos(p.preco_centavos)}
+                {p.renova_automaticamente
+                  ? `${fmtCentavos(p.preco_centavos)}/mês`
+                  : fmtCentavos(p.preco_centavos)}
               </span>
             </div>
-            <p className="mt-0.5 text-xs text-neutral-500">
-              {descricaoPlano(p.tipo, p.quantidade, p.vigencia_dias)}
-            </p>
-            {config && (
+            <p className="mt-0.5 text-xs text-neutral-500">{descricaoPlano(p)}</p>
+            {p.descricao && <p className="mt-0.5 text-xs text-neutral-400">{p.descricao}</p>}
+
+            {/* Recorrência dita antes do botão, não em nota de rodapé.
+                O regulamento (1.3) insiste que "sem compromisso" quer
+                dizer que dá para cancelar quando quiser — não que a
+                cobrança para sozinha. É essa frase que evita a discussão
+                de cobrança dois meses depois. */}
+            {p.renova_automaticamente && (
+              <p className="mt-2 rounded-md bg-brand-50 px-2.5 py-1.5 text-[11px] leading-snug text-brand-700">
+                <strong>Cobrança automática a cada {p.periodicidade_dias} dias.</strong>{' '}
+                {p.ciclos_compromisso > 1
+                  ? `Permanência mínima de ${p.ciclos_compromisso} ciclos.`
+                  : 'Renova sozinho até você cancelar.'}
+              </p>
+            )}
+
+            {config && p.gera_credito && (
               <ul className="mt-2 flex flex-col gap-0.5 text-[11px] text-neutral-400">
-                <li>• Cancelamento até {config.horas_cancelamento}h antes devolve o crédito</li>
+                <li>
+                  • Cancelamento até {p.horas_cancelamento ?? config.horas_cancelamento}h antes
+                  devolve o crédito
+                </li>
                 <li>• Faltou sem cancelar: crédito é consumido</li>
               </ul>
             )}

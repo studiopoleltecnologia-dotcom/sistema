@@ -58,7 +58,7 @@ const SECOES: Secao[] = [
       { to: '/clientes', label: 'Clientes', icon: Users, funcoes: ['gestao', 'secretaria'] },
       { to: '/agenda', label: 'Grade de horários', icon: CalendarDays, funcoes: ['gestao', 'secretaria'] },
       { to: '/followup', label: 'Follow-up', icon: MessageCircleHeart, funcoes: ['gestao', 'secretaria'] },
-      { to: '/planos', label: 'Planos', icon: CreditCard, funcoes: ['gestao', 'secretaria'] },
+      { to: '/produtos', label: 'Produtos', icon: CreditCard, funcoes: ['gestao', 'secretaria'] },
     ],
   },
   {

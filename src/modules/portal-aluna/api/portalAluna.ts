@@ -93,11 +93,18 @@ export async function listarMinhasReservas() {
   return data
 }
 
+/**
+ * Catálogo que o aluno enxerga. O filtro de verdade não está aqui: a
+ * policy `cliente ve produtos do catalogo` exige `visivel_no_catalogo`,
+ * então plano personalizado e cortesia nem chegam nesta resposta. O
+ * `.eq('ativo', true)` é só para a consulta não trazer arquivado.
+ */
 export async function listarPlanos() {
   const { data, error } = await requireSupabase()
-    .from('planos')
+    .from('produtos')
     .select('*')
     .eq('ativo', true)
+    .order('ordem')
     .order('preco_centavos')
   if (error) throw error
   return data
