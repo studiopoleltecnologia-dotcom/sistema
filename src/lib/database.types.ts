@@ -154,6 +154,39 @@ export type Database = {
           },
         ]
       }
+      categorias_modalidade: {
+        Row: {
+          ativa: boolean
+          cor: string
+          cor_fundo: string
+          cor_texto: string
+          criada_em: string
+          id: string
+          nome: string
+          ordem: number
+        }
+        Insert: {
+          ativa?: boolean
+          cor: string
+          cor_fundo: string
+          cor_texto: string
+          criada_em?: string
+          id?: string
+          nome: string
+          ordem?: number
+        }
+        Update: {
+          ativa?: boolean
+          cor?: string
+          cor_fundo?: string
+          cor_texto?: string
+          criada_em?: string
+          id?: string
+          nome?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
       categorias_saida: {
         Row: {
           ativa: boolean
@@ -1303,6 +1336,7 @@ export type Database = {
       modalidades: {
         Row: {
           ativa: boolean
+          categoria_id: string | null
           criada_em: string
           id: string
           nome: string
@@ -1310,6 +1344,7 @@ export type Database = {
         }
         Insert: {
           ativa?: boolean
+          categoria_id?: string | null
           criada_em?: string
           id?: string
           nome: string
@@ -1317,12 +1352,21 @@ export type Database = {
         }
         Update: {
           ativa?: boolean
+          categoria_id?: string | null
           criada_em?: string
           id?: string
           nome?: string
           ordem?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "modalidades_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_modalidade"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       movimentacoes_funil: {
         Row: {
@@ -2124,6 +2168,10 @@ export type Database = {
       vw_grade_publica: {
         Row: {
           capacidade: number | null
+          categoria_cor: string | null
+          categoria_cor_fundo: string | null
+          categoria_cor_texto: string | null
+          categoria_nome: string | null
           dia_semana: number | null
           duracao_minutos: number | null
           horario: string | null

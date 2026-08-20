@@ -5,13 +5,14 @@ import { Input } from '../../../components/ui/Input'
 import { Select } from '../../../components/ui/Select'
 import {
   useAtualizarTurma,
+  useCategorias,
   useCriarModalidade,
   useCriarTurma,
   useModalidades,
   useNomesProfessoras,
   useSalas,
 } from '../hooks/useAgenda'
-import { DIAS_SEMANA } from '../types'
+import { DIAS_SEMANA, type CategoriaModalidade } from '../types'
 
 export type TurmaInicial = {
   modalidadeId: string
@@ -38,6 +39,7 @@ export function TurmaForm({
   onFechar: () => void
 }) {
   const { data: modalidades } = useModalidades()
+  const { data: categorias } = useCategorias()
   const { data: salas } = useSalas()
   const { data: professoras } = useNomesProfessoras()
   const criarModalidade = useCriarModalidade()
@@ -46,6 +48,10 @@ export function TurmaForm({
 
   const [modalidadeId, setModalidadeId] = useState(inicial.modalidadeId)
   const [novaModalidade, setNovaModalidade] = useState<string | null>(null)
+  // Categoria da modalidade nova. É o que decide a cor do cartão na grade —
+  // sem escolher aqui, a turma nasceria cinza e alguém teria que ir
+  // agrupá-la depois, no cadastro de categorias.
+  const [novaCategoriaId, setNovaCategoriaId] = useState('')
   const [salaId, setSalaId] = useState(inicial.salaId)
   const [professoraId, setProfessoraId] = useState(inicial.professoraId)
   const [dia, setDia] = useState(inicial.dia)
@@ -68,7 +74,10 @@ export function TurmaForm({
     if (novaModalidade !== null) {
       const nome = novaModalidade.trim()
       if (!nome) return setErro('Digite o nome da nova modalidade.')
-      const nova = await criarModalidade.mutateAsync(nome)
+      const nova = await criarModalidade.mutateAsync({
+        nome,
+        categoriaId: novaCategoriaId || null,
+      })
       modId = nova.id
       modNome = nova.nome
     }
@@ -134,23 +143,49 @@ export function TurmaForm({
                 <option value={NOVA}>+ Criar nova modalidade…</option>
               </Select>
             ) : (
-              <div className="flex gap-1.5">
-                <Input
-                  autoFocus
-                  value={novaModalidade}
-                  onChange={(e) => setNovaModalidade(e.target.value)}
-                  placeholder="Nome da modalidade"
+              <div className="flex flex-col gap-1.5">
+                <div className="flex gap-1.5">
+                  <Input
+                    autoFocus
+                    value={novaModalidade}
+                    onChange={(e) => setNovaModalidade(e.target.value)}
+                    placeholder="Nome da modalidade"
+                    className="w-full"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setNovaModalidade(null)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+                <Select
+                  value={novaCategoriaId}
+                  onChange={(e) => setNovaCategoriaId(e.target.value)}
                   className="w-full"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setNovaModalidade(null)}
                 >
-                  Cancelar
-                </Button>
+                  <option value="">Categoria (define a cor na grade)…</option>
+                  {(categorias ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </Select>
               </div>
+            )}
+            {/* Só ao escolher uma modalidade existente: dizer a categoria
+                evita descobrir a cor errada depois de salvar. */}
+            {novaModalidade === null && modalidadeId && (
+              <CategoriaDaModalidade
+                categoria={
+                  (categorias ?? []).find(
+                    (c) =>
+                      c.id === (modalidades ?? []).find((m) => m.id === modalidadeId)?.categoria_id,
+                  ) ?? null
+                }
+              />
             )}
           </div>
 
@@ -243,5 +278,22 @@ export function TurmaForm({
         </div>
       </form>
     </div>
+  )
+}
+
+/** Dica de categoria/cor abaixo do seletor de modalidade. */
+function CategoriaDaModalidade({ categoria }: { categoria: CategoriaModalidade | null }) {
+  if (!categoria) {
+    return (
+      <p className="mt-1 text-[11px] text-neutral-400">
+        Sem categoria — o cartão aparece cinza na grade. Agrupe em “Categorias”, na legenda.
+      </p>
+    )
+  }
+  return (
+    <p className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500">
+      <span className="size-2.5 shrink-0 rounded-full" style={{ background: categoria.cor }} />
+      Categoria: {categoria.nome}
+    </p>
   )
 }
