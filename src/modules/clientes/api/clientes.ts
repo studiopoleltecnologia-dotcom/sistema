@@ -110,9 +110,9 @@ export async function obterAlunoDesde(clienteId: string): Promise<string | null>
   return data?.data_inicio ?? null
 }
 
-/** Nome dos planos, para rotular a matrícula na ficha (vw_saldo_creditos só traz o id). */
+/** Nome dos produtos, para rotular a matrícula na ficha (vw_saldo_creditos só traz o id). */
 export async function listarPlanosNomes() {
-  const { data, error } = await requireSupabase().from('planos').select('id, nome')
+  const { data, error } = await requireSupabase().from('produtos').select('id, nome')
   if (error) throw error
   return data
 }

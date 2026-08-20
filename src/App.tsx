@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthGate } from './modules/auth/AuthGate'
 import { DefinirNovaSenha } from './modules/auth/DefinirNovaSenha'
@@ -20,7 +20,7 @@ import { FollowupPage } from './modules/followup/FollowupPage'
 import { AgendaPage } from './modules/agenda/AgendaPage'
 import { ProfessorasPage } from './modules/professoras/ProfessorasPage'
 import { FechamentoPage } from './modules/fechamento/FechamentoPage'
-import { PlanosPage } from './modules/planos/PlanosPage'
+import { ProdutosPage } from './modules/produtos/ProdutosPage'
 import { PortalApp } from './modules/portal-aluna/PortalApp'
 import { ProfessoraApp } from './modules/portal-professora/ProfessoraApp'
 import { DashboardPage } from './modules/dashboard/DashboardPage'
@@ -151,7 +151,11 @@ export default function App() {
                     </RotaFuncao>
                   }
                 />
-                <Route path="planos" element={<PlanosPage />} />
+                <Route path="produtos" element={<ProdutosPage />} />
+                {/* O módulo virou "Produtos" porque o estúdio não vende só
+                    plano. A rota antiga fica de pé para não quebrar link
+                    salvo nem o alerta de inadimplência do painel. */}
+                <Route path="planos" element={<Navigate to="/produtos" replace />} />
                 <Route
                   path="equipe"
                   element={
