@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Landmark, RotateCcw, X } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
+import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { Input } from '../../../components/ui/Input'
 import { Select } from '../../../components/ui/Select'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
@@ -55,6 +56,7 @@ export function FechamentoDetalhe({
   const remover = useRemoverAjuste()
   const aprovar = useAprovarFechamento()
   const reabrir = useReabrirFechamento()
+  const confirmar = useConfirmar()
 
   const [tipo, setTipo] = useState<TipoAjuste>('bonus')
   const [descricao, setDescricao] = useState('')
@@ -144,7 +146,21 @@ export function FechamentoDetalhe({
               </span>
               {!aprovado && (
                 <button
-                  onClick={() => remover.mutate(a.id)}
+                  onClick={() =>
+                    confirmar.pedir({
+                      titulo: 'Excluir este ajuste da folha?',
+                      descricao: (
+                        <>
+                          <b>
+                            {TIPO_LABEL[a.tipo]} · {a.valor_centavos < 0 ? '−' : '+'}{' '}
+                            {fmtCentavos(Math.abs(a.valor_centavos))}
+                          </b>{' '}
+                          sai do cálculo e o valor final da professora é recalculado na hora.
+                        </>
+                      ),
+                      aoConfirmar: () => remover.mutateAsync(a.id),
+                    })
+                  }
                   className="rounded p-0.5 text-neutral-300 transition hover:text-danger-600"
                 >
                   <X className="size-3.5" />
@@ -246,6 +262,7 @@ export function FechamentoDetalhe({
           </>
         )}
       </div>
+      {confirmar.dialogo}
     </aside>
   )
 }

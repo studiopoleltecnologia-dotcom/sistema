@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CalendarClock, CheckCircle2, Circle, Moon, Plus, Sun, Trash2, X } from 'lucide-react'
+import { useConfirmar } from '../../components/ui/ConfirmarAcao'
 import { fmtData } from '../../lib/datas'
 import { useSocias } from '../clientes/hooks/useClientes'
 import {
@@ -51,6 +52,7 @@ function RotinasDoDia() {
   const desmarcar = useDesmarcarItem()
   const criarItem = useCriarItemChecklist()
   const removerItem = useRemoverItemChecklist()
+  const confirmar = useConfirmar()
 
   const itens = checklist?.itens ?? []
   const feitos = checklist?.feitos ?? new Set<string>()
@@ -116,7 +118,19 @@ function RotinasDoDia() {
                         {item.titulo}
                       </button>
                       <button
-                        onClick={() => removerItem.mutate(item.id)}
+                        onClick={() =>
+                          confirmar.pedir({
+                            titulo: 'Remover do checklist?',
+                            descricao: (
+                              <>
+                                <b>{item.titulo}</b> some da rotina de todos os dias, não só de
+                                hoje. O histórico de quando ele foi marcado é apagado junto.
+                              </>
+                            ),
+                            textoConfirmar: 'Remover',
+                            aoConfirmar: () => removerItem.mutateAsync(item.id),
+                          })
+                        }
                         className="rounded p-0.5 text-neutral-200 transition hover:text-danger-500 md:opacity-0 md:group-hover:opacity-100"
                         title="Remover do checklist"
                       >
@@ -139,6 +153,7 @@ function RotinasDoDia() {
           )
         })}
       </div>
+      {confirmar.dialogo}
     </div>
   )
 }
@@ -179,6 +194,7 @@ function ListaTarefas() {
   const criar = useCriarTarefa()
   const alternar = useAlternarTarefa()
   const excluir = useExcluirTarefa()
+  const confirmar = useConfirmar()
 
   const [titulo, setTitulo] = useState('')
   const [responsavel, setResponsavel] = useState('')
@@ -303,7 +319,13 @@ function ListaTarefas() {
                 </div>
               </div>
               <button
-                onClick={() => excluir.mutate(t.id)}
+                onClick={() =>
+                  confirmar.pedir({
+                    titulo: 'Excluir esta tarefa?',
+                    descricao: <b>{t.titulo}</b>,
+                    aoConfirmar: () => excluir.mutateAsync(t.id),
+                  })
+                }
                 className="rounded p-1 text-neutral-200 transition hover:text-danger-500 md:opacity-0 md:group-hover:opacity-100"
                 title="Excluir"
               >
@@ -318,6 +340,7 @@ function ListaTarefas() {
           </li>
         )}
       </ul>
+      {confirmar.dialogo}
     </div>
   )
 }

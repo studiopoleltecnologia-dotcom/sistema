@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { CalendarClock, Plus, Repeat, RotateCcw, Trash2, TrendingDown, TriangleAlert, Wallet } from 'lucide-react'
+import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { CardColapsavel, type ChipTom } from '../../../components/ui/CardColapsavel'
@@ -70,6 +71,7 @@ export function SaidasPage() {
   const { data: saidas, isLoading } = useSaidas(periodo)
   const { data: aPagar } = useContasAPagar()
   const excluir = useExcluirSaida()
+  const confirmar = useConfirmar()
   const reverter = useReverterPagamentoSaida()
   const atualizarSaida = useAtualizarSaida()
   const lancar = useLancarRecorrente()
@@ -249,14 +251,23 @@ export function SaidasPage() {
                           <span className="hidden sm:inline">Marcar como não pago</span>
                         </Button>
                         <button
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Excluir definitivamente "${s.descricao || s.categoria?.nome}" de ${fmtCentavos(s.valor_centavos)}?\n\nIsto apaga o lançamento. Para só desfazer o pagamento, use "Marcar como não pago".`,
-                              )
-                            )
-                              excluir.mutate(s.id)
-                          }}
+                          onClick={() =>
+                            confirmar.pedir({
+                              titulo: 'Excluir esta despesa?',
+                              descricao: (
+                                <>
+                                  <b>
+                                    {s.descricao || s.categoria?.nome} —{' '}
+                                    {fmtCentavos(s.valor_centavos)}
+                                  </b>{' '}
+                                  sai do fluxo de caixa e do DRE do período.
+                                  <br />
+                                  Para só desfazer o pagamento, use “Marcar como não pago”.
+                                </>
+                              ),
+                              aoConfirmar: () => excluir.mutateAsync(s.id),
+                            })
+                          }
                           title="Excluir lançamento"
                           className="ml-1 shrink-0 rounded p-1 text-neutral-300 transition hover:bg-danger-50 hover:text-danger-600"
                         >
@@ -288,6 +299,7 @@ export function SaidasPage() {
       })}
 
       {novaSaida && <NovaSaidaModal tipoInicial={novaSaida.tipo} onFechar={() => setNovaSaida(null)} />}
+      {confirmar.dialogo}
     </div>
   )
 }

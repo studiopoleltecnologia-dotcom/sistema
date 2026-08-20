@@ -359,6 +359,7 @@ export type Database = {
         Row: {
           atualizada_em: string
           contato_emergencia_nome: string | null
+          contato_emergencia_parentesco: string | null
           contato_emergencia_telefone: string | null
           criada_em: string
           data_nascimento: string | null
@@ -381,6 +382,7 @@ export type Database = {
         Insert: {
           atualizada_em?: string
           contato_emergencia_nome?: string | null
+          contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
           criada_em?: string
           data_nascimento?: string | null
@@ -403,6 +405,7 @@ export type Database = {
         Update: {
           atualizada_em?: string
           contato_emergencia_nome?: string | null
+          contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
           criada_em?: string
           data_nascimento?: string | null
@@ -1580,6 +1583,9 @@ export type Database = {
         Row: {
           ativa: boolean
           atualizada_em: string
+          contato_emergencia_nome: string | null
+          contato_emergencia_parentesco: string | null
+          contato_emergencia_telefone: string | null
           criada_em: string
           data_nascimento: string | null
           email: string | null
@@ -1598,6 +1604,9 @@ export type Database = {
         Insert: {
           ativa?: boolean
           atualizada_em?: string
+          contato_emergencia_nome?: string | null
+          contato_emergencia_parentesco?: string | null
+          contato_emergencia_telefone?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
@@ -1616,6 +1625,9 @@ export type Database = {
         Update: {
           ativa?: boolean
           atualizada_em?: string
+          contato_emergencia_nome?: string | null
+          contato_emergencia_parentesco?: string | null
+          contato_emergencia_telefone?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
