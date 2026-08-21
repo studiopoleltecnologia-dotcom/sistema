@@ -6,10 +6,13 @@ import { PerfilPage } from './PerfilPage'
 import { ProfessoraAuthGate } from './ProfessoraAuthGate'
 import { ProfessoraLayout } from './ProfessoraLayout'
 
+/** Mesmo defeito e mesma correção do portal da aluna — ver PortalApp. */
+const BASENAME = window.location.hash.startsWith('#/prof') ? '/prof' : ''
+
 export function ProfessoraApp() {
   return (
     <ProfessoraAuthGate>
-      <HashRouter basename="/prof">
+      <HashRouter basename={BASENAME}>
         <Routes>
           <Route element={<ProfessoraLayout />}>
             <Route index element={<AulasPage />} />
