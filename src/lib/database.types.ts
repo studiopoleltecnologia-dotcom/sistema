@@ -445,6 +445,7 @@ export type Database = {
       config_agendamento: {
         Row: {
           atualizada_em: string
+          dias_antecedencia_cobranca: number
           horas_cancelamento: number
           id: boolean
           max_reposicoes_por_matricula: number
@@ -453,6 +454,7 @@ export type Database = {
         }
         Insert: {
           atualizada_em?: string
+          dias_antecedencia_cobranca?: number
           horas_cancelamento?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
@@ -461,6 +463,7 @@ export type Database = {
         }
         Update: {
           atualizada_em?: string
+          dias_antecedencia_cobranca?: number
           horas_cancelamento?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
@@ -591,50 +594,6 @@ export type Database = {
           },
         ]
       }
-      creditos_lotes: {
-        Row: {
-          ciclo: number
-          concedido_em: string
-          criado_em: string
-          detalhe: string | null
-          id: string
-          matricula_id: string
-          origem: Database["public"]["Enums"]["motivo_credito"]
-          quantidade: number
-          validade: string
-        }
-        Insert: {
-          ciclo: number
-          concedido_em?: string
-          criado_em?: string
-          detalhe?: string | null
-          id?: string
-          matricula_id: string
-          origem?: Database["public"]["Enums"]["motivo_credito"]
-          quantidade: number
-          validade: string
-        }
-        Update: {
-          ciclo?: number
-          concedido_em?: string
-          criado_em?: string
-          detalhe?: string | null
-          id?: string
-          matricula_id?: string
-          origem?: Database["public"]["Enums"]["motivo_credito"]
-          quantidade?: number
-          validade?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "creditos_lotes_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
-            referencedRelation: "matriculas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       creditos_eventos: {
         Row: {
           agendamento_id: string | null
@@ -678,6 +637,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "creditos_eventos_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "creditos_lotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_eventos_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "vw_creditos_lotes"
+            referencedColumns: ["lote_id"]
+          },
+          {
             foreignKeyName: "creditos_eventos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
@@ -693,6 +666,64 @@ export type Database = {
           },
           {
             foreignKeyName: "creditos_eventos_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+        ]
+      }
+      creditos_lotes: {
+        Row: {
+          ciclo: number
+          concedido_em: string
+          criado_em: string
+          detalhe: string | null
+          id: string
+          matricula_id: string
+          origem: Database["public"]["Enums"]["motivo_credito"]
+          quantidade: number
+          validade: string
+        }
+        Insert: {
+          ciclo: number
+          concedido_em?: string
+          criado_em?: string
+          detalhe?: string | null
+          id?: string
+          matricula_id: string
+          origem?: Database["public"]["Enums"]["motivo_credito"]
+          quantidade: number
+          validade: string
+        }
+        Update: {
+          ciclo?: number
+          concedido_em?: string
+          criado_em?: string
+          detalhe?: string | null
+          id?: string
+          matricula_id?: string
+          origem?: Database["public"]["Enums"]["motivo_credito"]
+          quantidade?: number
+          validade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creditos_lotes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_lotes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "creditos_lotes_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "vw_saldo_creditos"
@@ -823,6 +854,7 @@ export type Database = {
         Row: {
           atualizada_em: string
           categoria: Database["public"]["Enums"]["categoria_entrada"]
+          ciclo: number | null
           cliente_id: string | null
           criada_em: string
           data_caixa: string | null
@@ -830,6 +862,7 @@ export type Database = {
           data_prevista: string | null
           descricao: string | null
           id: string
+          matricula_id: string | null
           presenca_id: string | null
           status: Database["public"]["Enums"]["status_entrada"]
           valor_centavos: number
@@ -837,6 +870,7 @@ export type Database = {
         Insert: {
           atualizada_em?: string
           categoria: Database["public"]["Enums"]["categoria_entrada"]
+          ciclo?: number | null
           cliente_id?: string | null
           criada_em?: string
           data_caixa?: string | null
@@ -844,6 +878,7 @@ export type Database = {
           data_prevista?: string | null
           descricao?: string | null
           id?: string
+          matricula_id?: string | null
           presenca_id?: string | null
           status?: Database["public"]["Enums"]["status_entrada"]
           valor_centavos: number
@@ -851,6 +886,7 @@ export type Database = {
         Update: {
           atualizada_em?: string
           categoria?: Database["public"]["Enums"]["categoria_entrada"]
+          ciclo?: number | null
           cliente_id?: string | null
           criada_em?: string
           data_caixa?: string | null
@@ -858,6 +894,7 @@ export type Database = {
           data_prevista?: string | null
           descricao?: string | null
           id?: string
+          matricula_id?: string | null
           presenca_id?: string | null
           status?: Database["public"]["Enums"]["status_entrada"]
           valor_centavos?: number
@@ -883,6 +920,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_analise_clientes_risco"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "entradas_financeiras_presenca_id_fkey"
@@ -1621,6 +1679,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "produto_modalidades_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_modalidade"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
+            foreignKeyName: "produto_modalidades_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
             foreignKeyName: "produto_modalidades_produto_id_fkey"
             columns: ["produto_id"]
             isOneToOne: false
@@ -1673,8 +1745,8 @@ export type Database = {
           convidados_por_ciclo: number
           creditos_por_ciclo: number
           criada_em: string
-          descricao: string | null
           desconto_eventos_pct: number
+          descricao: string | null
           dias_antecedencia_agendamento: number | null
           gera_credito: boolean
           horas_cancelamento: number | null
@@ -1700,8 +1772,8 @@ export type Database = {
           convidados_por_ciclo?: number
           creditos_por_ciclo: number
           criada_em?: string
-          descricao?: string | null
           desconto_eventos_pct?: number
+          descricao?: string | null
           dias_antecedencia_agendamento?: number | null
           gera_credito?: boolean
           horas_cancelamento?: number | null
@@ -1727,8 +1799,8 @@ export type Database = {
           convidados_por_ciclo?: number
           creditos_por_ciclo?: number
           criada_em?: string
-          descricao?: string | null
           desconto_eventos_pct?: number
+          descricao?: string | null
           dias_antecedencia_agendamento?: number | null
           gera_credito?: boolean
           horas_cancelamento?: number | null
@@ -2333,6 +2405,65 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_creditos_lotes: {
+        Row: {
+          ciclo: number | null
+          cliente_id: string | null
+          concedido_em: string | null
+          detalhe: string | null
+          lote_id: string | null
+          matricula_id: string | null
+          origem: Database["public"]["Enums"]["motivo_credito"] | null
+          quantidade: number | null
+          saldo: number | null
+          validade: string | null
+          vencido: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creditos_lotes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_lotes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "creditos_lotes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       vw_dre_competencia: {
         Row: {
           categoria: string | null
@@ -2556,22 +2687,6 @@ export type Database = {
         }
         Relationships: []
       }
-      vw_creditos_lotes: {
-        Row: {
-          ciclo: number | null
-          cliente_id: string | null
-          concedido_em: string | null
-          detalhe: string | null
-          lote_id: string | null
-          matricula_id: string | null
-          origem: Database["public"]["Enums"]["motivo_credito"] | null
-          quantidade: number | null
-          saldo: number | null
-          validade: string | null
-          vencido: boolean | null
-        }
-        Relationships: []
-      }
       vw_saldo_creditos: {
         Row: {
           cancelamento_efetivo_em: string | null
@@ -2674,9 +2789,9 @@ export type Database = {
         Returns: string
       }
       cliente_atual: { Args: never; Returns: string }
-      saldo_disponivel: {
-        Args: { p_matricula: string; p_para_data?: string }
-        Returns: number
+      cobrar_ciclo: {
+        Args: { p_ciclo: number; p_matricula: string; p_vencimento: string }
+        Returns: string
       }
       conciliar_wellhub: {
         Args: {
@@ -2693,6 +2808,15 @@ export type Database = {
           p_observacao?: string
         }
         Returns: undefined
+      }
+      consumir_credito: {
+        Args: {
+          p_agendamento?: string
+          p_matricula: string
+          p_motivo: Database["public"]["Enums"]["motivo_credito"]
+          p_para_data?: string
+        }
+        Returns: string
       }
       convidar_equipe: {
         Args: {
@@ -2721,6 +2845,15 @@ export type Database = {
           p_id: string
         }
         Returns: undefined
+      }
+      devolver_credito: {
+        Args: {
+          p_agendamento?: string
+          p_lote: string
+          p_matricula: string
+          p_motivo: Database["public"]["Enums"]["motivo_credito"]
+        }
+        Returns: string
       }
       disparar_emails: { Args: never; Returns: undefined }
       enfileirar_email: {
@@ -2794,6 +2927,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["funcao_interna"]
       }
+      processar_assinaturas: { Args: never; Returns: Json }
       processar_listas_espera: { Args: never; Returns: number }
       professora_atual: { Args: never; Returns: string }
       promover_lista_espera: {
@@ -2825,6 +2959,10 @@ export type Database = {
         Returns: string
       }
       sair_lista_espera: { Args: { p_id: string }; Returns: boolean }
+      saldo_disponivel: {
+        Args: { p_matricula: string; p_para_data?: string }
+        Returns: number
+      }
     }
     Enums: {
       canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
@@ -3108,7 +3246,11 @@ export const Constants = {
       tipo_interacao: ["nota", "whatsapp", "conversa", "mudanca_estagio"],
       tipo_movimento_reserva: ["aporte", "retirada"],
       tipo_produto: ["plano", "pacote", "servico"],
-      tipo_requisito_produto: ["nunca_treinou", "plano_ativo", "checkins_wellhub"],
+      tipo_requisito_produto: [
+        "nunca_treinou",
+        "plano_ativo",
+        "checkins_wellhub",
+      ],
       tipo_saida: ["fixa", "variavel", "fixa_planejada"],
     },
   },
