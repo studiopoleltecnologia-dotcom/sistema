@@ -1331,7 +1331,7 @@ export type Database = {
             foreignKeyName: "matriculas_plano_id_fkey"
             columns: ["plano_id"]
             isOneToOne: false
-            referencedRelation: "planos"
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]
@@ -1437,45 +1437,6 @@ export type Database = {
           },
         ]
       }
-      planos: {
-        Row: {
-          ativo: boolean
-          atualizada_em: string
-          ciclos: number
-          criada_em: string
-          id: string
-          nome: string
-          preco_centavos: number
-          quantidade: number
-          tipo: Database["public"]["Enums"]["plano_tipo"]
-          vigencia_dias: number
-        }
-        Insert: {
-          ativo?: boolean
-          atualizada_em?: string
-          ciclos?: number
-          criada_em?: string
-          id?: string
-          nome: string
-          preco_centavos: number
-          quantidade: number
-          tipo: Database["public"]["Enums"]["plano_tipo"]
-          vigencia_dias: number
-        }
-        Update: {
-          ativo?: boolean
-          atualizada_em?: string
-          ciclos?: number
-          criada_em?: string
-          id?: string
-          nome?: string
-          preco_centavos?: number
-          quantidade?: number
-          tipo?: Database["public"]["Enums"]["plano_tipo"]
-          vigencia_dias?: number
-        }
-        Relationships: []
-      }
       presencas: {
         Row: {
           agendamento_id: string | null
@@ -1576,6 +1537,163 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_grade_publica"
             referencedColumns: ["turma_id"]
+          },
+        ]
+      }
+      produto_modalidades: {
+        Row: {
+          modalidade_id: string
+          produto_id: string
+        }
+        Insert: {
+          modalidade_id: string
+          produto_id: string
+        }
+        Update: {
+          modalidade_id?: string
+          produto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_modalidades_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "modalidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_modalidades_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produto_requisitos: {
+        Row: {
+          criada_em: string
+          id: string
+          janela_dias: number | null
+          parametro_int: number | null
+          produto_id: string
+          tipo: Database["public"]["Enums"]["tipo_requisito_produto"]
+        }
+        Insert: {
+          criada_em?: string
+          id?: string
+          janela_dias?: number | null
+          parametro_int?: number | null
+          produto_id: string
+          tipo: Database["public"]["Enums"]["tipo_requisito_produto"]
+        }
+        Update: {
+          criada_em?: string
+          id?: string
+          janela_dias?: number | null
+          parametro_int?: number | null
+          produto_id?: string
+          tipo?: Database["public"]["Enums"]["tipo_requisito_produto"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_requisitos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produtos: {
+        Row: {
+          acumula_creditos: boolean
+          ativo: boolean
+          atualizada_em: string
+          ciclos_compromisso: number
+          convidados_por_ciclo: number
+          creditos_por_ciclo: number
+          criada_em: string
+          descricao: string | null
+          desconto_eventos_pct: number
+          dias_antecedencia_agendamento: number | null
+          gera_credito: boolean
+          horas_cancelamento: number | null
+          id: string
+          limite_por_cliente: number | null
+          max_agendamentos_simultaneos: number | null
+          nome: string
+          ordem: number
+          periodicidade_dias: number
+          preco_centavos: number
+          produto_sucessor_id: string | null
+          renova_automaticamente: boolean
+          teto_acumulo_ciclos: number
+          tipo_produto: Database["public"]["Enums"]["tipo_produto"]
+          validade_creditos_dias: number | null
+          visivel_no_catalogo: boolean
+        }
+        Insert: {
+          acumula_creditos?: boolean
+          ativo?: boolean
+          atualizada_em?: string
+          ciclos_compromisso?: number
+          convidados_por_ciclo?: number
+          creditos_por_ciclo: number
+          criada_em?: string
+          descricao?: string | null
+          desconto_eventos_pct?: number
+          dias_antecedencia_agendamento?: number | null
+          gera_credito?: boolean
+          horas_cancelamento?: number | null
+          id?: string
+          limite_por_cliente?: number | null
+          max_agendamentos_simultaneos?: number | null
+          nome: string
+          ordem?: number
+          periodicidade_dias: number
+          preco_centavos: number
+          produto_sucessor_id?: string | null
+          renova_automaticamente?: boolean
+          teto_acumulo_ciclos?: number
+          tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
+          validade_creditos_dias?: number | null
+          visivel_no_catalogo?: boolean
+        }
+        Update: {
+          acumula_creditos?: boolean
+          ativo?: boolean
+          atualizada_em?: string
+          ciclos_compromisso?: number
+          convidados_por_ciclo?: number
+          creditos_por_ciclo?: number
+          criada_em?: string
+          descricao?: string | null
+          desconto_eventos_pct?: number
+          dias_antecedencia_agendamento?: number | null
+          gera_credito?: boolean
+          horas_cancelamento?: number | null
+          id?: string
+          limite_por_cliente?: number | null
+          max_agendamentos_simultaneos?: number | null
+          nome?: string
+          ordem?: number
+          periodicidade_dias?: number
+          preco_centavos?: number
+          produto_sucessor_id?: string | null
+          renova_automaticamente?: boolean
+          teto_acumulo_ciclos?: number
+          tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
+          validade_creditos_dias?: number | null
+          visivel_no_catalogo?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_produto_sucessor_id_fkey"
+            columns: ["produto_sucessor_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2024,7 +2142,7 @@ export type Database = {
             foreignKeyName: "matriculas_plano_id_fkey"
             columns: ["plano_id"]
             isOneToOne: false
-            referencedRelation: "planos"
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]
@@ -2418,7 +2536,7 @@ export type Database = {
             foreignKeyName: "matriculas_plano_id_fkey"
             columns: ["plano_id"]
             isOneToOne: false
-            referencedRelation: "planos"
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]
@@ -2691,6 +2809,11 @@ export type Database = {
         | "vencimento_plano"
       tipo_interacao: "nota" | "whatsapp" | "conversa" | "mudanca_estagio"
       tipo_movimento_reserva: "aporte" | "retirada"
+      tipo_produto: "plano" | "pacote" | "servico"
+      tipo_requisito_produto:
+        | "nunca_treinou"
+        | "plano_ativo"
+        | "checkins_wellhub"
       tipo_saida: "fixa" | "variavel" | "fixa_planejada"
     }
     CompositeTypes: {
@@ -2896,6 +3019,8 @@ export const Constants = {
       ],
       tipo_interacao: ["nota", "whatsapp", "conversa", "mudanca_estagio"],
       tipo_movimento_reserva: ["aporte", "retirada"],
+      tipo_produto: ["plano", "pacote", "servico"],
+      tipo_requisito_produto: ["nunca_treinou", "plano_ativo", "checkins_wellhub"],
       tipo_saida: ["fixa", "variavel", "fixa_planejada"],
     },
   },
