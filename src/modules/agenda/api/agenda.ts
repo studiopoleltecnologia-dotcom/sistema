@@ -287,6 +287,10 @@ export async function obterConfigAgendamento() {
 export async function atualizarConfigAgendamento(patch: {
   horas_cancelamento?: number
   valor_checkin_wellhub_centavos?: number
+  dias_antecedencia_cobranca?: number
+  faltas_para_suspensao?: number
+  dias_suspensao_faltas?: number
+  minutos_tolerancia_atraso?: number
 }) {
   const { data, error } = await requireSupabase()
     .from('config_agendamento')
@@ -350,6 +354,45 @@ export async function resolverCheckinPendente(args: {
     p_turma: args.turma_id,
     p_observacao: args.observacao ?? null,
   } as unknown as { p_pendencia: string; p_turma: string; p_observacao?: string })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Suspensões por falta (regulamento 4.7). Traz também as revogadas e as
+ * vencidas: o histórico é o que permite a equipe responder "por que ela
+ * ficou suspensa em agosto".
+ */
+export async function listarSuspensoes() {
+  const { data, error } = await requireSupabase()
+    .from('suspensoes_agendamento')
+    .select('*, clientes(nome)')
+    .order('criada_em', { ascending: false })
+    .limit(50)
+  if (error) throw error
+  return data
+}
+
+export async function revogarSuspensao(args: { id: string; motivo?: string }) {
+  const { data, error } = await requireSupabase().rpc('revogar_suspensao', {
+    p_suspensao: args.id,
+    p_motivo: args.motivo ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Aulas que já aconteceram e ninguém marcou presença nem falta.
+ * Existe porque falta NÃO é presumida (etapa 5): sem esta lista, a
+ * marcação esquecida sumiria e a regra das 3 faltas furaria calada.
+ */
+export async function listarAulasSemPresenca() {
+  const { data, error } = await requireSupabase()
+    .from('vw_aulas_sem_presenca')
+    .select('*')
+    .order('data', { ascending: false })
+    .limit(100)
   if (error) throw error
   return data
 }

@@ -7,11 +7,18 @@ import {
   useEntrarListaEspera,
   useGradePublica,
   useMinhaFila,
+  useMinhaSuspensao,
   useSairListaEspera,
   useVagas,
 } from './hooks/usePortalAluna'
 
 const DIAS_A_MOSTRAR = 10
+
+/** dd/mm — a aluna não precisa do ano para uma data a 15 dias daqui. */
+function fmtDataCurta(iso: string) {
+  const [, m, d] = iso.split('-')
+  return `${d}/${m}`
+}
 
 function gerarProximosDias(qtd: number) {
   const dias: { iso: string; diaSemana: number; diaMes: number }[] = []
@@ -38,6 +45,7 @@ export function AgendaPage() {
   const { data: vagas } = useVagas(dias[0].iso, dias[dias.length - 1].iso)
   const { data: config } = useConfigAgendamento()
   const { data: fila } = useMinhaFila()
+  const { data: suspensao } = useMinhaSuspensao()
   const agendar = useAgendarAula()
   const entrarFila = useEntrarListaEspera()
   const sairFila = useSairListaEspera()
@@ -85,6 +93,22 @@ export function AgendaPage() {
         <p className="mb-4 text-xs text-neutral-400">
           Cancelamento até {config.horas_cancelamento}h antes, sem perda de crédito.
         </p>
+      )}
+
+      {/* O regulamento manda avisar por escrito e diz, literalmente, para
+          não deixar a pessoa descobrir sozinha na hora de agendar. O
+          e-mail sai na hora da terceira falta; este aviso é o segundo
+          lugar onde ela não deveria ser pega de surpresa. Explica o que
+          AINDA dá para fazer, não só o que foi bloqueado. */}
+      {suspensao && (
+        <div className="mb-4 rounded-lg border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
+          <strong className="font-semibold">Agendamento antecipado pausado</strong> até{' '}
+          {fmtDataCurta(suspensao.fim)}, por {suspensao.faltas} faltas sem cancelamento.
+          <span className="mt-1 block text-xs">
+            Você continua treinando: dá para reservar as aulas <strong>de hoje</strong> ou
+            entrar na lista de espera. Quer conversar sobre isso? Fala com o estúdio.
+          </span>
+        </div>
       )}
 
       <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
