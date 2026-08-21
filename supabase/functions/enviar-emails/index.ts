@@ -106,6 +106,24 @@ function render(tipo: string, d: Dados): Render {
           { texto: 'Renovar meu plano', url: PORTAL }),
       }
     }
+    // Regulamento 4.7 + procedimento interno: "quando a terceira falta
+    // acontecer, avisar por escrito no mesmo dia e registrar. Não deixar
+    // a pessoa descobrir sozinha na hora de agendar." Este e-mail é a
+    // parte "por escrito" — sem ele a regra vira uma surpresa ruim.
+    case 'suspensao_faltas': {
+      const faltas = (d.faltas as number) ?? 3
+      const dias = (d.dias as number) ?? 15
+      const ate = dataExtenso(d.ate as string)
+      return {
+        assunto: 'Sobre suas aulas — agendamento antecipado pausado',
+        html: layout('Precisamos falar sobre as faltas',
+          `Oi, ${nome}. Registramos <strong>${faltas} faltas sem cancelamento</strong> no seu ciclo atual.<br><br>
+           Quando alguém falta sem avisar, a vaga fica vazia e quem estava na lista de espera perde a aula. Por isso, pelo nosso regulamento, seu <strong>agendamento antecipado fica pausado por ${dias} dias</strong>, até <strong>${ate}</strong>.<br><br>
+           <strong style="color:#241f33">Você continua treinando nesse período.</strong> A diferença é que a reserva passa a ser no mesmo dia da aula ou pela lista de espera.<br><br>
+           Se algo aconteceu e você quer conversar, é só responder este e-mail.`,
+          { texto: 'Ver minhas aulas', url: PORTAL }),
+      }
+    }
     default:
       return null
   }
