@@ -90,9 +90,10 @@ export function ProdutosPage() {
     },
   })
 
-  // Enquanto não existe gateway, a renovação é manual: a equipe confirma
-  // que a mensalidade entrou e libera o ciclo seguinte. Com o Asaas,
-  // quem chama isto é o webhook de pagamento.
+  // A renovação agora é automática: `processar_assinaturas()` roda às 5h
+  // e vira o ciclo de quem tem cobrança recebida. Este botão continua
+  // existindo para o caso de a equipe receber por fora (PIX na hora,
+  // dinheiro) e querer liberar na frente do aluno, sem esperar a virada.
   const renovar = useMutation({
     mutationFn: async (matriculaId: string) => {
       const { error } = await requireSupabase().rpc('renovar_ciclo', { p_matricula: matriculaId })
@@ -112,6 +113,19 @@ export function ProdutosPage() {
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['saldo-creditos'] }),
+  })
+
+  const cancelarAssinatura = useMutation({
+    mutationFn: async (matriculaId: string) => {
+      const { error } = await requireSupabase().rpc('cancelar_assinatura', {
+        p_matricula: matriculaId,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['saldo-creditos'] })
+      qc.invalidateQueries({ queryKey: ['entradas'] })
+    },
   })
 
   const modalidadesDe = (produtoId: string) =>
@@ -292,12 +306,35 @@ export function ProdutosPage() {
                 )}
               </span>
               <span className="text-xs text-neutral-400">{nomeProduto(s.plano_id)}</span>
-              {(s.ciclos_total ?? 1) > 1 && (
+              {/* "ciclo 3/1" seria absurdo. O compromisso é permanência
+                  mínima, não teto de vida: passado ele, o que importa
+                  dizer é que a assinatura segue renovando sozinha. */}
+              {(s.ciclo_atual ?? 1) <= (s.ciclos_compromisso ?? 1) &&
+              (s.ciclos_compromisso ?? 1) > 1 ? (
                 <span className="text-xs text-neutral-400">
-                  ciclo {s.ciclo_atual}/{s.ciclos_total}
+                  ciclo {s.ciclo_atual}/{s.ciclos_compromisso}
+                </span>
+              ) : (
+                <span className="text-xs text-neutral-400">ciclo {s.ciclo_atual}</span>
+              )}
+              {s.cancelamento_efetivo_em ? (
+                <span className="rounded bg-warning-50 px-1.5 py-0.5 text-[11px] font-medium text-warning-700">
+                  cancela {fmtData(s.cancelamento_efetivo_em)}
+                </span>
+              ) : s.renova_automaticamente ? (
+                <span className="text-xs text-neutral-400" title="Renova sozinha na virada do ciclo">
+                  renova sozinha
+                </span>
+              ) : null}
+              <span className="text-xs text-neutral-400">até {fmtData(s.data_fim)}</span>
+              {s.proxima_validade && s.proxima_validade !== s.data_fim && (
+                <span
+                  className="text-xs text-neutral-400"
+                  title="Data em que o próximo lote de créditos vence"
+                >
+                  vence {fmtData(s.proxima_validade)}
                 </span>
               )}
-              <span className="text-xs text-neutral-400">até {fmtData(s.data_fim)}</span>
               <span
                 className={`font-semibold ${
                   (s.saldo ?? 0) > 0 ? 'text-neutral-900' : 'text-red-600'
@@ -307,14 +344,29 @@ export function ProdutosPage() {
               </span>
               {ehGestao && (
                 <>
-                  {(s.ciclo_atual ?? 1) < (s.ciclos_total ?? 1) && (
+                  {!s.cancelamento_efetivo_em && (
                     <button
-                      onClick={() => s.matricula_id && renovar.mutate(s.matricula_id)}
+                      onClick={() =>
+                        s.matricula_id &&
+                        confirmar.pedir({
+                          titulo: 'Adiantar a renovação?',
+                          tom: 'arquivar',
+                          textoConfirmar: 'Renovar agora',
+                          descricao: (
+                            <>
+                              A virada acontece sozinha quando o ciclo termina. Renovar agora
+                              começa o próximo ciclo já e, se o plano não acumula, o saldo
+                              restante de {nomeCliente(s.cliente_id)} expira.
+                            </>
+                          ),
+                          aoConfirmar: () => renovar.mutateAsync(s.matricula_id!),
+                        })
+                      }
                       disabled={renovar.isPending}
-                      title="Mensalidade entrou: libera os créditos do próximo ciclo (o saldo que sobrou expira)"
+                      title="Recebeu por fora e quer liberar o próximo ciclo sem esperar a virada"
                       className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-medium text-success-700 transition hover:bg-success-100 disabled:opacity-40"
                     >
-                      pagou · renovar
+                      renovar agora
                     </button>
                   )}
                   {s.status === 'ativa' && (
@@ -325,6 +377,31 @@ export function ProdutosPage() {
                       className="rounded-md px-2 py-0.5 text-xs font-medium text-neutral-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
                     >
                       não pagou
+                    </button>
+                  )}
+                  {!s.cancelamento_efetivo_em && (
+                    <button
+                      onClick={() =>
+                        s.matricula_id &&
+                        confirmar.pedir({
+                          titulo: 'Cancelar a assinatura?',
+                          tom: 'arquivar',
+                          textoConfirmar: 'Cancelar assinatura',
+                          descricao: (
+                            <>
+                              A cobrança automática de {nomeCliente(s.cliente_id)} para. Os
+                              créditos já pagos continuam valendo até {fmtData(s.data_fim)} —
+                              nada é apagado.
+                            </>
+                          ),
+                          aoConfirmar: () => cancelarAssinatura.mutateAsync(s.matricula_id!),
+                        })
+                      }
+                      disabled={cancelarAssinatura.isPending}
+                      title="Desliga a renovação no fim do ciclo pago"
+                      className="rounded-md px-2 py-0.5 text-xs font-medium text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-40"
+                    >
+                      cancelar
                     </button>
                   )}
                 </>

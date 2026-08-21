@@ -82,8 +82,26 @@ export function PlanosPage() {
 
       {planoAtivo && (
         <div className="mb-4 rounded-lg border border-brand-100 bg-brand-50 p-3 text-sm text-brand-700">
-          Você já tem um plano ativo com {planoAtivo.saldo} crédito(s), válido até{' '}
-          {fmtData(planoAtivo.data_fim)}.
+          {/* A data que importa para ela é a que o CRÉDITO vence, não a
+              do ciclo — são diferentes quando o produto tem validade
+              própria. Até agora esta caixa nem aparecia: o saldo vinha
+              sempre 0 porque faltava policy de leitura no razão. */}
+          Você tem {planoAtivo.saldo} aula{planoAtivo.saldo === 1 ? '' : 's'} para usar
+          {planoAtivo.proxima_validade
+            ? `, até ${fmtData(planoAtivo.proxima_validade)}`
+            : `, até ${fmtData(planoAtivo.data_fim)}`}
+          .
+          {planoAtivo.cancelamento_efetivo_em ? (
+            <span className="mt-1 block text-xs">
+              Sua assinatura foi cancelada e não será cobrada de novo. Você continua com
+              acesso até {fmtData(planoAtivo.cancelamento_efetivo_em)}.
+            </span>
+          ) : planoAtivo.renova_automaticamente ? (
+            <span className="mt-1 block text-xs">
+              Renova sozinho em {fmtData(planoAtivo.data_fim)}, com nova cobrança. Para
+              parar, fale com o estúdio.
+            </span>
+          ) : null}
         </div>
       )}
 

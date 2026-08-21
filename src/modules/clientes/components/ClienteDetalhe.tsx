@@ -204,8 +204,15 @@ export function ClienteDetalhe({
                   </span>
                 </div>
                 <div className="mt-0.5 text-[11px] text-neutral-400">
-                  {(m.ciclos_total ?? 1) > 1 && `mês ${m.ciclo_atual}/${m.ciclos_total} · `}
+                  {(m.ciclo_atual ?? 1) <= (m.ciclos_compromisso ?? 1) &&
+                    (m.ciclos_compromisso ?? 1) > 1 &&
+                    `mês ${m.ciclo_atual}/${m.ciclos_compromisso} · `}
                   válido até {fmtData(m.data_fim)}
+                  {m.cancelamento_efetivo_em
+                    ? ` · cancela em ${fmtData(m.cancelamento_efetivo_em)}`
+                    : m.renova_automaticamente
+                      ? ' · renova sozinha'
+                      : ''}
                 </div>
               </li>
             ))}
