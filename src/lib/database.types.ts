@@ -591,6 +591,50 @@ export type Database = {
           },
         ]
       }
+      creditos_lotes: {
+        Row: {
+          ciclo: number
+          concedido_em: string
+          criado_em: string
+          detalhe: string | null
+          id: string
+          matricula_id: string
+          origem: Database["public"]["Enums"]["motivo_credito"]
+          quantidade: number
+          validade: string
+        }
+        Insert: {
+          ciclo: number
+          concedido_em?: string
+          criado_em?: string
+          detalhe?: string | null
+          id?: string
+          matricula_id: string
+          origem?: Database["public"]["Enums"]["motivo_credito"]
+          quantidade: number
+          validade: string
+        }
+        Update: {
+          ciclo?: number
+          concedido_em?: string
+          criado_em?: string
+          detalhe?: string | null
+          id?: string
+          matricula_id?: string
+          origem?: Database["public"]["Enums"]["motivo_credito"]
+          quantidade?: number
+          validade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creditos_lotes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creditos_eventos: {
         Row: {
           agendamento_id: string | null
@@ -599,6 +643,7 @@ export type Database = {
           delta: number
           detalhe: string | null
           id: string
+          lote_id: string
           matricula_id: string
           motivo: Database["public"]["Enums"]["motivo_credito"]
         }
@@ -609,6 +654,7 @@ export type Database = {
           delta: number
           detalhe?: string | null
           id?: string
+          lote_id: string
           matricula_id: string
           motivo: Database["public"]["Enums"]["motivo_credito"]
         }
@@ -619,6 +665,7 @@ export type Database = {
           delta?: number
           detalhe?: string | null
           id?: string
+          lote_id?: string
           matricula_id?: string
           motivo?: Database["public"]["Enums"]["motivo_credito"]
         }
@@ -1265,8 +1312,10 @@ export type Database = {
       matriculas: {
         Row: {
           atualizada_em: string
+          cancelada_em: string | null
+          cancelamento_efetivo_em: string | null
           ciclo_atual: number
-          ciclos_total: number
+          ciclos_compromisso: number
           cliente_id: string
           creditos_total: number
           criada_em: string
@@ -1275,12 +1324,16 @@ export type Database = {
           id: string
           motivo_cancelamento: string | null
           plano_id: string
+          preco_contratado_centavos: number
+          renova_automaticamente: boolean
           status: Database["public"]["Enums"]["status_matricula"]
         }
         Insert: {
           atualizada_em?: string
+          cancelada_em?: string | null
+          cancelamento_efetivo_em?: string | null
           ciclo_atual?: number
-          ciclos_total?: number
+          ciclos_compromisso?: number
           cliente_id: string
           creditos_total: number
           criada_em?: string
@@ -1289,12 +1342,16 @@ export type Database = {
           id?: string
           motivo_cancelamento?: string | null
           plano_id: string
+          preco_contratado_centavos: number
+          renova_automaticamente?: boolean
           status?: Database["public"]["Enums"]["status_matricula"]
         }
         Update: {
           atualizada_em?: string
+          cancelada_em?: string | null
+          cancelamento_efetivo_em?: string | null
           ciclo_atual?: number
-          ciclos_total?: number
+          ciclos_compromisso?: number
           cliente_id?: string
           creditos_total?: number
           criada_em?: string
@@ -1303,6 +1360,8 @@ export type Database = {
           id?: string
           motivo_cancelamento?: string | null
           plano_id?: string
+          preco_contratado_centavos?: number
+          renova_automaticamente?: boolean
           status?: Database["public"]["Enums"]["status_matricula"]
         }
         Relationships: [
@@ -2497,17 +2556,38 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_creditos_lotes: {
+        Row: {
+          ciclo: number | null
+          cliente_id: string | null
+          concedido_em: string | null
+          detalhe: string | null
+          lote_id: string | null
+          matricula_id: string | null
+          origem: Database["public"]["Enums"]["motivo_credito"] | null
+          quantidade: number | null
+          saldo: number | null
+          validade: string | null
+          vencido: boolean | null
+        }
+        Relationships: []
+      }
       vw_saldo_creditos: {
         Row: {
+          cancelamento_efetivo_em: string | null
           ciclo_atual: number | null
-          ciclos_total: number | null
+          ciclos_compromisso: number | null
           cliente_id: string | null
           creditos_total: number | null
           data_fim: string | null
           data_inicio: string | null
           matricula_id: string | null
           plano_id: string | null
+          preco_contratado_centavos: number | null
+          proxima_validade: string | null
+          renova_automaticamente: boolean | null
           saldo: number | null
+          saldo_bruto: number | null
           status: Database["public"]["Enums"]["status_matricula"] | null
         }
         Relationships: [
@@ -2589,7 +2669,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      cancelar_assinatura: {
+        Args: { p_matricula: string; p_motivo?: string }
+        Returns: string
+      }
       cliente_atual: { Args: never; Returns: string }
+      saldo_disponivel: {
+        Args: { p_matricula: string; p_para_data?: string }
+        Returns: number
+      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string
