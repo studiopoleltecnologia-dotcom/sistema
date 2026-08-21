@@ -16,6 +16,7 @@ import {
   obterContaAluna,
   obterMeuCliente,
   obterMeuSaldo,
+  obterMinhaSuspensao,
   souEquipe,
 } from '../api/portalAluna'
 
@@ -122,4 +123,13 @@ export function useAgendarAula() {
 export function useCancelarReserva() {
   const invalidar = useInvalidarAgenda()
   return useMutation({ mutationFn: cancelarReserva, onSuccess: invalidar })
+}
+
+/**
+ * Regulamento 4.7 + procedimento interno: "não deixar a pessoa
+ * descobrir sozinha na hora de agendar". Por isso o aviso fica na
+ * Agenda, antes de ela tentar reservar e levar um erro seco.
+ */
+export function useMinhaSuspensao() {
+  return useQuery({ queryKey: ['minha-suspensao'], queryFn: obterMinhaSuspensao })
 }

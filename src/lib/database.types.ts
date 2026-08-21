@@ -152,6 +152,13 @@ export type Database = {
             referencedRelation: "agendamentos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "agendamentos_eventos_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_aulas_sem_presenca"
+            referencedColumns: ["agendamento_id"]
+          },
         ]
       }
       categorias_modalidade: {
@@ -446,28 +453,37 @@ export type Database = {
         Row: {
           atualizada_em: string
           dias_antecedencia_cobranca: number
+          dias_suspensao_faltas: number
+          faltas_para_suspensao: number
           horas_cancelamento: number
           id: boolean
           max_reposicoes_por_matricula: number
           minutos_reserva_espera: number
+          minutos_tolerancia_atraso: number
           valor_checkin_wellhub_centavos: number
         }
         Insert: {
           atualizada_em?: string
           dias_antecedencia_cobranca?: number
+          dias_suspensao_faltas?: number
+          faltas_para_suspensao?: number
           horas_cancelamento?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
           minutos_reserva_espera?: number
+          minutos_tolerancia_atraso?: number
           valor_checkin_wellhub_centavos?: number
         }
         Update: {
           atualizada_em?: string
           dias_antecedencia_cobranca?: number
+          dias_suspensao_faltas?: number
+          faltas_para_suspensao?: number
           horas_cancelamento?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
           minutos_reserva_espera?: number
+          minutos_tolerancia_atraso?: number
           valor_checkin_wellhub_centavos?: number
         }
         Relationships: []
@@ -635,6 +651,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "agendamentos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_eventos_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_aulas_sem_presenca"
+            referencedColumns: ["agendamento_id"]
           },
           {
             foreignKeyName: "creditos_eventos_lote_id_fkey"
@@ -1600,6 +1623,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "presencas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_aulas_sem_presenca"
+            referencedColumns: ["agendamento_id"]
+          },
+          {
             foreignKeyName: "presencas_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
@@ -2043,6 +2073,88 @@ export type Database = {
         }
         Relationships: []
       }
+      suspensoes_agendamento: {
+        Row: {
+          cliente_id: string
+          criada_em: string
+          faltas: number
+          fim: string
+          id: string
+          inicio: string
+          matricula_id: string | null
+          motivo: string | null
+          revogada_em: string | null
+          revogada_por: string | null
+        }
+        Insert: {
+          cliente_id: string
+          criada_em?: string
+          faltas: number
+          fim: string
+          id?: string
+          inicio?: string
+          matricula_id?: string | null
+          motivo?: string | null
+          revogada_em?: string | null
+          revogada_por?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          criada_em?: string
+          faltas?: number
+          fim?: string
+          id?: string
+          inicio?: string
+          matricula_id?: string | null
+          motivo?: string | null
+          revogada_em?: string | null
+          revogada_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suspensoes_agendamento_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suspensoes_agendamento_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "suspensoes_agendamento_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "suspensoes_agendamento_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suspensoes_agendamento_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "suspensoes_agendamento_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+        ]
+      }
       tarefas: {
         Row: {
           concluida: boolean
@@ -2321,6 +2433,77 @@ export type Database = {
           taxa_cancelamento_pct: number | null
         }
         Relationships: []
+      }
+      vw_aulas_sem_presenca: {
+        Row: {
+          agendamento_id: string | null
+          canal: Database["public"]["Enums"]["canal_aula"] | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          data: string | null
+          horario: string | null
+          modalidade: string | null
+          professora_id: string | null
+          turma_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "agendamentos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_checkins_pendentes: {
         Row: {
@@ -2871,6 +3054,7 @@ export type Database = {
         Args: { p_data: string; p_turma: string }
         Returns: string
       }
+      faltas_no_ciclo: { Args: { p_matricula: string }; Returns: number }
       fn_analise_clientes_sumidos: {
         Args: { p_dias?: number }
         Returns: {
@@ -2958,11 +3142,16 @@ export type Database = {
         Args: { p_observacao?: string; p_pendencia: string; p_turma: string }
         Returns: string
       }
+      revogar_suspensao: {
+        Args: { p_motivo?: string; p_suspensao: string }
+        Returns: boolean
+      }
       sair_lista_espera: { Args: { p_id: string }; Returns: boolean }
       saldo_disponivel: {
         Args: { p_matricula: string; p_para_data?: string }
         Returns: number
       }
+      suspensao_vigente: { Args: { p_cliente: string }; Returns: string }
     }
     Enums: {
       canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
