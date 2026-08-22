@@ -22,7 +22,10 @@ import {
   listarTurmas,
   obterConfigAgendamento,
   registrarPresenca,
+  listarAulasSemPresenca,
+  listarSuspensoes,
   resolverCheckinPendente,
+  revogarSuspensao,
 } from '../api/agenda'
 
 export function useTurmas() {
@@ -192,4 +195,21 @@ export function useAtualizarConfigAgendamento() {
     mutationFn: atualizarConfigAgendamento,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['config-agendamento'] }),
   })
+}
+
+/** Regulamento 4.7 — histórico de suspensões, com as vigentes no topo. */
+export function useSuspensoes() {
+  return useQuery({ queryKey: ['suspensoes'], queryFn: listarSuspensoes })
+}
+
+export function useRevogarSuspensao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: revogarSuspensao,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['suspensoes'] }),
+  })
+}
+
+export function useAulasSemPresenca() {
+  return useQuery({ queryKey: ['aulas-sem-presenca'], queryFn: listarAulasSemPresenca })
 }

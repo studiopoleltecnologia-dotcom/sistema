@@ -182,3 +182,23 @@ export async function cancelarReserva(agendamentoId: string) {
   if (error) throw error
   return data // true = crédito devolvido
 }
+
+/**
+ * Suspensão vigente do agendamento antecipado (regulamento 4.7).
+ * A policy `cliente ve a propria suspensao` já limita à própria aluna —
+ * o filtro aqui é só de vigência.
+ */
+export async function obterMinhaSuspensao() {
+  const hoje = new Date().toISOString().slice(0, 10)
+  const { data, error } = await requireSupabase()
+    .from('suspensoes_agendamento')
+    .select('*')
+    .is('revogada_em', null)
+    .lte('inicio', hoje)
+    .gte('fim', hoje)
+    .order('fim', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
