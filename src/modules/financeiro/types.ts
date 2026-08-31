@@ -26,7 +26,24 @@ export type DividaUpdate = TablesUpdate<'dividas'>
 
 export type CategoriaEntrada = Enums<'categoria_entrada'>
 export type StatusEntrada = Enums<'status_entrada'>
+export type StatusSaida = Enums<'status_saida'>
 export type TipoSaida = Enums<'tipo_saida'>
+
+/**
+ * Uma linha do extrato de uma dívida. É sempre uma saída com `divida_id`:
+ * `prevista` = parcela agendada que ainda vai sair do caixa, `paga` =
+ * abatimento que já saiu. Não existe tabela de "parcela" — é a mesma saída
+ * que aparece em Saídas → Dívidas, por isso os números não divergem.
+ */
+export type MovimentoDivida = {
+  id: string
+  divida_id: string
+  descricao: string | null
+  valor_centavos: number
+  status_saida: StatusSaida
+  data_caixa: string
+  data_prevista: string | null
+}
 
 export const CATEGORIAS_ENTRADA: { value: CategoriaEntrada; label: string }[] = [
   { value: 'mensalista', label: 'Mensalista' },
