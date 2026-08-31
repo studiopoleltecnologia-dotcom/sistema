@@ -24,8 +24,11 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v7
+      # v2 é composite action — não roda em Node do runner, então sai do aviso
+      # de deprecação do Node 20 sem mudar nenhum input. A versão do CLI segue
+      # fixa de propósito: `latest` faria o schema depender de quando rodou.
+      - uses: supabase/setup-cli@v2
         with:
           version: 2.109.1
       - name: Link

@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Instalar cliente Postgres
         run: |
           sudo apt-get update
