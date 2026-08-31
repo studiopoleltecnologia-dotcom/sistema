@@ -92,67 +92,80 @@ export function NavFinanceiro({ acoes }: { acoes?: ReactNode }) {
   }, [seg])
 
   return (
-    <div className="mb-6 flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-      <div className="relative min-w-0 flex-1">
-        <div
-          ref={trilho}
-          onScroll={medirCorte}
-          className="flex snap-x snap-proximity gap-1 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {GRUPOS.map((g) => {
-            const ativo = g === grupo
-            return (
-              <NavLink
-                key={g.to}
-                to={g.to}
-                end={g.to === '.'}
-                ref={ativo ? chipAtivo : undefined}
-                aria-current={ativo ? 'page' : undefined}
-                className={cn(
-                  'shrink-0 snap-start whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition',
-                  ativo
-                    ? 'bg-brand-600 text-white shadow-sm'
-                    : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900',
-                )}
-              >
-                {g.label}
-              </NavLink>
-            )
-          })}
-        </div>
+    /*
+     * A barra tem superfície própria (branca, com borda e sombra) porque a
+     * página de fundo é neutral-50: solto ali, o menu era uma fileira de
+     * texto cinza e só a aba ativa parecia clicável — quem chegava não via
+     * que o Financeiro tem mais de uma página. A caixa é o que diz "isto é
+     * um controle, e tem coisa para os lados".
+     */
+    <nav
+      aria-label="Seções do Financeiro"
+      className="mb-6 rounded-xl border border-neutral-200/80 bg-white shadow-sm"
+    >
+      <div className="flex items-center gap-1.5 p-1.5">
+        <div className="relative min-w-0 flex-1">
+          <div
+            ref={trilho}
+            onScroll={medirCorte}
+            className="flex snap-x snap-proximity gap-1 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {GRUPOS.map((g) => {
+              const ativo = g === grupo
+              return (
+                <NavLink
+                  key={g.to}
+                  to={g.to}
+                  end={g.to === '.'}
+                  ref={ativo ? chipAtivo : undefined}
+                  aria-current={ativo ? 'page' : undefined}
+                  className={cn(
+                    'shrink-0 snap-start whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition',
+                    ativo
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'text-neutral-600 hover:bg-brand-50 hover:text-brand-700',
+                  )}
+                >
+                  {g.label}
+                </NavLink>
+              )
+            })}
+          </div>
 
-        {/* Máscaras: só existem quando há conteúdo cortado daquele lado. */}
-        {corte.esq && (
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-neutral-50 to-transparent" />
-        )}
-        {corte.dir && (
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-neutral-50 to-transparent" />
-        )}
-      </div>
-        {acoes && <div className="shrink-0">{acoes}</div>}
+          {/* Máscaras: só existem quando há conteúdo cortado daquele lado.
+              Degradê a partir do branco — é a cor da barra, não a da página. */}
+          {corte.esq && (
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-white to-transparent" />
+          )}
+          {corte.dir && (
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
+          )}
+        </div>
+        {acoes && <div className="shrink-0 border-l border-neutral-100 pl-1.5">{acoes}</div>}
       </div>
 
       {grupo.subs && (
-        <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-neutral-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {grupo.subs.map((s) => (
-            <NavLink
-              key={s.to}
-              to={s.to}
-              className={({ isActive }) =>
-                cn(
-                  'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition',
-                  isActive
-                    ? 'bg-white text-brand-700 shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-800',
-                )
-              }
-            >
-              {s.label}
-            </NavLink>
-          ))}
+        <div className="border-t border-neutral-100 px-1.5 py-1.5">
+          <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-neutral-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {grupo.subs.map((s) => (
+              <NavLink
+                key={s.to}
+                to={s.to}
+                className={({ isActive }) =>
+                  cn(
+                    'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition',
+                    isActive
+                      ? 'bg-white text-brand-700 shadow-sm'
+                      : 'text-neutral-500 hover:text-neutral-800',
+                  )
+                }
+              >
+                {s.label}
+              </NavLink>
+            ))}
+          </div>
         </div>
       )}
-    </div>
+    </nav>
   )
 }

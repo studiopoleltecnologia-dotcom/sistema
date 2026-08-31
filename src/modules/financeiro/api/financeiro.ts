@@ -7,6 +7,7 @@ import type {
   DividaUpdate,
   EntradaInsert,
   EntradaUpdate,
+  MovimentoDivida,
   ReservaMovimentoInsert,
   SaidaInsert,
   SaidaUpdate,
@@ -355,9 +356,14 @@ export async function listarContasAPagar() {
 }
 
 /**
- * Dívidas com o quanto já foi abatido. O total pago é derivado das saídas
- * (`divida_id`), nunca guardado numa coluna: assim o saldo restante e o
- * histórico não têm como divergir um do outro.
+ * Dívidas com o quanto já foi abatido e o extrato de cada uma. O total pago
+ * é derivado das saídas (`divida_id`), nunca guardado numa coluna: assim o
+ * saldo restante e o histórico não têm como divergir um do outro.
+ *
+ * O extrato vem junto — e não numa consulta por dívida aberta na tela —
+ * porque a visão é agrupada por pessoa: um card precisa somar as parcelas e
+ * os pagamentos de *todos* os empréstimos dela para mostrar o andamento.
+ * Buscar por dívida faria N consultas para desenhar um card só.
  */
 export async function listarDividas() {
   const supabase = requireSupabase()
@@ -365,7 +371,7 @@ export async function listarDividas() {
     supabase.from('dividas').select('*').order('quitada').order('criada_em'),
     supabase
       .from('saidas_financeiras')
-      .select('divida_id, valor_centavos, status_saida')
+      .select('id, divida_id, descricao, valor_centavos, status_saida, data_caixa, data_prevista')
       .not('divida_id', 'is', null),
   ])
   if (error) throw error
@@ -373,30 +379,23 @@ export async function listarDividas() {
 
   const pago = new Map<string, number>()
   const programado = new Map<string, number>()
+  const extrato = new Map<string, MovimentoDivida[]>()
   for (const p of pagamentos ?? []) {
     if (!p.divida_id) continue
     const alvo = p.status_saida === 'paga' ? pago : p.status_saida === 'prevista' ? programado : null
     if (!alvo) continue
     alvo.set(p.divida_id, (alvo.get(p.divida_id) ?? 0) + p.valor_centavos)
+    const lista = extrato.get(p.divida_id) ?? []
+    lista.push({ ...p, divida_id: p.divida_id })
+    extrato.set(p.divida_id, lista)
   }
 
   return (dividas ?? []).map((d) => ({
     ...d,
     pago_centavos: pago.get(d.id) ?? 0,
     programado_centavos: programado.get(d.id) ?? 0,
+    movimentos: extrato.get(d.id) ?? [],
   }))
-}
-
-/** Histórico de uma dívida: abatimentos pagos e parcelas ainda programadas. */
-export async function listarMovimentosDivida(dividaId: string) {
-  const { data, error } = await requireSupabase()
-    .from('saidas_financeiras')
-    .select('*')
-    .eq('divida_id', dividaId)
-    .order('data_prevista', { nullsFirst: false })
-    .order('data_caixa')
-  if (error) throw error
-  return data
 }
 
 async function categoriaDivida() {

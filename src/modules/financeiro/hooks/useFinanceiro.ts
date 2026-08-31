@@ -22,7 +22,6 @@ import {
   listarEntradas,
   listarMixReceitaMensal,
   listarMixReceitaPeriodo,
-  listarMovimentosDivida,
   listarRecorrentes,
   listarReserva,
   listarSaidas,
@@ -188,7 +187,6 @@ export function useReverterPagamentoSaida() {
     onSuccess: () => {
       invalidar()
       qc.invalidateQueries({ queryKey: ['dividas'] })
-      qc.invalidateQueries({ queryKey: ['divida-movimentos'] })
     },
   })
 }
@@ -294,14 +292,6 @@ export function useAtualizarDivida() {
   })
 }
 
-export function useMovimentosDivida(dividaId: string | null) {
-  return useQuery({
-    queryKey: ['divida-movimentos', dividaId],
-    queryFn: () => listarMovimentosDivida(dividaId!),
-    enabled: dividaId != null,
-  })
-}
-
 /** Abatimento e cronograma criam saídas — precisam invalidar o financeiro todo. */
 function useInvalidarDivida() {
   const invalidar = useInvalidarFinanceiro()
@@ -309,7 +299,6 @@ function useInvalidarDivida() {
   return () => {
     invalidar()
     qc.invalidateQueries({ queryKey: ['dividas'] })
-    qc.invalidateQueries({ queryKey: ['divida-movimentos'] })
   }
 }
 
