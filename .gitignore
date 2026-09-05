@@ -27,6 +27,9 @@ cost.txt
 # Logs de workflow baixados para depuração (contêm dados de produção)
 logs_*/
 
+# Exports de dados reais de aluno (nome/e-mail/telefone) — nunca no repo público
+*.csv
+
 # Pessoais
 proximos-passos.txt
 CLAUDE.md

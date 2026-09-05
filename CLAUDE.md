@@ -3,12 +3,22 @@
 Guia para desenvolvimento assistido por IA neste projeto. Leia antes de codar.
 Documentos de contexto: [docs/01-NEGOCIO.md](docs/01-NEGOCIO.md) (negócio),
 [docs/02-ARQUITETURA.md](docs/02-ARQUITETURA.md) (arquitetura/roadmap),
-[docs/04-PORTAL-ALUNA.md](docs/04-PORTAL-ALUNA.md) (especificação do módulo
-Portal da Aluna), [docs/05-BACKLOG.md](docs/05-BACKLOG.md) (**tudo que está
-pendente** — ler antes de decidir o que fazer a seguir) e
-[docs/08-METODOLOGIA-IA.md](docs/08-METODOLOGIA-IA.md) (metodologia de
-desenvolvimento assistido por IA: SDD, escopo do pipeline de agentes,
-monitoramento de custo).
+[docs/03-DADOS-ANALITICOS.md](docs/03-DADOS-ANALITICOS.md) (contrato de dados
+para as análises de gestão), [docs/04-PORTAL-ALUNA.md](docs/04-PORTAL-ALUNA.md)
+(especificação do módulo Portal da Aluna),
+[docs/05-BACKLOG.md](docs/05-BACKLOG.md) (**tudo que está pendente** — ler
+antes de decidir o que fazer a seguir), [docs/06-WHATSAPP.md](docs/06-WHATSAPP.md)
+(estudo WhatsApp Business API) e
+[docs/07-PACOTE-WELLHUB-ADICIONAL.md](docs/07-PACOTE-WELLHUB-ADICIONAL.md)
+(estratégia de migração Wellhub). [docs/08-METODOLOGIA-IA.md](docs/08-METODOLOGIA-IA.md)
+registra a metodologia de desenvolvimento assistido por IA em si (SDD, escopo
+do pipeline de agentes, monitoramento de custo) — **leia antes de propor
+mudar como a IA trabalha aqui**, não só o que ela constrói.
+
+Duas pastas à parte, sem numeração — vale abrir o índice se a tarefa tocar
+nelas: [docs/interno/](docs/interno/) (runbooks e specs técnicas — Wellhub em
+produção, ambiente DEV, CI/CD, webhook) e [docs/marketing/](docs/marketing/)
+(benchmark de concorrentes, brand book, precificação, pesquisa com alunas).
 
 ---
 

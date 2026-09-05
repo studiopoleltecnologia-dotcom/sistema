@@ -33,8 +33,11 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v7
+      # v2 é composite action — não roda em Node do runner, então sai do aviso
+      # de deprecação do Node 20 sem mudar nenhum input. A versão do CLI segue
+      # fixa de propósito: `latest` faria o schema depender de quando rodou.
+      - uses: supabase/setup-cli@v2
         with:
           version: 2.109.1
       - run: supabase link --project-ref "$REF"
@@ -42,6 +45,12 @@ jobs:
       - run: |
           supabase functions deploy wellhub-webhook --no-verify-jwt --project-ref "$REF"
           supabase functions deploy enviar-emails --project-ref "$REF"
+          # Sem --no-verify-jwt de propósito: quem chama é o cron do banco
+          # (disparar_publicacao_grade_wellhub), com Bearer da anon_key do
+          # Vault. A função não checa auth sozinha — Deno.serve ignora o
+          # request e usa a service_role —, então liberar o JWT deixaria
+          # qualquer um disparando publicação de grade na Wellhub.
+          supabase functions deploy wellhub-publicar-grade --project-ref "$REF"
 
   build:
     needs: supabase-prod
@@ -49,8 +58,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: Production
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -68,7 +77,7 @@ jobs:
           mkdir -p dist/agendamentos dist/portalequipe
           cp dist/index.html dist/agendamentos/index.html
           cp dist/index.html dist/portalequipe/index.html
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -81,4 +90,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
