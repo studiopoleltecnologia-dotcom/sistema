@@ -4,14 +4,17 @@ import {
   arquivarCategoria,
   atualizarCategoria,
   atualizarConfigAgendamento,
+  atualizarModalidade,
   atualizarTurma,
   cancelarAgendamento,
+  contarTurmasPorModalidade,
   criarCategoria,
   criarModalidade,
   criarTurma,
   definirCategoriaDaModalidade,
   desativarTurma,
   listarCategorias,
+  listarTodasModalidades,
   listarDia,
   listarCheckinsPendentes,
   listarModalidades,
@@ -42,6 +45,25 @@ export function useSalas() {
 
 export function useModalidades() {
   return useQuery({ queryKey: ['modalidades'], queryFn: listarModalidades })
+}
+
+/** Cadastro de modalidades — inclui as arquivadas, para poder reativar. */
+export function useTodasModalidades() {
+  return useQuery({ queryKey: ['modalidades-todas'], queryFn: listarTodasModalidades })
+}
+
+/** modalidade_id → nº de turmas ativas que a usam. */
+export function useTurmasPorModalidade() {
+  return useQuery({ queryKey: ['turmas-por-modalidade'], queryFn: contarTurmasPorModalidade })
+}
+
+export function useAtualizarModalidade() {
+  const invalidar = useInvalidarCategorias()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof atualizarModalidade>[1] }) =>
+      atualizarModalidade(id, patch),
+    onSuccess: invalidar,
+  })
 }
 
 export function useOcupacao() {
@@ -126,6 +148,8 @@ function useInvalidarCategorias() {
   return () => {
     qc.invalidateQueries({ queryKey: ['categorias-modalidade'] })
     qc.invalidateQueries({ queryKey: ['modalidades'] })
+    qc.invalidateQueries({ queryKey: ['modalidades-todas'] })
+    qc.invalidateQueries({ queryKey: ['turmas-por-modalidade'] })
     qc.invalidateQueries({ queryKey: ['turmas'] })
   }
 }

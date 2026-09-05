@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Settings2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { CalendarRange, ChevronLeft, ChevronRight, Plus, Settings2, Tag, X } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Tabs } from '../../../components/ui/Tabs'
 import { cn } from '../../../components/ui/cn'
@@ -24,6 +24,7 @@ import {
 import { DIAS_SEMANA, fmtHora, type TurmaComProfessora } from '../types'
 import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { CategoriasModal } from './CategoriasModal'
+import { ModalidadesModal } from './ModalidadesModal'
 import { ConfigExibicao } from './ConfigExibicao'
 import { DiaView } from './DiaView'
 import { LegendaCategorias } from './LegendaCategorias'
@@ -36,10 +37,17 @@ type Visao = 'semana' | 'mes'
 const DIAS_EXTENSO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
 
 /**
- * Tela inicial da Grade de horários: a grade (semana ou mês) e, ao lado, o
- * dia selecionado. Antes eram duas abas irmãs — "Dia" e "Grade" —, então
- * conferir quem está agendado numa aula exigia trocar de aba e perder a
- * visão do todo.
+ * Tela inicial da Grade de horários.
+ *
+ * O painel do dia deixou de ser uma coluna fixa e virou **gaveta**. A
+ * coluna de 21rem custava um quinto da largura o tempo todo, inclusive nas
+ * horas em que ninguém estava mexendo em agendamento, e era ela que, somada
+ * à largura mínima da grade, empurrava a página inteira para além da
+ * viewport — o vazamento lateral não vinha do painel ser largo, vinha de
+ * grade e painel disputarem a mesma linha sem nenhum poder encolher.
+ *
+ * Como gaveta, a grade usa a largura toda e o painel abre exatamente
+ * quando se clica numa aula ou num dia, que é quando ele tem o que dizer.
  *
  * A ocupação exibida é a REAL do período visível (fn_ocupacao_turma), não a
  * média histórica: a pergunta aqui é "como está esta semana", e a média das
@@ -51,13 +59,29 @@ export function GradeHorarios() {
   const [exibicao, alterarExibicao] = useExibicao()
   const [configAberta, setConfigAberta] = useState(false)
   const [categoriasAbertas, setCategoriasAbertas] = useState(false)
+  const [modalidadesAbertas, setModalidadesAbertas] = useState(false)
   const [form, setForm] = useState<{ inicial: TurmaInicial; turmaId: string | null } | null>(null)
+  const [painelAberto, setPainelAberto] = useState(false)
+  const [turmaSelecionada, setTurmaSelecionada] = useState<string | null>(null)
 
   const { data: turmas, isLoading } = useTurmas()
   const { data: salas } = useSalas()
   const { data: categorias } = useCategorias()
   const desativar = useDesativarTurma()
   const confirmar = useConfirmar()
+
+  // Esc fecha a gaveta. Ela cobre parte da grade no desktop e a grade
+  // inteira no celular — sair dela precisa custar uma tecla.
+  useEffect(() => {
+    if (!painelAberto) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPainelAberto(false)
+    window.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [painelAberto])
 
   // Janela consultada = exatamente o que está na tela. No mês, pega as
   // semanas completas que a grade desenha, senão os dias das bordas (que
@@ -134,12 +158,28 @@ export function GradeHorarios() {
       return passo > 0 ? fimMesExclusivo(base) : somarDias(base, -1)
     })
 
+  function abrirDia(dataISO: string) {
+    setDia(dataISO)
+    setTurmaSelecionada(null)
+    setPainelAberto(true)
+  }
+
+  function abrirTurma(t: TurmaComProfessora, dataISO: string) {
+    setDia(dataISO)
+    setTurmaSelecionada(t.id)
+    setPainelAberto(true)
+  }
+
   const rotulo = visao === 'semana' ? rotuloSemana(dia) : rotuloMes(dia)
   const diaSemanaLabel = DIAS_EXTENSO[new Date(dia + 'T00:00:00').getDay()]
+  const semCategoria = (turmas ?? []).some((t) => !t.categoria)
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-col gap-3">
+      {/* Barra de controles: navegação à esquerda, ações à direita, uma
+          linha só quando cabe. Antes eram duas faixas (controles + legenda)
+          gastando altura acima da grade, que é o conteúdo da tela. */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 rounded-xl border border-neutral-200 bg-white px-2.5 py-2 shadow-sm">
         <Button size="sm" variant="secondary" onClick={() => setDia(hojeISO())}>
           Hoje
         </Button>
@@ -151,9 +191,14 @@ export function GradeHorarios() {
             <ChevronRight className="size-4" />
           </BotaoSeta>
         </div>
-        <span className="font-display text-sm font-bold capitalize text-ink">{rotulo}</span>
+        {/* `first-letter`, não `capitalize`: o rótulo é "7 – 13 de setembro"
+            e `capitalize` maiusculiza cada palavra, entregando "7 – 13 De
+            Setembro". Só a primeira letra da frase sobe. */}
+        <span className="min-w-0 truncate font-display text-sm font-bold text-ink first-letter:uppercase">
+          {rotulo}
+        </span>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
           <Tabs
             value={visao}
             onChange={setVisao}
@@ -163,14 +208,26 @@ export function GradeHorarios() {
               { value: 'mes', label: 'Mês' },
             ]}
           />
-          <button
-            onClick={() => setConfigAberta(true)}
-            title="Configurações de exibição"
-            className="rounded-md border border-neutral-300 bg-white p-2 text-neutral-500 transition hover:border-neutral-400 hover:text-neutral-800"
+          <BotaoIcone
+            onClick={() => setPainelAberto(true)}
+            titulo="Abrir o painel do dia"
+            ativo={painelAberto}
           >
+            <CalendarRange className="size-4" />
+          </BotaoIcone>
+          {/* Modalidades fica na barra e não só atrás da legenda: a legenda
+              só existe no modo "colorir por categoria", e o cadastro precisa
+              estar alcançável em qualquer modo. */}
+          <BotaoIcone
+            onClick={() => setModalidadesAbertas(true)}
+            titulo="Modalidades (nome, categoria, arquivar)"
+          >
+            <Tag className="size-4" />
+          </BotaoIcone>
+          <BotaoIcone onClick={() => setConfigAberta(true)} titulo="Configurações de exibição">
             <Settings2 className="size-4" />
-          </button>
-          <Button onClick={() => setForm({ inicial: novoInicial(), turmaId: null })}>
+          </BotaoIcone>
+          <Button size="sm" onClick={() => setForm({ inicial: novoInicial(), turmaId: null })}>
             <Plus className="size-4" />
             Nova turma
           </Button>
@@ -180,49 +237,90 @@ export function GradeHorarios() {
       {exibicao.colorirPor === 'categoria' && (
         <LegendaCategorias
           categorias={categorias ?? []}
-          temSemCategoria={(turmas ?? []).some((t) => !t.categoria)}
+          temSemCategoria={semCategoria}
           onGerenciar={() => setCategoriasAbertas(true)}
         />
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
-        <div className="min-w-0 lg:order-1">
-          {isLoading ? (
-            <p className="text-sm text-neutral-400">Carregando…</p>
-          ) : visao === 'semana' ? (
-            <GradeSemanal
-              turmas={turmas ?? []}
-              salas={salas ?? []}
-              ocupacao={ocupacao}
-              exibicao={exibicao}
-              diaSelecionado={dia}
-              onSelecionarDia={setDia}
-              onEditar={(t) => setForm({ inicial: deTurma(t), turmaId: t.id })}
-              onDuplicar={(t) => setForm({ inicial: deTurma(t), turmaId: null })}
-              onExcluir={excluir}
-            />
-          ) : (
-            <GradeMensal
-              turmas={turmas ?? []}
-              ocupacao={ocupacao}
-              exibicao={exibicao}
-              mesReferencia={dia}
-              diaSelecionado={dia}
-              onSelecionarDia={setDia}
-            />
-          )}
-        </div>
-
-        {/* Painel do dia — no celular vem antes da grade, que exige rolagem. */}
-        <aside className="min-w-0 lg:order-2">
-          <div className="rounded-lg border border-neutral-200 bg-white p-3.5">
-            <h3 className="mb-3 font-display text-xs font-bold uppercase tracking-wider text-neutral-500">
-              {diaSemanaLabel}, {Number(dia.slice(8, 10))}
-            </h3>
-            <DiaView data={dia} />
-          </div>
-        </aside>
+      <div className="min-w-0">
+        {isLoading ? (
+          <p className="text-sm text-neutral-400">Carregando…</p>
+        ) : visao === 'semana' ? (
+          <GradeSemanal
+            turmas={turmas ?? []}
+            salas={salas ?? []}
+            ocupacao={ocupacao}
+            exibicao={exibicao}
+            diaSelecionado={dia}
+            turmaSelecionada={turmaSelecionada}
+            onSelecionarDia={abrirDia}
+            onSelecionarTurma={abrirTurma}
+            onEditar={(t) => setForm({ inicial: deTurma(t), turmaId: t.id })}
+            onDuplicar={(t) => setForm({ inicial: deTurma(t), turmaId: null })}
+            onExcluir={excluir}
+          />
+        ) : (
+          <GradeMensal
+            turmas={turmas ?? []}
+            ocupacao={ocupacao}
+            exibicao={exibicao}
+            mesReferencia={dia}
+            diaSelecionado={dia}
+            onSelecionarDia={abrirDia}
+          />
+        )}
       </div>
+
+      {/* Gaveta do dia. `w-[min(23rem,100vw-1.5rem)]` é a trava que impede
+          o painel de sair da tela em qualquer largura, inclusive 360px. */}
+      {painelAberto && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div
+            className="absolute inset-0 bg-ink/25 backdrop-blur-[1px]"
+            onClick={() => setPainelAberto(false)}
+            aria-hidden
+          />
+          <aside
+            role="dialog"
+            aria-label={`Aulas de ${diaSemanaLabel}, ${Number(dia.slice(8, 10))}`}
+            className="relative flex h-full w-[min(23rem,100vw-1.5rem)] min-w-0 flex-col border-l border-neutral-200 bg-white shadow-lg"
+          >
+            <div className="flex shrink-0 items-center gap-2 border-b border-neutral-200 px-3 py-3">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate font-display text-sm font-bold uppercase tracking-wide text-ink">
+                  {diaSemanaLabel}, {Number(dia.slice(8, 10))}
+                </h3>
+                <p className="text-[11px] text-neutral-400">
+                  {dia === hojeISO() ? 'Hoje' : 'Aulas do dia'}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <BotaoSeta onClick={() => setDia(somarDias(dia, -1))} titulo="Dia anterior">
+                  <ChevronLeft className="size-4" />
+                </BotaoSeta>
+                <BotaoSeta onClick={() => setDia(somarDias(dia, 1))} titulo="Próximo dia">
+                  <ChevronRight className="size-4" />
+                </BotaoSeta>
+                <button
+                  onClick={() => setPainelAberto(false)}
+                  aria-label="Fechar painel do dia"
+                  className="ml-1 rounded-md p-1.5 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-800"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1 overflow-y-auto p-3">
+              <DiaView
+                data={dia}
+                turmaSelecionada={turmaSelecionada}
+                onSelecionarTurma={setTurmaSelecionada}
+              />
+            </div>
+          </aside>
+        </div>
+      )}
 
       {configAberta && (
         <ConfigExibicao
@@ -232,6 +330,7 @@ export function GradeHorarios() {
         />
       )}
       {categoriasAbertas && <CategoriasModal onFechar={() => setCategoriasAbertas(false)} />}
+      {modalidadesAbertas && <ModalidadesModal onFechar={() => setModalidadesAbertas(false)} />}
       {confirmar.dialogo}
       {form && (
         <TurmaForm inicial={form.inicial} turmaId={form.turmaId} onFechar={() => setForm(null)} />
@@ -255,8 +354,37 @@ function BotaoSeta({
       title={titulo}
       aria-label={titulo}
       className={cn(
-        'rounded-md border border-neutral-300 bg-white p-1.5 text-neutral-500 transition',
+        'rounded-md border border-neutral-200 bg-white p-1.5 text-neutral-500 transition',
         'hover:border-neutral-400 hover:text-neutral-900',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function BotaoIcone({
+  onClick,
+  titulo,
+  ativo,
+  children,
+}: {
+  onClick: () => void
+  titulo: string
+  ativo?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={titulo}
+      aria-label={titulo}
+      aria-pressed={ativo}
+      className={cn(
+        'rounded-md border p-2 transition',
+        ativo
+          ? 'border-brand-300 bg-brand-50 text-brand-700'
+          : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400 hover:text-neutral-800',
       )}
     >
       {children}

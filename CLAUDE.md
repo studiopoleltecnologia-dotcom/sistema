@@ -233,9 +233,15 @@ plataformas parceiras) — referência de comparação, não de cópia de interf
 - **Mensalista:** prazo de cancelamento é em **horas de antecedência**,
   **parametrizável a qualquer momento pelas administradoras** (sócias) — é
   configuração de sistema, não constante de código.
-  **Valor vigente: 3h** (definido em 21/07/2026, em `config_agendamento.horas_cancelamento`).
+  **Valor vigente: 4h** (confirmado em 05/09/2026, em
+  `config_agendamento.horas_cancelamento`) — é o mesmo prazo configurado na
+  política do Wix (`latestCancellationInMinutes: 240`), que é onde a aluna
+  cancela hoje. Os dois precisam andar juntos: se divergirem, a aluna cancela
+  no Wix dentro do prazo e o ERP recusa a devolução do crédito.
   Dentro do prazo o crédito volta e ela pode remarcar; fora, o crédito é
   consumido.
+  ⚠️ Em 05/09/2026 o DEV estava em 4h e a **produção ainda em 3h** — conferir
+  antes de confiar no valor.
 
 ### 9.4 Jornada Mensalista — pacotes e créditos
 
@@ -467,8 +473,13 @@ no portal, essa marcação deve chamar o `validate`. **Ainda não implementado**
   desfecho de negócio; `500` só em falha de banco (a reentrega é segura agora
   que a idempotência é garantida por índice único parcial).
 - ⚠️ **Pré-requisito de ativação em produção:** a grade precisa estar cadastrada
-  em `turmas` no Supabase. Hoje ela vive no Wix — ativar antes disso faz *todo*
-  check-in cair em `sem_turma` e a fila travar a conciliação do mês.
+  em `turmas` no Supabase — ativar antes disso faz *todo* check-in cair em
+  `sem_turma` e a fila travar a conciliação do mês.
+  `20260905120000_grade_real_do_wix.sql` carrega as 44 turmas reais (semana de
+  referência 14–20/09/2026, sem feriado). **A operação continua no Wix**: a
+  migration é um retrato, não uma sincronização, então mudança de grade feita
+  lá não chega sozinha aqui. Enquanto os dois coexistirem, quem alterar
+  horário precisa alterar nos dois.
 
 ### 12.6 Conciliação financeira (Fase 2)
 

@@ -50,9 +50,17 @@ export function AgendaPage() {
 
   return (
     <div>
+      {/* `mb-4` em vez do `mb-6` padrão: nesta tela a grade é o conteúdo, e
+          cada faixa acima dela é altura que a semana perde. */}
       <PageHeader
         titulo="Grade de horários"
-        filtros={<Tabs value={aba} onChange={setAba} items={abas} />}
+        filtros={
+          // Grande e na cor da marca: este seletor é a navegação da tela
+          // inteira, não um ajuste fino. Em cinza sobre branco ele sumia
+          // entre o título e a barra de controles logo abaixo.
+          <Tabs value={aba} onChange={setAba} items={abas} size="lg" variant="marca" />
+        }
+        className="mb-4"
       />
 
       {aba === 'grade' && <GradeHorarios />}
