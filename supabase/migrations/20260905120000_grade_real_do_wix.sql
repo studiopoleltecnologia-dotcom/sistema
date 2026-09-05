@@ -29,26 +29,66 @@
 --    individual, não turma. Não é erro de digitação.
 --  * A aula de sábado 13:00 (Treino Livre, 12/09) ficou de fora: aparece só
 --    naquela semana, é agendamento avulso, não horário fixo.
+--
+-- ⚠️ **Pré-requisito:** as 9 professoras da grade já cadastradas, com contato
+-- de emergência. A seção 1 confere e aborta com a lista de quem falta. Ver o
+-- comentário lá para o porquê de não serem criadas aqui.
 
 -- ---------------------------------------------------------------
--- 1. Professoras que a grade cita e ainda não existiam
+-- 1. Pré-requisito: as professoras da grade precisam existir
 -- ---------------------------------------------------------------
--- `valor_por_aluna_centavos` entra ZERO, igual a todas as outras professoras
--- já cadastradas hoje. Não invento remuneração: o valor é gestão-only e sai
--- errado em silêncio na folha se alguém chutar. Definir em Professoras.
-insert into professoras (nome, valor_por_aluna_centavos)
-select v.nome, 0
-from (values ('Paola Fanelli'), ('Sara Maluf'), ('Tatiane Lima'), ('Bruna Gomes')) as v(nome)
-where not exists (select 1 from professoras p where p.nome = v.nome);
+-- Esta migration **não cadastra professora**, e não é omissão — são duas
+-- travas independentes, as duas corretas:
+--
+--  1. `professoras_valida_contato_emergencia` recusa INSERT sem nome E
+--     telefone de contato de emergência. É controle de segurança de gente
+--     que dá aula aqui; preencher com "a definir" para o INSERT passar
+--     satisfaria a letra da regra e destruiria o propósito dela — o campo
+--     existe para alguém ser chamado se a professora se machucar em aula.
+--  2. **Este repositório é público** (CLAUDE.md §3). Nome e telefone de
+--     contato de emergência de pessoas reais numa migration seriam dados
+--     pessoais publicados no GitHub. Isso sozinho já proíbe o caminho.
+--
+-- Logo: professora se cadastra pela tela de Professoras, que pede o contato
+-- de emergência no formulário. Aqui a gente só confere e para cedo.
+--
+-- A checagem é a PRIMEIRA coisa do arquivo de propósito: falhar aqui deixa o
+-- banco exatamente como estava. Se ela viesse depois do arquivamento da
+-- grade antiga, um ambiente sem essas professoras ficaria sem grade nenhuma
+-- até alguém perceber.
+do $$
+declare faltando text;
+begin
+  select string_agg(v.nome, ', ' order by v.nome) into faltando
+  from (values
+    ('Nathalia Nubia'), ('May Nunes'), ('Juliana Rocha'), ('Victoria Paz'),
+    ('Studio Pole L'), ('Paola Fanelli'), ('Sara Maluf'), ('Tatiane Lima'),
+    ('Bruna Gomes')
+  ) as v(nome)
+  where not exists (select 1 from professoras p where p.nome = v.nome);
+
+  if faltando is not null then
+    raise exception
+      'Grade real do Wix: cadastre em Professoras (com contato de emergência) antes de aplicar: %',
+      faltando;
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------
 -- 2. Modalidades da grade
 -- ---------------------------------------------------------------
+-- Nomes canônicos do ERP, não os rótulos do Wix. O Wix chama duas delas de
+-- "Aula de Pole on Heels" e "Aula de Pole Power" — prefixo que ele nem aplica
+-- de forma consistente (tem "Aula de Pole Spin" mas "Pole Mix" e "Pole
+-- Dance"). O ERP já tem "Pole on Heels" e "Pole Power" cadastradas e
+-- categorizadas; criar as variantes com prefixo geraria duas duplicatas na
+-- estreia, e duplicata de modalidade racha a ocupação da MESMA aula em
+-- linhas diferentes nas Análises. A grade abaixo usa estes nomes.
 insert into modalidades (nome, ordem)
 select v.nome, 10
 from (values
   ('Pole Dance'), ('Pole Coreográfico'), ('Aula de Pole Spin'),
-  ('Aula de Pole Power'), ('Aula de Pole on Heels'), ('Pole Mix'),
+  ('Pole Power'), ('Pole on Heels'), ('Pole Mix'),
   ('Bases de Salto'), ('Flexibilidade'), ('Calistenia'),
   ('Treino Livre'), ('Yoga'), ('Jazz Adulto'), ('Dança do Ventre')
 ) as v(nome)
@@ -59,7 +99,7 @@ where not exists (select 1 from modalidades m where m.nome = v.nome);
 -- justamente por que a cor mora no banco e não no código.
 update modalidades set categoria_id = (select id from categorias_modalidade where nome = 'Pole' limit 1)
 where nome in ('Pole Dance', 'Pole Coreográfico', 'Aula de Pole Spin',
-               'Aula de Pole Power', 'Aula de Pole on Heels', 'Pole Mix');
+               'Pole Power', 'Pole on Heels', 'Pole Mix');
 
 -- Bases de Salto entra em Dança (é aula de salto, não de barra). Se o
 -- estúdio a considerar Pole, é um clique na tela de Modalidades.
@@ -103,12 +143,12 @@ with grade(dia, hora, modalidade, professora, capacidade) as (values
   (3, '16:00', 'Pole Dance',            'Paola Fanelli',  5),
   (3, '17:00', 'Pole Coreográfico',     'Paola Fanelli',  6),
   (3, '18:00', 'Flexibilidade',         'Victoria Paz',   7),
-  (3, '19:00', 'Aula de Pole on Heels', 'Victoria Paz',   6),
+  (3, '19:00', 'Pole on Heels', 'Victoria Paz',   6),
   (3, '20:00', 'Yoga',                  'Studio Pole L',  7),
   -- Quinta (os horários quebrados são reais: 18:30 / 19:30 / 20:30)
   (4, '09:00', 'Pole Dance',            'Sara Maluf',     6),
   (4, '10:00', 'Pole Coreográfico',     'Sara Maluf',     6),
-  (4, '11:00', 'Aula de Pole Power',    'Sara Maluf',     5),
+  (4, '11:00', 'Pole Power',    'Sara Maluf',     5),
   (4, '17:00', 'Jazz Adulto',           'Tatiane Lima',   5),
   (4, '18:30', 'Dança do Ventre',       'Bruna Gomes',   10),
   (4, '19:30', 'Pole Coreográfico',     'Juliana Rocha',  6),
