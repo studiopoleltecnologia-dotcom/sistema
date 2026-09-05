@@ -30,32 +30,50 @@
 --  * A aula de sábado 13:00 (Treino Livre, 12/09) ficou de fora: aparece só
 --    naquela semana, é agendamento avulso, não horário fixo.
 --
--- ⚠️ **Pré-requisito:** as 9 professoras da grade já cadastradas, com contato
--- de emergência. A seção 1 confere e aborta com a lista de quem falta. Ver o
--- comentário lá para o porquê de não serem criadas aqui.
+-- ⚠️ **Deixa 4 professoras sem contato de emergência** (Paola Fanelli, Sara
+-- Maluf, Tatiane Lima, Bruna Gomes) — decisão do estúdio para não travar a
+-- grade. Elas aparecem em Professoras com o alerta âmbar até alguém
+-- preencher. Ver seção 1.
 
 -- ---------------------------------------------------------------
--- 1. Pré-requisito: as professoras da grade precisam existir
+-- 1. Professoras que a grade cita e ainda não existiam
 -- ---------------------------------------------------------------
--- Esta migration **não cadastra professora**, e não é omissão — são duas
--- travas independentes, as duas corretas:
+-- `professoras_valida_contato_emergencia` recusa INSERT sem nome e telefone
+-- de contato de emergência, e a primeira versão desta migration morreu nele.
+-- O estúdio decidiu (Caroline, 05/09/2026) seguir sem esse contato por ora e
+-- preencher depois. Como isso foi feito importa:
 --
---  1. `professoras_valida_contato_emergencia` recusa INSERT sem nome E
---     telefone de contato de emergência. É controle de segurança de gente
---     que dá aula aqui; preencher com "a definir" para o INSERT passar
---     satisfaria a letra da regra e destruiria o propósito dela — o campo
---     existe para alguém ser chamado se a professora se machucar em aula.
---  2. **Este repositório é público** (CLAUDE.md §3). Nome e telefone de
---     contato de emergência de pessoas reais numa migration seriam dados
---     pessoais publicados no GitHub. Isso sozinho já proíbe o caminho.
+--  * O trigger é **desligado só para este INSERT** e religado na sequência.
+--    A regra continua valendo para todo cadastro feito pela tela — que é
+--    onde professora nasce no dia a dia. Relaxar o trigger de vez trocaria
+--    uma exceção pontual e datada por uma regra permanentemente mais fraca.
+--  * Os campos ficam **NULL, não preenchidos com "a definir"**. NULL é a
+--    verdade: falta. Texto de fachada faria a tela de Professoras exibir a
+--    pastilha cinza de "tem contato", escondendo o buraco exatamente de quem
+--    precisa enxergá-lo.
+--  * A tela de Professoras já marca quem está sem contato com `ShieldAlert`
+--    em âmbar, clicável para preencher. Ou seja: as quatro entram com a
+--    pendência **visível**, a um clique de resolver — não somem no sistema.
+--  * Nenhum dado pessoal vai para o repositório: só nomes, que já são
+--    públicos na página de reservas do estúdio. Telefone e contato de
+--    emergência continuam fora daqui — o repositório é público (CLAUDE.md §3)
+--    e isso não muda.
 --
--- Logo: professora se cadastra pela tela de Professoras, que pede o contato
--- de emergência no formulário. Aqui a gente só confere e para cedo.
---
--- A checagem é a PRIMEIRA coisa do arquivo de propósito: falhar aqui deixa o
--- banco exatamente como estava. Se ela viesse depois do arquivamento da
--- grade antiga, um ambiente sem essas professoras ficaria sem grade nenhuma
--- até alguém perceber.
+-- `valor_por_aluna_centavos` entra ZERO, igual a todas as professoras já
+-- cadastradas hoje. Não invento remuneração: o valor é gestão-only e sai
+-- errado em silêncio na folha se alguém chutar. Definir em Professoras.
+alter table professoras disable trigger professoras_valida_contato_emergencia;
+
+insert into professoras (nome, valor_por_aluna_centavos)
+select v.nome, 0
+from (values ('Paola Fanelli'), ('Sara Maluf'), ('Tatiane Lima'), ('Bruna Gomes')) as v(nome)
+where not exists (select 1 from professoras p where p.nome = v.nome);
+
+alter table professoras enable trigger professoras_valida_contato_emergencia;
+
+-- Rede de segurança: nome divergente (acento, espaço a mais) resolveria para
+-- nada e a turma sumiria da grade sem avisar. Falhar aqui, antes de arquivar
+-- a grade antiga, deixa o banco exatamente como estava.
 do $$
 declare faltando text;
 begin
@@ -68,9 +86,7 @@ begin
   where not exists (select 1 from professoras p where p.nome = v.nome);
 
   if faltando is not null then
-    raise exception
-      'Grade real do Wix: cadastre em Professoras (com contato de emergência) antes de aplicar: %',
-      faltando;
+    raise exception 'Grade real do Wix: professoras não encontradas: %', faltando;
   end if;
 end $$;
 
