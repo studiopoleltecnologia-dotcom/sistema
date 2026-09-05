@@ -42,7 +42,8 @@ export function ConfigExibicao({
           {exibicao.colorirPor === 'categoria' ? (
             <p className="mt-2 text-[11px] text-neutral-500">
               O mesmo código de cor da grade impressa. A legenda fica acima da grade, e as
-              cores se editam ali em “Categorias”.
+              cores se editam ali em “Categorias”. Aula cuja modalidade ainda não foi agrupada
+              recebe uma cor provisória, estável por nome — nunca cinza, para não sumir.
             </p>
           ) : exibicao.colorirPor === 'ocupacao' ? (
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">

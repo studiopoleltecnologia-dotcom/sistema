@@ -1,5 +1,5 @@
 import { cn } from '../../../components/ui/cn'
-import { corDaCategoria, corModalidade, faixaOcupacao } from '../cores'
+import { corDaTurma, corModalidade, faixaOcupacao } from '../cores'
 import type { Exibicao } from '../exibicao'
 import { diaDoMes, dowDe, hojeISO, semanasDoMes } from '../semana'
 import { fmtHora, type TurmaComProfessora } from '../types'
@@ -38,10 +38,13 @@ export function GradeMensal({
       .sort((a, b) => a.horario.localeCompare(b.horario))
 
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
-      <div className="grid grid-cols-7 border-b border-neutral-200 bg-neutral-50">
+    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <div className="grid grid-cols-7 border-b border-neutral-200 bg-white">
         {CABECALHO.map((d) => (
-          <div key={d} className="py-2 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-600">
+          <div
+            key={d}
+            className="py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-neutral-500"
+          >
             {d}
           </div>
         ))}
@@ -57,16 +60,16 @@ export function GradeMensal({
                 key={dia}
                 onClick={() => onSelecionarDia(dia)}
                 className={cn(
-                  'flex min-h-[6.5rem] flex-col gap-0.5 border-l border-neutral-100 p-1.5 text-left align-top transition first:border-l-0 hover:bg-neutral-50',
-                  foraDoMes && 'bg-neutral-50/60',
+                  'flex min-h-[6.5rem] min-w-0 flex-col gap-0.5 border-l border-neutral-100 p-1.5 text-left align-top transition first:border-l-0 hover:bg-neutral-50',
+                  foraDoMes ? 'bg-neutral-100/50' : 'bg-white',
                   dia === diaSelecionado && 'bg-brand-50 hover:bg-brand-50',
                 )}
               >
                 <span
                   className={cn(
-                    'text-[11px] font-semibold tabular-nums',
+                    'mb-0.5 flex h-5 min-w-5 items-center justify-center self-start rounded-full px-1 text-[11px] font-bold tabular-nums',
                     dia === hoje
-                      ? 'text-brand-700'
+                      ? 'bg-brand-700 text-white'
                       : foraDoMes
                         ? 'text-neutral-300'
                         : 'text-neutral-600',
@@ -79,19 +82,28 @@ export function GradeMensal({
                     const oc = ocupacao.get(t.id)
                     const faixa = faixaOcupacao(oc?.reservas ?? 0, oc?.capacidade ?? t.capacidade)
                     const cor =
-                      exibicao.colorirPor === 'categoria'
-                        ? corDaCategoria(t.categoria)
-                        : exibicao.colorirPor === 'modalidade'
-                          ? corModalidade(t.modalidade)
-                          : exibicao.colorirPor === 'professora'
-                            ? corModalidade(t.professora.nome ?? '—')
-                            : faixa.cor
+                      exibicao.colorirPor === 'modalidade'
+                        ? corModalidade(t.modalidade)
+                        : exibicao.colorirPor === 'professora'
+                          ? corModalidade(t.professora.nome ?? '—')
+                          : exibicao.colorirPor === 'ocupacao'
+                            ? {
+                                bg: faixa.pastilha,
+                                borda: faixa.trilho,
+                                texto: '#3f3f46',
+                                acento: faixa.barra,
+                              }
+                            : corDaTurma(t)
                     return (
                       <span
                         key={t.id}
-                        className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px]"
-                        style={{ background: cor.bg, color: cor.texto }}
-                        title={`${fmtHora(t.horario)} ${t.modalidade} — ${oc?.reservas ?? 0}/${oc?.capacidade ?? t.capacidade}`}
+                        className="flex items-center gap-1 truncate rounded border-l-2 px-1 py-0.5 text-[10px]"
+                        style={{
+                          background: cor.bg,
+                          color: cor.texto,
+                          borderLeftColor: cor.acento,
+                        }}
+                        title={`${fmtHora(t.horario)} ${t.modalidade} — ${oc?.reservas ?? 0}/${oc?.capacidade ?? t.capacidade} (${faixa.label})`}
                       >
                         <span className="size-1.5 shrink-0 rounded-full" style={{ background: faixa.barra }} />
                         <span className="truncate">

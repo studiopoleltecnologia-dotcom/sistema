@@ -174,6 +174,61 @@ export async function definirCategoriaDaModalidade(
   if (error) throw error
 }
 
+/**
+ * Todas as modalidades, arquivadas inclusive — só para a tela de cadastro.
+ *
+ * `listarModalidades()` filtra `ativa = true` porque alimenta o seletor de
+ * turma, onde modalidade arquivada não pode reaparecer. No cadastro é o
+ * contrário: sem ver a arquivada, não há como reativá-la, e a pessoa acaba
+ * criando uma duplicata com o mesmo nome.
+ */
+export async function listarTodasModalidades() {
+  const { data, error } = await requireSupabase()
+    .from('modalidades')
+    .select('*')
+    .order('ativa', { ascending: false })
+    .order('ordem')
+    .order('nome')
+  if (error) throw error
+  return data
+}
+
+/** Renomear, reordenar ou arquivar/reativar uma modalidade. */
+export async function atualizarModalidade(
+  id: string,
+  patch: { nome?: string; ativa?: boolean; ordem?: number; categoria_id?: string | null },
+) {
+  const { data, error } = await requireSupabase()
+    .from('modalidades')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Quantas turmas ATIVAS usam cada modalidade.
+ *
+ * É o que impede arquivar às cegas: a modalidade arquivada some do seletor,
+ * mas as turmas que já a usam continuam na grade apontando para ela. Saber
+ * "está em 9 turmas" antes de clicar é a diferença entre uma decisão e um
+ * susto na segunda-feira.
+ */
+export async function contarTurmasPorModalidade() {
+  const { data, error } = await requireSupabase()
+    .from('turmas')
+    .select('modalidade_id')
+    .eq('ativa', true)
+  if (error) throw error
+  const contagem = new Map<string, number>()
+  for (const t of data ?? []) {
+    if (t.modalidade_id) contagem.set(t.modalidade_id, (contagem.get(t.modalidade_id) ?? 0) + 1)
+  }
+  return contagem
+}
+
 export type { CategoriaModalidade }
 
 /** Nomes de professoras para o seletor de turma (sem dado financeiro). */
