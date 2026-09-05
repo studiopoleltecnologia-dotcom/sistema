@@ -13,6 +13,8 @@ import {
   LogOut,
   Menu,
   MessageCircleHeart,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
   TrendingUp,
   Users,
@@ -86,6 +88,33 @@ const SECOES: Secao[] = [
   },
 ]
 
+/**
+ * Lembra se a coluna de navegação está recolhida.
+ *
+ * Vive no navegador, não no banco: é postura de quem está olhando a tela,
+ * não configuração do estúdio. Quem passa o dia na Grade de horários
+ * recolhe e ganha 11rem de grade; quem navega entre módulos deixa aberto.
+ */
+function useMenuRecolhido() {
+  const [recolhido, setRecolhido] = useState(() => {
+    try {
+      return localStorage.getItem('nav-recolhido') === '1'
+    } catch {
+      return false
+    }
+  })
+  const alternar = () =>
+    setRecolhido((atual) => {
+      try {
+        localStorage.setItem('nav-recolhido', atual ? '0' : '1')
+      } catch {
+        /* ignore */
+      }
+      return !atual
+    })
+  return [recolhido, alternar] as const
+}
+
 /** Lembra grupos recolhidos entre sessões (mesma ideia do CardColapsavel). */
 function useGruposFechados() {
   const [fechados, setFechados] = useState<string[]>(() => {
@@ -117,13 +146,27 @@ function useGruposFechados() {
  * do app inteiro, porque separa "onde eu navego" de "onde eu trabalho" sem
  * depender de mais nenhum enfeite. A cor é `brand-900` do Guia de Marca.
  */
-function Menulateral({ secoes, onNavegar, email }: { secoes: Secao[]; onNavegar?: () => void; email?: string }) {
+function Menulateral({
+  secoes,
+  onNavegar,
+  email,
+  recolhido = false,
+  onAlternarRecolhido,
+}: {
+  secoes: Secao[]
+  onNavegar?: () => void
+  email?: string
+  /** Só ícones. A gaveta do celular nunca recolhe — lá o espaço é o menu. */
+  recolhido?: boolean
+  onAlternarRecolhido?: () => void
+}) {
   const [fechados, alternar] = useGruposFechados()
 
   const itemCls = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition',
+      'group relative flex items-center rounded-md py-2 text-sm transition',
       'outline-none focus-visible:ring-2 focus-visible:ring-brand-300',
+      recolhido ? 'justify-center px-0' : 'gap-2.5 px-3',
       isActive
         ? 'bg-brand-600 font-semibold text-white shadow-sm'
         : 'text-brand-200 hover:bg-white/10 hover:text-white',
@@ -131,32 +174,46 @@ function Menulateral({ secoes, onNavegar, email }: { secoes: Secao[]; onNavegar?
 
   return (
     <>
-      <div className="mb-7 flex items-center gap-2 px-3">
-        <span className="flex size-7 items-center justify-center rounded-md bg-white font-display text-sm font-bold text-brand-800">
+      <div
+        className={cn(
+          'mb-7 flex items-center',
+          recolhido ? 'justify-center' : 'gap-2 px-3',
+        )}
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-white font-display text-sm font-bold text-brand-800">
           L
         </span>
-        <span className="font-display text-sm font-bold tracking-wide text-white">
-          STUDIO POLE L
-        </span>
+        {!recolhido && (
+          <span className="truncate font-display text-sm font-bold tracking-wide text-white">
+            STUDIO POLE L
+          </span>
+        )}
       </div>
 
-      <nav className="flex flex-col gap-5">
+      <nav className={cn('flex flex-col', recolhido ? 'gap-1.5' : 'gap-5')}>
         {secoes.map((secao) => {
-          const fechada = secao.titulo != null && fechados.includes(secao.titulo)
+          // Recolhido não existe rótulo de seção para clicar, então o grupo
+          // nunca fica escondido: um ícone sumido sem rótulo visível seria
+          // um item que a pessoa não tem como reencontrar.
+          const fechada =
+            !recolhido && secao.titulo != null && fechados.includes(secao.titulo)
           return (
             <div key={secao.titulo ?? '__topo__'} className="flex flex-col gap-0.5">
-              {secao.titulo && (
-                <button
-                  onClick={() => alternar(secao.titulo!)}
-                  aria-expanded={!fechada}
-                  className="mb-1 flex items-center gap-1 px-3 text-[10px] font-bold uppercase tracking-widest text-brand-300/80 transition hover:text-brand-200"
-                >
-                  {secao.titulo}
-                  <ChevronDown
-                    className={cn('size-3 transition-transform', fechada ? '-rotate-90' : '')}
-                  />
-                </button>
-              )}
+              {secao.titulo &&
+                (recolhido ? (
+                  <span className="mx-auto my-1 h-px w-6 bg-white/10" aria-hidden />
+                ) : (
+                  <button
+                    onClick={() => alternar(secao.titulo!)}
+                    aria-expanded={!fechada}
+                    className="mb-1 flex items-center gap-1 px-3 text-[10px] font-bold uppercase tracking-widest text-brand-300/80 transition hover:text-brand-200"
+                  >
+                    {secao.titulo}
+                    <ChevronDown
+                      className={cn('size-3 transition-transform', fechada ? '-rotate-90' : '')}
+                    />
+                  </button>
+                ))}
               {!fechada &&
                 secao.itens.map((item) => (
                   <NavLink
@@ -165,9 +222,13 @@ function Menulateral({ secoes, onNavegar, email }: { secoes: Secao[]; onNavegar?
                     end={item.to === '/'}
                     onClick={onNavegar}
                     className={itemCls}
+                    // Recolhido o ícone é tudo que sobra: sem o title, a
+                    // navegação vira adivinhação.
+                    title={recolhido ? item.label : undefined}
+                    aria-label={recolhido ? item.label : undefined}
                   >
                     <item.icon className="size-4 shrink-0" strokeWidth={2} />
-                    {item.label}
+                    {!recolhido && <span className="truncate">{item.label}</span>}
                   </NavLink>
                 ))}
             </div>
@@ -175,18 +236,44 @@ function Menulateral({ secoes, onNavegar, email }: { secoes: Secao[]; onNavegar?
         })}
       </nav>
 
-      <div className="mt-auto border-t border-white/10 pt-3">
-        {email && (
+      <div className="mt-auto flex flex-col gap-0.5 border-t border-white/10 pt-3">
+        {!recolhido && email && (
           <p className="mb-1 truncate px-3 text-[11px] text-brand-300/70" title={email}>
             {email}
           </p>
         )}
+
+        {onAlternarRecolhido && (
+          <button
+            onClick={onAlternarRecolhido}
+            title={recolhido ? 'Expandir menu' : 'Recolher menu'}
+            aria-label={recolhido ? 'Expandir menu' : 'Recolher menu'}
+            aria-expanded={!recolhido}
+            className={cn(
+              'flex items-center rounded-md py-2 text-sm text-brand-200 transition hover:bg-white/10 hover:text-white',
+              recolhido ? 'justify-center px-0' : 'w-full gap-2.5 px-3',
+            )}
+          >
+            {recolhido ? (
+              <PanelLeftOpen className="size-4 shrink-0" strokeWidth={2} />
+            ) : (
+              <PanelLeftClose className="size-4 shrink-0" strokeWidth={2} />
+            )}
+            {!recolhido && 'Recolher menu'}
+          </button>
+        )}
+
         <button
           onClick={() => supabase?.auth.signOut()}
-          className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-brand-200 transition hover:bg-white/10 hover:text-white"
+          title={recolhido ? 'Sair' : undefined}
+          aria-label={recolhido ? 'Sair' : undefined}
+          className={cn(
+            'flex items-center rounded-md py-2 text-left text-sm text-brand-200 transition hover:bg-white/10 hover:text-white',
+            recolhido ? 'justify-center px-0' : 'w-full gap-2.5 px-3',
+          )}
         >
-          <LogOut className="size-4" strokeWidth={2} />
-          Sair
+          <LogOut className="size-4 shrink-0" strokeWidth={2} />
+          {!recolhido && 'Sair'}
         </button>
       </div>
     </>
@@ -234,10 +321,24 @@ export function Layout() {
     }
   }, [gavetaAberta])
 
+  const [recolhido, alternarRecolhido] = useMenuRecolhido()
+
   return (
-    <div className="flex min-h-screen bg-neutral-50">
-      <aside className="hidden w-60 shrink-0 flex-col bg-brand-900 px-3 py-6 md:flex">
-        <Menulateral secoes={secoes} email={email} />
+    // `overflow-x-clip`: nenhum filho pode empurrar a largura da página.
+    // Rolagem horizontal, quando fizer falta, é da grade — não do layout.
+    <div className="flex min-h-screen overflow-x-clip bg-neutral-50">
+      <aside
+        className={cn(
+          'hidden shrink-0 flex-col bg-brand-900 py-6 transition-[width] duration-200 md:flex',
+          recolhido ? 'w-16 px-2' : 'w-60 px-3',
+        )}
+      >
+        <Menulateral
+          secoes={secoes}
+          email={email}
+          recolhido={recolhido}
+          onAlternarRecolhido={alternarRecolhido}
+        />
       </aside>
 
       {gavetaAberta && (

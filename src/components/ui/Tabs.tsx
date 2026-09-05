@@ -14,16 +14,39 @@ export function Tabs<T extends string>({
   onChange,
   items,
   size = 'md',
+  variant = 'neutro',
   className,
 }: {
   value: T
   onChange: (v: T) => void
   items: { value: T; label: string }[]
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
+  /**
+   * `neutro` — trilho cinza, pastilha branca. O padrão, para alternar entre
+   * visões dentro de um bloco já delimitado.
+   *
+   * `marca` — trilho ameixa claro, pastilha ameixa sólida. Para quando o
+   * seletor É a navegação principal da tela e precisa ser encontrado antes
+   * de qualquer outra coisa; na Grade de horários, cinza-sobre-branco
+   * desaparecia entre o título e a barra de controles.
+   */
+  variant?: 'neutro' | 'marca'
   className?: string
 }) {
+  const SIZE_CLS = {
+    sm: 'px-2.5 py-1 text-xs',
+    md: 'px-3.5 py-1.5 text-sm',
+    lg: 'px-5 py-2 text-sm',
+  } as const
+
   return (
-    <div className={cn('inline-flex flex-wrap gap-1 rounded-lg bg-neutral-100 p-1', className)}>
+    <div
+      className={cn(
+        'inline-flex max-w-full flex-wrap gap-1 rounded-lg p-1',
+        variant === 'marca' ? 'bg-brand-100 ring-1 ring-brand-200' : 'bg-neutral-100',
+        className,
+      )}
+    >
       {items.map((item) => {
         const ativo = value === item.value
         return (
@@ -34,10 +57,14 @@ export function Tabs<T extends string>({
             className={cn(
               'rounded-md font-semibold transition',
               'outline-none focus-visible:ring-2 focus-visible:ring-brand-300',
-              size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm',
+              SIZE_CLS[size],
               ativo
-                ? 'bg-white text-brand-700 shadow-sm'
-                : 'text-neutral-500 hover:text-neutral-900',
+                ? variant === 'marca'
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'bg-white text-brand-700 shadow-sm'
+                : variant === 'marca'
+                  ? 'text-brand-700 hover:bg-white/60 hover:text-brand-800'
+                  : 'text-neutral-500 hover:text-neutral-900',
             )}
           >
             {item.label}
