@@ -11,7 +11,6 @@ import {
   criarCategoria,
   criarModalidade,
   criarTurma,
-  definirCategoriaDaModalidade,
   desativarTurma,
   listarCategorias,
   listarTodasModalidades,
@@ -171,15 +170,6 @@ export function useAtualizarCategoria() {
 export function useArquivarCategoria() {
   const invalidar = useInvalidarCategorias()
   return useMutation({ mutationFn: arquivarCategoria, onSuccess: invalidar })
-}
-
-export function useDefinirCategoriaDaModalidade() {
-  const invalidar = useInvalidarCategorias()
-  return useMutation({
-    mutationFn: ({ modalidadeId, categoriaId }: { modalidadeId: string; categoriaId: string | null }) =>
-      definirCategoriaDaModalidade(modalidadeId, categoriaId),
-    onSuccess: invalidar,
-  })
 }
 
 export function useAgendarAula() {

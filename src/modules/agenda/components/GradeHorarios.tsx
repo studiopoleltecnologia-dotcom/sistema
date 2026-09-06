@@ -24,7 +24,6 @@ import {
 import { DIAS_SEMANA, fmtHora, type TurmaComProfessora } from '../types'
 import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { CategoriasModal } from './CategoriasModal'
-import { ModalidadesModal } from './ModalidadesModal'
 import { ConfigExibicao } from './ConfigExibicao'
 import { DiaView } from './DiaView'
 import { LegendaCategorias } from './LegendaCategorias'
@@ -59,7 +58,7 @@ export function GradeHorarios() {
   const [exibicao, alterarExibicao] = useExibicao()
   const [configAberta, setConfigAberta] = useState(false)
   const [categoriasAbertas, setCategoriasAbertas] = useState(false)
-  const [modalidadesAbertas, setModalidadesAbertas] = useState(false)
+  
   const [form, setForm] = useState<{ inicial: TurmaInicial; turmaId: string | null } | null>(null)
   const [painelAberto, setPainelAberto] = useState(false)
   const [turmaSelecionada, setTurmaSelecionada] = useState<string | null>(null)
@@ -215,12 +214,15 @@ export function GradeHorarios() {
           >
             <CalendarRange className="size-4" />
           </BotaoIcone>
-          {/* Modalidades fica na barra e não só atrás da legenda: a legenda
-              só existe no modo "colorir por categoria", e o cadastro precisa
-              estar alcançável em qualquer modo. */}
+          {/* Mesma tela do link "Categorias" da legenda, de propósito. Eram
+              duas parecidas — "Modalidades" aqui e "Categorias" ali —, e quem
+              ia pelo caminho óbvio (o link acima da grade) caía na que
+              mostrava as aulas como texto morto. Agora os dois abrem a que
+              edita. Este botão existe porque a legenda só aparece no modo
+              "colorir por categoria". */}
           <BotaoIcone
-            onClick={() => setModalidadesAbertas(true)}
-            titulo="Modalidades (nome, categoria, arquivar)"
+            onClick={() => setCategoriasAbertas(true)}
+            titulo="Grupos e categorias — cores e o que está dentro de cada grupo"
           >
             <Tag className="size-4" />
           </BotaoIcone>
@@ -330,7 +332,6 @@ export function GradeHorarios() {
         />
       )}
       {categoriasAbertas && <CategoriasModal onFechar={() => setCategoriasAbertas(false)} />}
-      {modalidadesAbertas && <ModalidadesModal onFechar={() => setModalidadesAbertas(false)} />}
       {confirmar.dialogo}
       {form && (
         <TurmaForm inicial={form.inicial} turmaId={form.turmaId} onFechar={() => setForm(null)} />
