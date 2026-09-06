@@ -19,16 +19,24 @@ export function somarDias(dataISO: string, dias: number) {
   return iso(d)
 }
 
-/** Segunda-feira da semana que contém `dataISO` (grade de estúdio começa na segunda). */
+/**
+ * Domingo da semana que contém `dataISO`.
+ *
+ * A grade começa no **domingo** (decisão de 06/09/2026; antes era segunda).
+ * Mudar aqui basta: `diasDaSemana`, `semanasDoMes` e `rotuloSemana` derivam
+ * desta função, e ela não é usada fora do módulo Agenda — Análises e portais
+ * não têm noção própria de início de semana que pudesse divergir.
+ *
+ * Quem consome isto também define a janela consultada em `fn_ocupacao_turma`,
+ * então a ocupação exibida acompanha a semana nova sozinha.
+ */
 export function inicioSemana(dataISO: string) {
   const d = deISO(dataISO)
-  const dow = d.getDay() // 0 = domingo
-  const recuo = dow === 0 ? 6 : dow - 1
-  d.setDate(d.getDate() - recuo)
+  d.setDate(d.getDate() - d.getDay()) // getDay(): 0 = domingo
   return iso(d)
 }
 
-/** Os 7 dias da semana de `dataISO`, de segunda a domingo. */
+/** Os 7 dias da semana de `dataISO`, de domingo a sábado. */
 export function diasDaSemana(dataISO: string): string[] {
   const ini = inicioSemana(dataISO)
   return Array.from({ length: 7 }, (_, i) => somarDias(ini, i))
@@ -44,7 +52,7 @@ export function fimMesExclusivo(dataISO: string) {
   return iso(d)
 }
 
-/** Grade do mês: semanas completas (segunda a domingo) cobrindo o mês inteiro. */
+/** Grade do mês: semanas completas (domingo a sábado) cobrindo o mês inteiro. */
 export function semanasDoMes(dataISO: string): string[][] {
   const primeiro = inicioSemana(inicioMes(dataISO))
   const fim = fimMesExclusivo(dataISO)

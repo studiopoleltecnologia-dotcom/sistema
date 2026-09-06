@@ -5,7 +5,9 @@ import { diaDoMes, dowDe, hojeISO, semanasDoMes } from '../semana'
 import { fmtHora, type TurmaComProfessora } from '../types'
 import type { OcupacaoTurma } from './GradeSemanal'
 
-const CABECALHO = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+// Espelha `diasDaSemana`, que começa no domingo. Se um dia divergir do
+// outro, o mês desenha a aula na coluna errada — e em silêncio.
+const CABECALHO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 /**
  * Visão do mês: serve para enxergar padrão (que semana está fraca), não para
