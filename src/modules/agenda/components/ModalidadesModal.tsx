@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { ArchiveRestore, Archive, Tag } from 'lucide-react'
+import { ArchiveRestore, Archive, Palette } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Modal } from '../../../components/ui/Modal'
 import { cn } from '../../../components/ui/cn'
@@ -14,17 +14,20 @@ import {
 import type { CategoriaModalidade, Modalidade } from '../types'
 
 /**
- * Cadastro de modalidades: nome, categoria e arquivamento.
+ * Modalidades, organizadas **por categoria**.
  *
- * Até aqui a única forma de criar uma modalidade era o "+ criar nova" dentro
- * do formulário de turma, e não havia forma nenhuma de **renomear** ou
- * **arquivar** uma. Na prática isso produzia duplicatas — o DEV tem "Pole
- * Dance", "Pole Dance 1", "Pole Dance 2" e "Pole Dance 1 e 2" convivendo —,
- * e duplicata de modalidade não é só bagunça de cadastro: ela racha a
- * ocupação da mesma aula em linhas diferentes nas Análises.
+ * A primeira versão desta tela era uma lista corrida com um seletor solto em
+ * cada linha. Respondia "qual é a categoria do Jazz?", mas não a pergunta que
+ * a equipe realmente faz, que é a inversa: "o que está dentro de Pole?" — e
+ * sem ver os grupos lado a lado não dá para perceber que Bases de Salto ficou
+ * em Dança sozinha, ou que Projeto Casinha está vazia.
  *
- * A categoria fica aqui e não só no modal de Categorias porque a pergunta
- * "de que cor é o Jazz?" nasce olhando a modalidade, não a categoria.
+ * O modal de Categorias mostra as modalidades de cada categoria, mas só como
+ * texto corrido, sem como mover nenhuma. É a metade que faltava.
+ *
+ * **Aqui não se mexe em cor.** Cor é de categoria, se edita em Categorias, e
+ * misturar as duas coisas na mesma tela foi o que fez a busca por "onde mudo
+ * a cor" terminar no lugar errado. Esta tela responde só "o que está em quê".
  */
 export function ModalidadesModal({ onFechar }: { onFechar: () => void }) {
   const { data: modalidades } = useTodasModalidades()
@@ -37,15 +40,15 @@ export function ModalidadesModal({ onFechar }: { onFechar: () => void }) {
   const [erro, setErro] = useState<string | null>(null)
 
   const lista = modalidades ?? []
+  const cats = categorias ?? []
   const ativas = lista.filter((m) => m.ativa)
   const arquivadas = lista.filter((m) => !m.ativa)
+  const semCategoria = ativas.filter((m) => !m.categoria_id)
 
   function criarModalidade(e: FormEvent) {
     e.preventDefault()
     const nome = nova.trim()
     if (!nome) return
-    // Duplicata é o problema que esta tela existe para resolver — barrar na
-    // entrada vale mais que oferecer o "mesclar" depois.
     if (lista.some((m) => m.nome.trim().toLowerCase() === nome.toLowerCase())) {
       return setErro(`"${nome}" já existe.`)
     }
@@ -63,43 +66,78 @@ export function ModalidadesModal({ onFechar }: { onFechar: () => void }) {
   }
 
   return (
-    <Modal title="Modalidades" onFechar={onFechar} size="lg">
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1.5">
-          {ativas.map((m) => (
-            <LinhaModalidade
-              key={m.id}
-              modalidade={m}
-              categorias={categorias ?? []}
-              turmas={usoPorModalidade?.get(m.id) ?? 0}
-            />
-          ))}
-          {ativas.length === 0 && (
-            <p className="text-sm text-neutral-400">Nenhuma modalidade cadastrada.</p>
-          )}
-        </div>
+    <Modal title="Modalidades por categoria" onFechar={onFechar} size="lg">
+      <div className="flex min-w-0 flex-col gap-4">
+        <p className="text-xs text-neutral-500">
+          Cada aula pertence a uma categoria, e é a categoria que dá a cor do cartão na grade.
+          Use o seletor de cada linha para mover a aula de grupo. As cores em si se editam em{' '}
+          <span className="inline-flex items-center gap-1 font-medium text-neutral-600">
+            <Palette className="size-3" />
+            Categorias
+          </span>
+          .
+        </p>
 
-        {arquivadas.length > 0 && (
-          <div>
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-neutral-500">
-              Arquivadas ({arquivadas.length})
-            </h3>
-            <div className="flex flex-col gap-1.5">
-              {arquivadas.map((m) => (
+        {/* Sem categoria vem primeiro quando existe: é a pilha que pede ação,
+            e é o motivo de alguém abrir esta tela. Vazia, some — seção morta
+            no topo só empurraria o conteúdo real para baixo. */}
+        {semCategoria.length > 0 && (
+          <Grupo
+            titulo="Sem categoria"
+            cor={null}
+            total={semCategoria.length}
+            tracejado
+            aviso="Aparecem na grade com uma cor provisória, derivada do nome."
+          >
+            {semCategoria.map((m) => (
+              <LinhaModalidade
+                key={m.id}
+                modalidade={m}
+                categorias={cats}
+                turmas={usoPorModalidade?.get(m.id) ?? 0}
+              />
+            ))}
+          </Grupo>
+        )}
+
+        {cats.map((c) => {
+          const doGrupo = ativas.filter((m) => m.categoria_id === c.id)
+          return (
+            <Grupo
+              key={c.id}
+              titulo={c.nome}
+              cor={corDaCategoria(c).acento}
+              total={doGrupo.length}
+              aviso={doGrupo.length === 0 ? 'Nenhuma aula neste grupo ainda.' : undefined}
+            >
+              {doGrupo.map((m) => (
                 <LinhaModalidade
                   key={m.id}
                   modalidade={m}
-                  categorias={categorias ?? []}
+                  categorias={cats}
                   turmas={usoPorModalidade?.get(m.id) ?? 0}
                 />
               ))}
-            </div>
-          </div>
+            </Grupo>
+          )
+        })}
+
+        {arquivadas.length > 0 && (
+          <Grupo titulo="Arquivadas" cor={null} total={arquivadas.length} tracejado>
+            {arquivadas.map((m) => (
+              <LinhaModalidade
+                key={m.id}
+                modalidade={m}
+                categorias={cats}
+                turmas={usoPorModalidade?.get(m.id) ?? 0}
+              />
+            ))}
+          </Grupo>
         )}
 
         <form
           onSubmit={criarModalidade}
-          className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-4"
+          className="flex min-w-0 flex-wrap items-center gap-2 border-t border-neutral-100 pt-4"
         >
           <input
             value={nova}
@@ -108,16 +146,16 @@ export function ModalidadesModal({ onFechar }: { onFechar: () => void }) {
               setErro(null)
             }}
             placeholder="Nome da nova modalidade"
-            className="min-w-0 flex-1 rounded-md border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500"
+            className="min-w-32 flex-1 rounded-md border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500"
           />
           <select
             value={categoriaNova}
             onChange={(e) => setCategoriaNova(e.target.value)}
             aria-label="Categoria da nova modalidade"
-            className="rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500"
+            className="min-w-0 rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500"
           >
             <option value="">Sem categoria</option>
-            {(categorias ?? []).map((c) => (
+            {cats.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
               </option>
@@ -130,6 +168,49 @@ export function ModalidadesModal({ onFechar }: { onFechar: () => void }) {
         </form>
       </div>
     </Modal>
+  )
+}
+
+function Grupo({
+  titulo,
+  cor,
+  total,
+  tracejado,
+  aviso,
+  children,
+}: {
+  titulo: string
+  /** Acento da categoria; null nos grupos que não são categoria. */
+  cor: string | null
+  total: number
+  tracejado?: boolean
+  aviso?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section
+      className={cn(
+        'min-w-0 rounded-lg border p-2.5',
+        tracejado ? 'border-dashed border-neutral-300 bg-neutral-50/50' : 'border-neutral-200',
+      )}
+    >
+      <header className="mb-2 flex items-center gap-2 px-0.5">
+        <span
+          className={cn('size-2.5 shrink-0 rounded-full', !cor && 'bg-neutral-300')}
+          style={cor ? { background: cor } : undefined}
+        />
+        <h3 className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wider text-neutral-600">
+          {titulo}
+        </h3>
+        <span className="shrink-0 text-[11px] tabular-nums text-neutral-400">
+          {total} {total === 1 ? 'aula' : 'aulas'}
+        </span>
+      </header>
+
+      {aviso && <p className="mb-1.5 px-0.5 text-[11px] text-neutral-400">{aviso}</p>}
+
+      <div className="flex min-w-0 flex-col gap-1.5">{children}</div>
+    </section>
   )
 }
 
@@ -149,8 +230,8 @@ function LinhaModalidade({
 
   const categoria = categorias.find((c) => c.id === modalidade.categoria_id) ?? null
   // Mesma cor que o cartão terá na grade — inclusive a provisória de quem
-  // ainda não tem categoria. Escolher aqui e descobrir a cor só depois, na
-  // grade, é o que fazia a categorização virar tentativa e erro.
+  // ainda não tem categoria. Mover a aula e ver a linha trocar de cor na hora
+  // é a confirmação de que pegou.
   const cor = categoria ? corDaCategoria(categoria) : corModalidade(modalidade.nome)
 
   const salvarNome = () => {
@@ -162,7 +243,7 @@ function LinhaModalidade({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-2 rounded-lg border py-1.5 pl-2 pr-2.5',
+        'flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border py-1.5 pl-2 pr-2.5',
         !modalidade.ativa && 'opacity-60',
       )}
       style={{ background: cor.bg, borderColor: cor.borda }}
@@ -186,7 +267,7 @@ function LinhaModalidade({
         className="shrink-0 text-[11px] tabular-nums text-neutral-500"
         title="Turmas ativas que usam esta modalidade"
       >
-        {turmas} turma{turmas === 1 ? '' : 's'}
+        {turmas} {turmas === 1 ? 'turma' : 'turmas'}
       </span>
 
       <select
@@ -197,8 +278,9 @@ function LinhaModalidade({
             patch: { categoria_id: e.target.value || null },
           })
         }
-        aria-label={`Categoria de ${modalidade.nome}`}
-        className="shrink-0 rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs outline-none transition focus:border-brand-500"
+        aria-label={`Mover ${modalidade.nome} para outra categoria`}
+        title="Mover para outra categoria"
+        className="min-w-0 max-w-40 shrink rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs outline-none transition focus:border-brand-500"
       >
         <option value="">Sem categoria</option>
         {categorias.map((c) => (
@@ -211,8 +293,8 @@ function LinhaModalidade({
       {modalidade.ativa ? (
         confirmando ? (
           <span className="flex shrink-0 items-center gap-1.5">
-            {/* O aviso é o ponto: arquivar não mexe nas turmas que já usam a
-                modalidade — elas continuam na grade. Só some do seletor. */}
+            {/* Arquivar não mexe nas turmas que já usam a modalidade — elas
+                continuam na grade. Só some do seletor de turma nova. */}
             <span className="text-[11px] text-neutral-600">
               {turmas > 0 ? `${turmas} turma(s) continuam na grade.` : 'Arquivar?'}
             </span>
@@ -256,6 +338,3 @@ function LinhaModalidade({
     </div>
   )
 }
-
-/** Ícone do botão que abre este modal, para a barra da grade. */
-export const IconeModalidades = Tag

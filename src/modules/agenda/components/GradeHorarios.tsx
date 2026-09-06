@@ -220,7 +220,7 @@ export function GradeHorarios() {
               estar alcançável em qualquer modo. */}
           <BotaoIcone
             onClick={() => setModalidadesAbertas(true)}
-            titulo="Modalidades (nome, categoria, arquivar)"
+            titulo="Modalidades por categoria — organizar o que está em cada grupo"
           >
             <Tag className="size-4" />
           </BotaoIcone>
