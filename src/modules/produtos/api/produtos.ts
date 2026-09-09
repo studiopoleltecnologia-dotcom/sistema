@@ -5,13 +5,16 @@ import type { ProdutoInsert, ProdutoUpdate, TipoRequisito } from '../types'
  * Catálogo visto pela equipe — inclui os ocultos (plano personalizado,
  * cortesia), que são justamente os que o aluno não pode ver. Quem separa
  * um do outro é a RLS: a policy do aluno exige `visivel_no_catalogo`.
+ *
+ * Traz os arquivados junto (`ativo = false`) porque arquivar deixou de
+ * ser mão única: a tela mostra o que saiu do catálogo num bloco à parte
+ * e permite reativar. Filtrar aqui esconderia o produto do lugar onde
+ * ele precisa reaparecer para voltar.
  */
 export async function listarProdutos() {
   const { data, error } = await requireSupabase()
     .from('produtos')
     .select('*')
-    .eq('ativo', true)
-    .order('tipo_produto')
     .order('ordem')
     .order('preco_centavos')
   if (error) throw error
@@ -48,6 +51,20 @@ export async function arquivarProduto(id: string) {
   const { error } = await requireSupabase()
     .from('produtos')
     .update({ ativo: false })
+    .eq('id', id)
+  if (error) throw error
+}
+
+/**
+ * Volta ao catálogo. Existe porque arquivar por engano é fácil (um
+ * clique) e sem isto a correção exigia SQL — o que na prática significa
+ * criar um produto duplicado com o mesmo nome e perder o vínculo com as
+ * matrículas antigas.
+ */
+export async function reativarProduto(id: string) {
+  const { error } = await requireSupabase()
+    .from('produtos')
+    .update({ ativo: true })
     .eq('id', id)
   if (error) throw error
 }

@@ -1,132 +1,72 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { EyeOff, Pencil, Plus } from 'lucide-react'
+import { Archive, Package, Plus } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useConfirmar } from '../../components/ui/ConfirmarAcao'
-import { requireSupabase } from '../../lib/supabase'
-import { fmtCentavos } from '../../lib/dinheiro'
-import { fmtData } from '../../lib/datas'
 import { useMinhaFuncao } from '../../lib/funcao'
-import { useClientes } from '../clientes/hooks/useClientes'
-import type { Tables } from '../../lib/database.types'
 import { ProdutoForm } from './components/ProdutoForm'
+import { ProdutoCard } from './components/ProdutoCard'
 import type { RequisitoInput } from './api/produtos'
 import {
   useArquivarProduto,
   useProdutoModalidades,
   useProdutos,
+  useReativarProduto,
   useRequisitos,
 } from './hooks/useProdutos'
 import {
-  TIPOS_PRODUTO,
-  TIPO_PRODUTO_LABEL,
-  descreverCobranca,
-  descreverEntrega,
+  GRUPOS,
+  RECORRENCIA_AJUDA,
+  RECORRENCIA_LABEL,
+  grupoDoProduto,
+  recorrenciaDoProduto,
+  type GrupoProduto,
   type Produto,
+  type Recorrencia,
 } from './types'
 
-type SaldoCredito = Tables<'vw_saldo_creditos'>
-
-const inputCls =
-  'rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500'
-
-function useSaldos() {
-  return useQuery({
-    queryKey: ['saldo-creditos'],
-    queryFn: async () => {
-      const { data, error } = await requireSupabase()
-        .from('vw_saldo_creditos')
-        .select('*')
-        // inadimplente também aparece: é justamente quem a equipe
-        // precisa ver para cobrar e depois renovar o ciclo
-        .in('status', ['ativa', 'inadimplente'])
-        .order('data_fim')
-      if (error) throw error
-      return data
-    },
-  })
+/** Faixa de cor por bloco — o que separa os grupos antes de qualquer leitura. */
+const FAIXA: Record<string, string> = {
+  brand: 'border-brand-300 bg-brand-50/50',
+  success: 'border-success-300 bg-success-50/50',
+  neutral: 'border-neutral-300 bg-neutral-50',
+}
+const TITULO_COR: Record<string, string> = {
+  brand: 'text-brand-800',
+  success: 'text-success-800',
+  neutral: 'text-neutral-700',
 }
 
 /**
- * Catálogo do estúdio + as matrículas ativas.
+ * Catálogo do estúdio: o que o Studio vende e sob quais regras.
  *
- * Era a tela "Planos", com um formulário de quatro campos que só sabia
- * descrever plano por crédito. O estúdio vende sete coisas diferentes
- * (regulamento, itens 2, 8 e 10) e nenhuma das outras seis cabia ali.
+ * A tela anterior era uma lista única de linhas de 1 rem, todas com o
+ * mesmo peso, e ainda carregava as matrículas ativas no fim — duas
+ * responsabilidades numa página só. As matrículas saíram para
+ * /matriculas; aqui ficou só o catálogo, e ele passou a ser organizado
+ * pelo que o regulamento realmente separa: crédito, turma fixa e o que
+ * se compra fora de plano.
+ *
+ * O agrupamento é derivado dos atributos do produto (ver grupoDoProduto
+ * em types.ts), não de um campo de categoria — produto novo cai no
+ * bloco certo sozinho, sem ninguém classificar nada na mão.
  */
 export function ProdutosPage() {
-  const qc = useQueryClient()
   const { data: produtos, isLoading } = useProdutos()
   const { data: vinculos } = useProdutoModalidades()
   const { data: requisitos } = useRequisitos()
-  const { data: saldos } = useSaldos()
-  const { data: clientes } = useClientes()
-  // Secretária vê o catálogo e as matrículas, mas não cria/edita nem
-  // mexe em crédito. A RLS já recusa a gravação; aqui escondemos as
+  // Secretária vê o catálogo (precisa saber o que vender) mas não
+  // cria nem edita. A RLS já recusa a gravação; aqui escondemos as
   // ações para não frustrar o clique.
   const { data: funcao } = useMinhaFuncao()
   const ehGestao = funcao === 'gestao'
   const confirmar = useConfirmar()
   const arquivar = useArquivarProduto()
+  const reativar = useReativarProduto()
 
   const [form, setForm] = useState<{ produto: Produto | null } | null>(null)
-  const [matriculaCliente, setMatriculaCliente] = useState('')
-  const [matriculaProduto, setMatriculaProduto] = useState('')
-
-  const matricular = useMutation({
-    mutationFn: async () => {
-      const { error } = await requireSupabase().rpc('matricular', {
-        p_cliente: matriculaCliente,
-        p_plano: matriculaProduto,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['saldo-creditos'] })
-      qc.invalidateQueries({ queryKey: ['entradas'] })
-      setMatriculaCliente('')
-      setMatriculaProduto('')
-    },
-  })
-
-  // A renovação agora é automática: `processar_assinaturas()` roda às 5h
-  // e vira o ciclo de quem tem cobrança recebida. Este botão continua
-  // existindo para o caso de a equipe receber por fora (PIX na hora,
-  // dinheiro) e querer liberar na frente do aluno, sem esperar a virada.
-  const renovar = useMutation({
-    mutationFn: async (matriculaId: string) => {
-      const { error } = await requireSupabase().rpc('renovar_ciclo', { p_matricula: matriculaId })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['saldo-creditos'] })
-      qc.invalidateQueries({ queryKey: ['entradas'] })
-    },
-  })
-
-  const inadimplir = useMutation({
-    mutationFn: async (matriculaId: string) => {
-      const { error } = await requireSupabase().rpc('marcar_inadimplente', {
-        p_matricula: matriculaId,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['saldo-creditos'] }),
-  })
-
-  const cancelarAssinatura = useMutation({
-    mutationFn: async (matriculaId: string) => {
-      const { error } = await requireSupabase().rpc('cancelar_assinatura', {
-        p_matricula: matriculaId,
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['saldo-creditos'] })
-      qc.invalidateQueries({ queryKey: ['entradas'] })
-    },
-  })
+  const [verArquivados, setVerArquivados] = useState(false)
 
   const modalidadesDe = (produtoId: string) =>
     (vinculos ?? []).filter((v) => v.produto_id === produtoId).map((v) => v.modalidade_id)
@@ -136,23 +76,49 @@ export function ProdutosPage() {
       .filter((r) => r.produto_id === produtoId)
       .map((r) => ({ tipo: r.tipo, parametro_int: r.parametro_int, janela_dias: r.janela_dias }))
 
-  const porTipo = useMemo(() => {
-    const m = new Map<string, Produto[]>()
-    for (const t of TIPOS_PRODUTO) m.set(t.valor, [])
-    for (const p of produtos ?? []) m.get(p.tipo_produto)?.push(p)
-    return m
-  }, [produtos])
+  const ativos = useMemo(() => (produtos ?? []).filter((p) => p.ativo), [produtos])
+  const arquivados = useMemo(() => (produtos ?? []).filter((p) => !p.ativo), [produtos])
 
-  const nomeCliente = (id: string | null) =>
-    (clientes ?? []).find((c) => c.id === id)?.nome ?? '—'
-  const nomeProduto = (id: string | null) =>
-    (produtos ?? []).find((p) => p.id === id)?.nome ?? '—'
+  const porGrupo = useMemo(() => {
+    const m = new Map<GrupoProduto, Produto[]>()
+    for (const g of GRUPOS) m.set(g.valor, [])
+    for (const p of ativos) m.get(grupoDoProduto(p))!.push(p)
+    return m
+  }, [ativos])
+
+  const abrirEdicao = (p: Produto) => setForm({ produto: p })
+
+  const pedirArquivar = (p: Produto) =>
+    confirmar.pedir({
+      titulo: `Arquivar ${p.nome}?`,
+      tom: 'arquivar',
+      descricao: (
+        <>
+          Sai do catálogo e ninguém mais consegue contratá-lo — nem a equipe, nem o aluno pelo
+          portal. <b>Quem já contratou não é afetado:</b> a matrícula segue valendo até o fim do
+          compromisso, e dá para trazer o produto de volta a qualquer momento.
+        </>
+      ),
+      aoConfirmar: () => arquivar.mutateAsync(p.id),
+    })
+
+  const cartao = (p: Produto) => (
+    <ProdutoCard
+      key={p.id}
+      produto={p}
+      requisitos={(requisitos ?? []).filter((r) => r.produto_id === p.id)}
+      gestao={ehGestao}
+      onEditar={() => abrirEdicao(p)}
+      onArquivar={() => pedirArquivar(p)}
+      onReativar={() => reativar.mutate(p.id)}
+    />
+  )
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         titulo="Produtos"
-        subtitulo="Planos, pacotes e serviços que o estúdio vende"
+        subtitulo="O que o estúdio vende e as regras de cada formato"
         acoes={
           ehGestao ? (
             <Button onClick={() => setForm({ produto: null })}>
@@ -165,254 +131,104 @@ export function ProdutosPage() {
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      {TIPOS_PRODUTO.map((t) => {
-        const lista = porTipo.get(t.valor) ?? []
+      {!isLoading && ativos.length === 0 && arquivados.length === 0 && (
+        <EmptyState
+          icon={Package}
+          title="Nenhum produto cadastrado"
+          description="Comece pelos planos recorrentes e depois cadastre aula avulsa, experimental, particular e treino livre."
+          action={
+            ehGestao ? (
+              <Button size="sm" onClick={() => setForm({ produto: null })}>
+                <Plus className="size-4" />
+                Novo produto
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+
+      {GRUPOS.map((g) => {
+        const lista = porGrupo.get(g.valor) ?? []
         if (lista.length === 0) return null
+
+        // Crédito e turma fixa se dividem em Mensal x Semestral
+        // (regulamento 1.5); fora do plano, não — lá é compra única.
+        const porColuna = g.valor === 'outros' ? null : dividirPorRecorrencia(lista)
+
         return (
-          <section key={t.valor}>
-            <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-wider text-neutral-500">
-              {TIPO_PRODUTO_LABEL[t.valor]}
-            </h2>
-            <ul className="flex max-w-3xl flex-col gap-1.5">
-              {lista.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-neutral-100 px-3 py-2 text-sm"
-                >
-                  <span className="font-medium text-neutral-900">{p.nome}</span>
-                  {!p.visivel_no_catalogo && (
-                    <span
-                      title="Só a gestão vende — o aluno não vê no portal"
-                      className="inline-flex items-center gap-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500"
-                    >
-                      <EyeOff className="size-3" />
-                      só gestão
-                    </span>
-                  )}
-                  {p.preco_centavos === 0 && (
-                    <span className="rounded bg-success-50 px-1.5 py-0.5 text-[10px] font-medium text-success-700">
-                      cortesia
-                    </span>
-                  )}
-                  <span className="text-xs text-neutral-400">{descreverEntrega(p)}</span>
-                  <span className="flex-1 text-xs text-neutral-400">{descreverCobranca(p)}</span>
-                  <span className="font-semibold text-neutral-900">
-                    {p.preco_centavos === 0 ? '—' : fmtCentavos(p.preco_centavos)}
-                  </span>
-                  {ehGestao && (
-                    <>
-                      <button
-                        onClick={() => setForm({ produto: p })}
-                        title="Editar"
-                        className="rounded p-1 text-neutral-400 transition hover:text-brand-600"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          confirmar.pedir({
-                            titulo: `Arquivar ${p.nome}?`,
-                            tom: 'arquivar',
-                            descricao: (
-                              <>
-                                Sai do catálogo e ninguém mais consegue contratá-lo — nem a equipe,
-                                nem o aluno pelo portal. <b>Quem já contratou não é afetado:</b> a
-                                matrícula segue valendo até o fim do compromisso.
-                              </>
-                            ),
-                            aoConfirmar: () => arquivar.mutateAsync(p.id),
-                          })
-                        }
-                        title="Arquivar produto"
-                        className="px-1 text-xs text-neutral-300 transition hover:text-red-500"
-                      >
-                        ×
-                      </button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
+          <section key={g.valor}>
+            <header
+              className={`mb-4 rounded-lg border-l-4 px-4 py-2.5 ${FAIXA[g.cor] ?? FAIXA.neutral}`}
+            >
+              <h2
+                className={`font-display text-sm font-bold uppercase tracking-wider ${
+                  TITULO_COR[g.cor] ?? TITULO_COR.neutral
+                }`}
+              >
+                {g.titulo}
+                <span className="ml-2 font-sans text-xs font-medium normal-case tracking-normal opacity-60">
+                  {lista.length} {lista.length === 1 ? 'produto' : 'produtos'}
+                </span>
+              </h2>
+              <p className="mt-0.5 max-w-3xl text-xs leading-snug text-neutral-600">
+                {g.descricao}
+              </p>
+            </header>
+
+            {porColuna ? (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {(['mensal', 'semestral'] as Recorrencia[]).map((r) => {
+                  const itens = porColuna[r]
+                  if (itens.length === 0) return null
+                  return (
+                    <div key={r}>
+                      <div className="mb-2 flex items-baseline gap-2 border-b border-neutral-100 pb-1.5">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-600">
+                          {RECORRENCIA_LABEL[r]}
+                        </h3>
+                        <span className="text-[11px] text-neutral-400">{RECORRENCIA_AJUDA[r]}</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                        {itens.map(cartao)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {lista.map(cartao)}
+              </div>
+            )}
           </section>
         )
       })}
 
-      {!isLoading && (produtos ?? []).length === 0 && (
-        <p className="max-w-xl text-sm text-neutral-400">
-          Nenhum produto cadastrado ainda. Comece pelos planos recorrentes e depois cadastre aula
-          avulsa, experimental, particular e treino livre.
-        </p>
-      )}
-
-      <section>
-        <h2 className="mb-2 font-display text-xs font-bold uppercase tracking-wider text-neutral-500">
-          Matrículas ativas
-        </h2>
-
-        {ehGestao && (
-          <div className="mb-4 flex flex-wrap items-end gap-2">
-            <select
-              value={matriculaCliente}
-              onChange={(e) => setMatriculaCliente(e.target.value)}
-              className={inputCls}
-            >
-              <option value="">Aluno…</option>
-              {(clientes ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              value={matriculaProduto}
-              onChange={(e) => setMatriculaProduto(e.target.value)}
-              className={inputCls}
-            >
-              <option value="">Produto…</option>
-              {(produtos ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                  {p.preco_centavos === 0 ? ' (cortesia)' : ` (${fmtCentavos(p.preco_centavos)})`}
-                  {p.visivel_no_catalogo ? '' : ' · só gestão'}
-                </option>
-              ))}
-            </select>
-            <Button
-              onClick={() => matricular.mutate()}
-              disabled={!matriculaCliente || !matriculaProduto}
-              loading={matricular.isPending}
-              size="sm"
-            >
-              Matricular
-            </Button>
-            <span className="text-[11px] text-neutral-400">
-              Cortesia não gera cobrança no Financeiro.
+      {arquivados.length > 0 && (
+        <section>
+          <button
+            onClick={() => setVerArquivados((v) => !v)}
+            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 transition hover:text-neutral-600"
+          >
+            <Archive className="size-3.5" />
+            Arquivados ({arquivados.length})
+            <span className="font-sans text-[11px] font-medium normal-case tracking-normal">
+              {verArquivados ? 'esconder' : 'mostrar'}
             </span>
-          </div>
-        )}
-
-        <ul className="flex max-w-3xl flex-col gap-1.5">
-          {((saldos ?? []) as SaldoCredito[]).map((s) => (
-            <li
-              key={s.matricula_id}
-              className="flex items-center gap-3 rounded-md border border-neutral-100 px-3 py-2 text-sm"
-            >
-              <span className="flex-1 font-medium text-neutral-900">
-                {nomeCliente(s.cliente_id)}
-                {s.status === 'inadimplente' && (
-                  <span className="ml-2 rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-600">
-                    em aberto
-                  </span>
-                )}
-              </span>
-              <span className="text-xs text-neutral-400">{nomeProduto(s.plano_id)}</span>
-              {/* "ciclo 3/1" seria absurdo. O compromisso é permanência
-                  mínima, não teto de vida: passado ele, o que importa
-                  dizer é que a assinatura segue renovando sozinha. */}
-              {(s.ciclo_atual ?? 1) <= (s.ciclos_compromisso ?? 1) &&
-              (s.ciclos_compromisso ?? 1) > 1 ? (
-                <span className="text-xs text-neutral-400">
-                  ciclo {s.ciclo_atual}/{s.ciclos_compromisso}
-                </span>
-              ) : (
-                <span className="text-xs text-neutral-400">ciclo {s.ciclo_atual}</span>
-              )}
-              {s.cancelamento_efetivo_em ? (
-                <span className="rounded bg-warning-50 px-1.5 py-0.5 text-[11px] font-medium text-warning-700">
-                  cancela {fmtData(s.cancelamento_efetivo_em)}
-                </span>
-              ) : s.renova_automaticamente ? (
-                <span className="text-xs text-neutral-400" title="Renova sozinha na virada do ciclo">
-                  renova sozinha
-                </span>
-              ) : null}
-              <span className="text-xs text-neutral-400">até {fmtData(s.data_fim)}</span>
-              {s.proxima_validade && s.proxima_validade !== s.data_fim && (
-                <span
-                  className="text-xs text-neutral-400"
-                  title="Data em que o próximo lote de créditos vence"
-                >
-                  vence {fmtData(s.proxima_validade)}
-                </span>
-              )}
-              <span
-                className={`font-semibold ${
-                  (s.saldo ?? 0) > 0 ? 'text-neutral-900' : 'text-red-600'
-                }`}
-              >
-                {s.saldo} crédito{s.saldo === 1 ? '' : 's'}
-              </span>
-              {ehGestao && (
-                <>
-                  {!s.cancelamento_efetivo_em && (
-                    <button
-                      onClick={() =>
-                        s.matricula_id &&
-                        confirmar.pedir({
-                          titulo: 'Adiantar a renovação?',
-                          tom: 'arquivar',
-                          textoConfirmar: 'Renovar agora',
-                          descricao: (
-                            <>
-                              A virada acontece sozinha quando o ciclo termina. Renovar agora
-                              começa o próximo ciclo já e, se o plano não acumula, o saldo
-                              restante de {nomeCliente(s.cliente_id)} expira.
-                            </>
-                          ),
-                          aoConfirmar: () => renovar.mutateAsync(s.matricula_id!),
-                        })
-                      }
-                      disabled={renovar.isPending}
-                      title="Recebeu por fora e quer liberar o próximo ciclo sem esperar a virada"
-                      className="rounded-md bg-success-50 px-2 py-0.5 text-xs font-medium text-success-700 transition hover:bg-success-100 disabled:opacity-40"
-                    >
-                      renovar agora
-                    </button>
-                  )}
-                  {s.status === 'ativa' && (
-                    <button
-                      onClick={() => s.matricula_id && inadimplir.mutate(s.matricula_id)}
-                      disabled={inadimplir.isPending}
-                      title="Mensalidade não entrou: bloqueia novos agendamentos até regularizar"
-                      className="rounded-md px-2 py-0.5 text-xs font-medium text-neutral-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
-                    >
-                      não pagou
-                    </button>
-                  )}
-                  {!s.cancelamento_efetivo_em && (
-                    <button
-                      onClick={() =>
-                        s.matricula_id &&
-                        confirmar.pedir({
-                          titulo: 'Cancelar a assinatura?',
-                          tom: 'arquivar',
-                          textoConfirmar: 'Cancelar assinatura',
-                          descricao: (
-                            <>
-                              A cobrança automática de {nomeCliente(s.cliente_id)} para. Os
-                              créditos já pagos continuam valendo até {fmtData(s.data_fim)} —
-                              nada é apagado.
-                            </>
-                          ),
-                          aoConfirmar: () => cancelarAssinatura.mutateAsync(s.matricula_id!),
-                        })
-                      }
-                      disabled={cancelarAssinatura.isPending}
-                      title="Desliga a renovação no fim do ciclo pago"
-                      className="rounded-md px-2 py-0.5 text-xs font-medium text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-40"
-                    >
-                      cancelar
-                    </button>
-                  )}
-                </>
-              )}
-            </li>
-          ))}
-          {(saldos ?? []).length === 0 && (
-            <li className="py-2 text-sm text-neutral-300">Nenhuma matrícula ativa.</li>
+          </button>
+          {verArquivados && (
+            <>
+              <p className="mb-3 mt-1.5 max-w-2xl text-xs text-neutral-400">
+                Fora do catálogo — ninguém consegue contratar. As matrículas que já existiam
+                continuam valendo normalmente.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {arquivados.map(cartao)}
+              </div>
+            </>
           )}
-        </ul>
-      </section>
+        </section>
+      )}
 
       {form && (
         <ProdutoForm
@@ -425,4 +241,10 @@ export function ProdutosPage() {
       {confirmar.dialogo}
     </div>
   )
+}
+
+function dividirPorRecorrencia(lista: Produto[]): Record<Recorrencia, Produto[]> {
+  const out: Record<Recorrencia, Produto[]> = { mensal: [], semestral: [] }
+  for (const p of lista) out[recorrenciaDoProduto(p)].push(p)
+  return out
 }

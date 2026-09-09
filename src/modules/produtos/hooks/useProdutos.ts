@@ -8,6 +8,7 @@ import {
   listarProdutoModalidades,
   listarProdutos,
   listarRequisitos,
+  reativarProduto,
   type RequisitoInput,
 } from '../api/produtos'
 import type { ProdutoInsert, ProdutoUpdate } from '../types'
@@ -61,4 +62,9 @@ export function useSalvarProduto() {
 export function useArquivarProduto() {
   const invalidar = useInvalidarCatalogo()
   return useMutation({ mutationFn: arquivarProduto, onSuccess: invalidar })
+}
+
+export function useReativarProduto() {
+  const invalidar = useInvalidarCatalogo()
+  return useMutation({ mutationFn: reativarProduto, onSuccess: invalidar })
 }

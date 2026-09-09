@@ -21,6 +21,7 @@ import { AgendaPage } from './modules/agenda/AgendaPage'
 import { ProfessorasPage } from './modules/professoras/ProfessorasPage'
 import { FechamentoPage } from './modules/fechamento/FechamentoPage'
 import { ProdutosPage } from './modules/produtos/ProdutosPage'
+import { MatriculasPage } from './modules/matriculas/MatriculasPage'
 import { PortalApp } from './modules/portal-aluna/PortalApp'
 import { ProfessoraApp } from './modules/portal-professora/ProfessoraApp'
 import { DashboardPage } from './modules/dashboard/DashboardPage'
@@ -152,10 +153,14 @@ export default function App() {
                   }
                 />
                 <Route path="produtos" element={<ProdutosPage />} />
+                {/* Catálogo e contratações eram a mesma tela; /matriculas é a
+                    metade que trata de quem comprou. O alerta de inadimplência
+                    do painel aponta para cá, não para o catálogo. */}
+                <Route path="matriculas" element={<MatriculasPage />} />
                 {/* O módulo virou "Produtos" porque o estúdio não vende só
                     plano. A rota antiga fica de pé para não quebrar link
-                    salvo nem o alerta de inadimplência do painel. */}
-                <Route path="planos" element={<Navigate to="/produtos" replace />} />
+                    salvo. */}
+                <Route path="planos" element={<Navigate to="/matriculas" replace />} />
                 <Route
                   path="equipe"
                   element={

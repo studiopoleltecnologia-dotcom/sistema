@@ -414,6 +414,37 @@ function LinhaModalidade({
         {turmas} {turmas === 1 ? 'turma' : 'turmas'}
       </span>
 
+      {/* Regulamento 2.3.6: Pole e derivadas, Flexibilidade e Treino Livre
+          não podem ser contratados como Mensalidade por Turma Fixa. Mora
+          aqui, junto da aula, e não no cadastro do produto, porque a regra
+          é da MODALIDADE — vale para todos os planos de turma fixa de uma
+          vez. A trava real está no banco (matricular_turma_fixa recusa);
+          este botão só decide o valor da coluna. */}
+      {modalidade.ativa && (
+        <button
+          onClick={() =>
+            atualizar.mutate(
+              { id: modalidade.id, patch: { elegivel_turma_fixa: !modalidade.elegivel_turma_fixa } },
+              comErro,
+            )
+          }
+          aria-pressed={modalidade.elegivel_turma_fixa}
+          title={
+            modalidade.elegivel_turma_fixa
+              ? 'Aceita Mensalidade por Turma Fixa — clique para bloquear'
+              : 'Não aceita Mensalidade por Turma Fixa (regulamento 2.3.6) — clique para liberar'
+          }
+          className={cn(
+            'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition',
+            modalidade.elegivel_turma_fixa
+              ? 'bg-white/80 text-neutral-600 ring-neutral-300 hover:ring-neutral-400'
+              : 'bg-white/60 text-neutral-400 ring-dashed ring-neutral-300 line-through hover:text-neutral-600',
+          )}
+        >
+          turma fixa
+        </button>
+      )}
+
       {categorias && modalidade.ativa && (
         <select
           value=""
