@@ -93,7 +93,7 @@ export function DashboardPage() {
   }
   if (gestao && (inadimplentes.data ?? 0) > 0) {
     alertas.push({
-      to: '/planos',
+      to: '/matriculas',
       icon: AlertTriangle,
       texto: `${inadimplentes.data} matrícula(s) com pagamento em aberto`,
       tom: 'danger',

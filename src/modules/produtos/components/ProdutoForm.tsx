@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { CalendarRange, Coins, Tag } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
@@ -19,14 +20,53 @@ const labelCls = 'mb-1 block text-xs font-medium text-neutral-500'
 const ajudaCls = 'mt-1 text-[11px] leading-snug text-neutral-400'
 
 /**
- * Cadastro de produto. As seções aparecem conforme o tipo escolhido —
- * perguntar "acumula crédito?" para uma aula particular seria pedir uma
- * resposta que não significa nada.
+ * O formato do produto — a primeira e mais importante pergunta do
+ * formulário, porque é ela que decide todas as outras.
  *
- * O que NÃO existe aqui de propósito: um campo por produto conhecido.
- * O formulário é o mesmo para plano mensal, cortesia e treino livre; o
- * que muda é a combinação de atributos. É isso que permite a equipe
- * inventar um produto novo sem ninguém tocar em código.
+ * Não é uma coluna no banco: `creditos` e `turma_fixa` se distinguem por
+ * `turmas_fixas > 0`, e `avulso` por `renova_automaticamente = false`.
+ * Aqui o formato é só a maneira de fazer a pergunta certa e esconder as
+ * que não fazem sentido — perguntar "acumula crédito?" para uma
+ * mensalidade de turma fixa é pedir uma resposta sem significado.
+ */
+type Formato = 'creditos' | 'turma_fixa' | 'avulso'
+
+const FORMATOS: { valor: Formato; label: string; ajuda: string; Icone: typeof Coins }[] = [
+  {
+    valor: 'creditos',
+    label: 'Plano por créditos',
+    ajuda: 'Assinatura que entrega N créditos por ciclo. O aluno escolhe em quais aulas usar.',
+    Icone: Coins,
+  },
+  {
+    valor: 'turma_fixa',
+    label: 'Mensalidade por turma fixa',
+    ajuda:
+      'Assinatura que reserva a vaga do aluno em turmas específicas da grade. Não gera crédito, e a turma é escolhida na matrícula — não aqui.',
+    Icone: CalendarRange,
+  },
+  {
+    valor: 'avulso',
+    label: 'Compra única',
+    ajuda: 'Cobra uma vez: experimental, avulsa, crédito extra, particular, treino livre, Studio+.',
+    Icone: Tag,
+  },
+]
+
+function formatoDe(p: Produto | null): Formato {
+  if (!p) return 'creditos'
+  if (p.turmas_fixas > 0) return 'turma_fixa'
+  if (p.renova_automaticamente) return 'creditos'
+  return 'avulso'
+}
+
+/**
+ * Cadastro de produto. As seções aparecem conforme o formato escolhido.
+ *
+ * O que NÃO existe aqui de propósito: um campo por produto conhecido. O
+ * formulário é o mesmo para plano mensal, cortesia, turma fixa e treino
+ * livre; o que muda é a combinação de atributos. É isso que permite a
+ * equipe inventar um produto novo sem ninguém tocar em código.
  */
 export function ProdutoForm({
   produto,
@@ -42,23 +82,27 @@ export function ProdutoForm({
   const salvar = useSalvarProduto()
   const { data: modalidades } = useModalidades()
 
+  const [formato, setFormato] = useState<Formato>(formatoDe(produto))
   const [tipo, setTipo] = useState<TipoProduto>(produto?.tipo_produto ?? 'plano')
   const [nome, setNome] = useState(produto?.nome ?? '')
   const [descricao, setDescricao] = useState(produto?.descricao ?? '')
   const [preco, setPreco] = useState(
     produto ? String(produto.preco_centavos / 100).replace('.', ',') : '',
   )
-  const [recorrente, setRecorrente] = useState(produto?.renova_automaticamente ?? true)
   const [periodicidade, setPeriodicidade] = useState(String(produto?.periodicidade_dias ?? 30))
   const [ciclos, setCiclos] = useState(String(produto?.ciclos_compromisso ?? 1))
 
-  const [geraCredito, setGeraCredito] = useState(produto?.gera_credito ?? true)
-  const [creditos, setCreditos] = useState(String(produto?.creditos_por_ciclo ?? 4))
+  const [turmasFixas, setTurmasFixas] = useState(String(produto?.turmas_fixas || 1))
+
+  const [creditos, setCreditos] = useState(String(produto?.creditos_por_ciclo || 4))
   const [validade, setValidade] = useState(
     produto?.validade_creditos_dias ? String(produto.validade_creditos_dias) : '',
   )
   const [acumula, setAcumula] = useState(produto?.acumula_creditos ?? false)
   const [tetoAcumulo, setTetoAcumulo] = useState(String(produto?.teto_acumulo_ciclos ?? 1))
+  // Só o formato "compra única" ainda pergunta isto: plano por crédito
+  // sempre entrega crédito, e turma fixa nunca entrega (2.3.7).
+  const [geraCredito, setGeraCredito] = useState(produto?.gera_credito ?? true)
 
   const [antecedencia, setAntecedencia] = useState(
     produto?.dias_antecedencia_agendamento ? String(produto.dias_antecedencia_agendamento) : '',
@@ -86,6 +130,36 @@ export function ProdutoForm({
 
   const num = (s: string) => (s.trim() === '' ? null : Number(s))
 
+  const ehTurmaFixa = formato === 'turma_fixa'
+  const ehAssinatura = formato !== 'avulso'
+  // Turma fixa não gera crédito por definição; compra única pergunta.
+  const entregaCredito = formato === 'creditos' || (formato === 'avulso' && geraCredito)
+
+  const naoElegiveis = (modalidades ?? []).filter((m) => !m.elegivel_turma_fixa)
+
+  function trocarFormato(f: Formato) {
+    setFormato(f)
+    setErro(null)
+    // Defaults coerentes com o formato. A pessoa ainda muda tudo, mas
+    // não começa de uma combinação que o banco vai recusar.
+    if (f === 'creditos') {
+      setTipo('plano')
+      setGeraCredito(true)
+      if (!produto) setCreditos('8')
+    } else if (f === 'turma_fixa') {
+      setTipo('plano')
+      setGeraCredito(false)
+      // Regulamento 4.8: falta e cancelamento na turma fixa não geram
+      // crédito nem reposição, então prazo de cancelamento e janela de
+      // agendamento não têm o que fazer — não há reserva semanal.
+      setAntecedencia('')
+      setMaxSimultaneos('')
+      setHorasCancelamento('')
+    } else {
+      setTipo('pacote')
+    }
+  }
+
   function alternarRequisito(t: TipoRequisito) {
     setRequisitos((atual) =>
       atual.some((r) => r.tipo === t)
@@ -109,8 +183,13 @@ export function ProdutoForm({
       return setErro('Valor inválido. Use 170 ou 170,00 — e 0 para cortesia.')
     }
 
-    const nCreditos = geraCredito ? Number(creditos) : 0
-    if (geraCredito && (!Number.isFinite(nCreditos) || nCreditos <= 0)) {
+    const nTurmas = ehTurmaFixa ? Number(turmasFixas) : 0
+    if (ehTurmaFixa && (!Number.isInteger(nTurmas) || nTurmas < 1)) {
+      return setErro('Quantas turmas da grade esta mensalidade reserva? Use 1 ou 2.')
+    }
+
+    const nCreditos = entregaCredito ? Number(creditos) : 0
+    if (entregaCredito && (!Number.isFinite(nCreditos) || nCreditos <= 0)) {
       return setErro('Quantos créditos este produto entrega?')
     }
 
@@ -122,17 +201,18 @@ export function ProdutoForm({
           descricao: descricao.trim() || null,
           tipo_produto: tipo,
           preco_centavos: precoCentavos,
-          renova_automaticamente: recorrente,
+          renova_automaticamente: ehAssinatura,
           periodicidade_dias: Number(periodicidade) || 30,
-          ciclos_compromisso: recorrente ? Number(ciclos) || 1 : 1,
-          gera_credito: geraCredito,
+          ciclos_compromisso: ehAssinatura ? Number(ciclos) || 1 : 1,
+          turmas_fixas: nTurmas,
+          gera_credito: entregaCredito,
           creditos_por_ciclo: nCreditos,
-          validade_creditos_dias: geraCredito ? num(validade) : null,
-          acumula_creditos: geraCredito && acumula,
+          validade_creditos_dias: entregaCredito ? num(validade) : null,
+          acumula_creditos: entregaCredito && ehAssinatura && acumula,
           teto_acumulo_ciclos: Number(tetoAcumulo) || 1,
-          dias_antecedencia_agendamento: num(antecedencia),
-          max_agendamentos_simultaneos: num(maxSimultaneos),
-          horas_cancelamento: num(horasCancelamento),
+          dias_antecedencia_agendamento: ehTurmaFixa ? null : num(antecedencia),
+          max_agendamentos_simultaneos: ehTurmaFixa ? null : num(maxSimultaneos),
+          horas_cancelamento: ehTurmaFixa ? null : num(horasCancelamento),
           limite_por_cliente: num(limiteCliente),
           desconto_eventos_pct: Number(descontoEventos) || 0,
           convidados_por_ciclo: Number(convidados) || 0,
@@ -150,50 +230,48 @@ export function ProdutoForm({
 
   // Prévia da frase que o aluno vai ler. Montar a partir do estado atual,
   // e não do produto salvo, é o que deixa a pessoa ver na hora que
-  // "recorrente" desmarcado muda a promessa que está sendo feita.
+  // mudar de formato muda a promessa que está sendo feita.
   const previa = descreverCobranca({
     preco_centavos: preco.trim() === '' ? 0 : (parseCentavos(preco) ?? 0),
-    renova_automaticamente: recorrente,
+    renova_automaticamente: ehAssinatura,
     periodicidade_dias: Number(periodicidade) || 30,
-    ciclos_compromisso: recorrente ? Number(ciclos) || 1 : 1,
+    ciclos_compromisso: ehAssinatura ? Number(ciclos) || 1 : 1,
   } as Produto)
 
   return (
     <Modal title={produto ? 'Editar produto' : 'Novo produto'} onFechar={onFechar} size="lg">
       <form onSubmit={submeter} className="flex flex-col gap-5">
-        <Secao titulo="O que é">
-          <div className="flex flex-wrap gap-1.5">
-            {TIPOS_PRODUTO.map((t) => (
-              <button
-                key={t.valor}
-                type="button"
-                onClick={() => {
-                  setTipo(t.valor)
-                  // Defaults coerentes com o tipo — a pessoa ainda pode
-                  // mudar tudo, mas não começa com uma combinação absurda.
-                  if (t.valor === 'plano') {
-                    setRecorrente(true)
-                    setGeraCredito(true)
-                  } else if (t.valor === 'pacote') {
-                    setRecorrente(false)
-                    setGeraCredito(true)
-                  } else {
-                    setRecorrente(false)
-                    setGeraCredito(false)
-                  }
-                }}
-                aria-pressed={tipo === t.valor}
-                className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                  tipo === t.valor
-                    ? 'bg-brand-600 text-white shadow-sm'
-                    : 'bg-white text-neutral-600 ring-1 ring-neutral-200 hover:bg-neutral-50'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+        <Secao titulo="Formato">
+          <div className="grid gap-2 sm:grid-cols-3">
+            {FORMATOS.map((f) => {
+              const ativo = formato === f.valor
+              return (
+                <button
+                  key={f.valor}
+                  type="button"
+                  onClick={() => trocarFormato(f.valor)}
+                  aria-pressed={ativo}
+                  className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition ${
+                    ativo
+                      ? 'border-brand-500 bg-brand-50/60 shadow-sm ring-1 ring-brand-300'
+                      : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50'
+                  }`}
+                >
+                  <f.Icone
+                    className={`size-4 ${ativo ? 'text-brand-600' : 'text-neutral-400'}`}
+                  />
+                  <span
+                    className={`text-sm font-semibold leading-tight ${
+                      ativo ? 'text-brand-800' : 'text-neutral-700'
+                    }`}
+                  >
+                    {f.label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-          <p className={ajudaCls}>{TIPOS_PRODUTO.find((t) => t.valor === tipo)?.ajuda}</p>
+          <p className={ajudaCls}>{FORMATOS.find((f) => f.valor === formato)?.ajuda}</p>
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -201,7 +279,7 @@ export function ProdutoForm({
               <Input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                placeholder="Mensal 8 créditos"
+                placeholder={ehTurmaFixa ? 'Mensal · 1 turma fixa' : 'Mensal · 8 créditos'}
                 className="w-full"
                 required
               />
@@ -221,20 +299,44 @@ export function ProdutoForm({
             <Input
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Válido para todas as modalidades da grade"
+              placeholder={
+                ehTurmaFixa
+                  ? 'Vaga reservada numa turma da grade, 1 aula por semana'
+                  : 'Válido para todas as modalidades da grade'
+              }
               className="w-full"
             />
           </div>
+          {formato === 'avulso' && (
+            <div className="mt-3">
+              <label className={labelCls}>Como agrupar no catálogo</label>
+              <div className="flex flex-wrap gap-1.5">
+                {TIPOS_PRODUTO.filter((t) => t.valor !== 'plano').map((t) => (
+                  <button
+                    key={t.valor}
+                    type="button"
+                    onClick={() => setTipo(t.valor)}
+                    aria-pressed={tipo === t.valor}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                      tipo === t.valor
+                        ? 'bg-brand-600 text-white shadow-sm'
+                        : 'bg-white text-neutral-600 ring-1 ring-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <p className={ajudaCls}>
+                {TIPOS_PRODUTO.find((t) => t.valor === tipo)?.ajuda}
+              </p>
+            </div>
+          )}
         </Secao>
 
-        <Secao titulo="Como cobra">
-          <Marcador
-            checked={recorrente}
-            onChange={setRecorrente}
-            label="Cobrança recorrente (renova sozinha até o aluno cancelar)"
-          />
-          {recorrente && (
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {ehAssinatura && (
+          <Secao titulo="Como cobra">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>A cada quantos dias</label>
                 <Input
@@ -254,80 +356,133 @@ export function ProdutoForm({
                   onChange={(e) => setCiclos(e.target.value)}
                   className="w-full"
                 />
-                <p className={ajudaCls}>1 = sem compromisso. 6 = semestral.</p>
+                <p className={ajudaCls}>1 = mensal, sem compromisso. 6 = semestral.</p>
               </div>
             </div>
-          )}
-          <p className="mt-3 rounded-md bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-            O aluno vai ler: <strong>{previa}</strong>
-          </p>
-        </Secao>
-
-        <Secao titulo="O que entrega">
-          <Marcador
-            checked={geraCredito}
-            onChange={setGeraCredito}
-            label="Entrega créditos para agendar aulas da grade"
-          />
-          {geraCredito ? (
-            <>
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className={labelCls}>
-                    Quantos créditos {recorrente ? 'por ciclo' : 'na compra'}
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={creditos}
-                    onChange={(e) => setCreditos(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Validade dos créditos (dias)</label>
-                  <Input
-                    value={validade}
-                    onChange={(e) => setValidade(e.target.value)}
-                    placeholder={recorrente ? 'vazio = até o fim do ciclo' : 'ex.: 30'}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-              {recorrente && (
-                <div className="mt-3">
-                  <Marcador
-                    checked={acumula}
-                    onChange={setAcumula}
-                    label="Crédito que sobra passa para o ciclo seguinte"
-                  />
-                  {acumula && (
-                    <div className="mt-2 max-w-[16rem]">
-                      <label className={labelCls}>Acumula até quantos ciclos</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={tetoAcumulo}
-                        onChange={(e) => setTetoAcumulo(e.target.value)}
-                        className="w-full"
-                      />
-                      <p className={ajudaCls}>
-                        1 = o saldo nunca passa do dobro do plano.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className={ajudaCls}>
-              Aula particular e treino livre entram aqui: o horário é combinado à parte e não
-              consome crédito de plano.
+            <p className="mt-3 rounded-md bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+              O aluno vai ler: <strong>{previa}</strong>
             </p>
-          )}
-        </Secao>
+          </Secao>
+        )}
 
-        {geraCredito && (
+        {ehTurmaFixa ? (
+          <Secao titulo="Quantas turmas reserva">
+            <div className="flex flex-wrap gap-1.5">
+              {['1', '2'].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setTurmasFixas(n)}
+                  aria-pressed={turmasFixas === n}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                    turmasFixas === n
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'bg-white text-neutral-600 ring-1 ring-neutral-200 hover:bg-neutral-50'
+                  }`}
+                >
+                  {n} turma{n === '1' ? '' : 's'} fixa{n === '1' ? '' : 's'}
+                </button>
+              ))}
+              <Input
+                type="number"
+                min={1}
+                value={turmasFixas}
+                onChange={(e) => setTurmasFixas(e.target.value)}
+                aria-label="Quantidade de turmas fixas"
+                className="w-20"
+              />
+            </div>
+            <p className={ajudaCls}>
+              Cada turma dá direito a <strong>1 aula por semana</strong>, sempre naquela turma. A
+              turma em si (modalidade, dia, horário e professora) é escolhida na{' '}
+              <strong>matrícula do aluno</strong>, não aqui — senão seria preciso um produto para
+              cada horário da grade.
+            </p>
+
+            <div className="mt-3 rounded-md border border-warning-200 bg-warning-50 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-warning-700">
+                Modalidades que não aceitam turma fixa
+              </p>
+              <p className="mt-1 text-xs leading-snug text-neutral-700">
+                {naoElegiveis.length > 0
+                  ? naoElegiveis.map((m) => m.nome).join(' · ')
+                  : 'Nenhuma bloqueada — todas as modalidades aceitam.'}
+              </p>
+              <p className="mt-1.5 text-[11px] leading-snug text-neutral-500">
+                Regulamento 2.3.6. A regra é da <strong>modalidade</strong>, não deste produto —
+                vale para todas as mensalidades de turma fixa de uma vez, e se edita em{' '}
+                <strong>Grade de horários → Grupos e aulas</strong>. O banco recusa a matrícula
+                numa turma bloqueada; esta lista é só o aviso.
+              </p>
+            </div>
+          </Secao>
+        ) : (
+          <Secao titulo="O que entrega">
+            {formato === 'avulso' && (
+              <Marcador
+                checked={geraCredito}
+                onChange={setGeraCredito}
+                label="Entrega créditos para agendar aulas da grade"
+              />
+            )}
+            {entregaCredito ? (
+              <>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={labelCls}>
+                      Quantos créditos {ehAssinatura ? 'por ciclo' : 'na compra'}
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={creditos}
+                      onChange={(e) => setCreditos(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Validade dos créditos (dias)</label>
+                    <Input
+                      value={validade}
+                      onChange={(e) => setValidade(e.target.value)}
+                      placeholder={ehAssinatura ? 'vazio = até o fim do ciclo' : 'ex.: 30'}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                {ehAssinatura && (
+                  <div className="mt-3">
+                    <Marcador
+                      checked={acumula}
+                      onChange={setAcumula}
+                      label="Crédito que sobra passa para o ciclo seguinte"
+                    />
+                    {acumula && (
+                      <div className="mt-2 max-w-[16rem]">
+                        <label className={labelCls}>Acumula até quantos ciclos</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={tetoAcumulo}
+                          onChange={(e) => setTetoAcumulo(e.target.value)}
+                          className="w-full"
+                        />
+                        <p className={ajudaCls}>1 = o saldo nunca passa do dobro do plano.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className={ajudaCls}>
+                Aula particular e treino livre entram aqui: o horário é combinado à parte e não
+                consome crédito de plano.
+              </p>
+            )}
+          </Secao>
+        )}
+
+        {entregaCredito && (
           <Secao titulo="Regras de uso">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
@@ -335,7 +490,7 @@ export function ProdutoForm({
                 <Input
                   value={antecedencia}
                   onChange={(e) => setAntecedencia(e.target.value)}
-                  placeholder="vazio = sem limite"
+                  placeholder="vazio = 14 dias (padrão)"
                   className="w-full"
                 />
               </div>
@@ -368,42 +523,38 @@ export function ProdutoForm({
                 <p className={ajudaCls}>1 = uma por pessoa (aula experimental).</p>
               </div>
             </div>
-            <p className={ajudaCls}>
-              Estes limites ainda não bloqueiam o agendamento — passam a valer na etapa das
-              regras de uso. Cadastrar agora deixa o valor pronto.
-            </p>
           </Secao>
         )}
 
-        <Secao titulo="Modalidades cobertas">
-          <p className={ajudaCls}>
-            Nenhuma marcada = vale para todas as modalidades da grade.
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {(modalidades ?? []).map((m) => {
-              const marcada = modalidadeIds.includes(m.id)
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() =>
-                    setModalidadeIds((atual) =>
-                      marcada ? atual.filter((x) => x !== m.id) : [...atual, m.id],
-                    )
-                  }
-                  aria-pressed={marcada}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                    marcada
-                      ? 'bg-brand-100 text-brand-700 ring-1 ring-brand-300'
-                      : 'bg-white text-neutral-500 ring-1 ring-neutral-200 hover:bg-neutral-50'
-                  }`}
-                >
-                  {m.nome}
-                </button>
-              )
-            })}
-          </div>
-        </Secao>
+        {!ehTurmaFixa && (
+          <Secao titulo="Modalidades cobertas">
+            <p className={ajudaCls}>Nenhuma marcada = vale para todas as modalidades da grade.</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(modalidades ?? []).map((m) => {
+                const marcada = modalidadeIds.includes(m.id)
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() =>
+                      setModalidadeIds((atual) =>
+                        marcada ? atual.filter((x) => x !== m.id) : [...atual, m.id],
+                      )
+                    }
+                    aria-pressed={marcada}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                      marcada
+                        ? 'bg-brand-100 text-brand-700 ring-1 ring-brand-300'
+                        : 'bg-white text-neutral-500 ring-1 ring-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {m.nome}
+                  </button>
+                )
+              })}
+            </div>
+          </Secao>
+        )}
 
         <Secao titulo="Quem pode comprar">
           <div className="flex flex-col gap-2">
@@ -445,9 +596,7 @@ export function ProdutoForm({
                           onChange={(e) =>
                             setRequisitos((a) =>
                               a.map((x) =>
-                                x.tipo === r.valor
-                                  ? { ...x, janela_dias: Number(e.target.value) }
-                                  : x,
+                                x.tipo === r.valor ? { ...x, janela_dias: Number(e.target.value) } : x,
                               ),
                             )
                           }
@@ -491,7 +640,7 @@ export function ProdutoForm({
             <Marcador
               checked={!visivel}
               onChange={(v) => setVisivel(!v)}
-              label="Só a gestão pode vender (não aparece para o aluno)"
+              label="Só a equipe pode vender (não aparece para o aluno)"
             />
             <p className={ajudaCls}>
               É assim que se faz um <strong>plano personalizado</strong> (valor negociado para uma

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { KeyRound } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { TempoDeCasa } from './TempoDeCasa'
+import { PlanoDoCliente } from './PlanoDoCliente'
 import { fmtData, fmtDataHora } from '../../../lib/datas'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { useMinhaFuncao } from '../../../lib/funcao'
@@ -11,9 +12,7 @@ import {
   useAdicionarInteracao,
   useAtualizarCliente,
   useInteracoes,
-  useMatriculasDoCliente,
   usePagamentosDoCliente,
-  usePlanosNomes,
   useProximasAulasDoCliente,
 } from '../hooks/useClientes'
 import {
@@ -56,9 +55,7 @@ export function ClienteDetalhe({
   const { data: funcao } = useMinhaFuncao()
   const gestao = funcao === 'gestao'
   const { data: interacoes } = useInteracoes(cliente.id)
-  const { data: matriculas } = useMatriculasDoCliente(cliente.id)
   const { data: aulas } = useProximasAulasDoCliente(cliente.id)
-  const { data: planosNomes } = usePlanosNomes()
   const { data: pagamentos } = usePagamentosDoCliente(cliente.id, gestao)
   const { data: acessoPortal } = useAcessoPortal(cliente.id)
   const atualizar = useAtualizarCliente()
@@ -68,9 +65,6 @@ export function ClienteDetalhe({
   const [tipoNota, setTipoNota] = useState<TipoInteracao>('nota')
 
   const responsavel = socias.find((s) => s.id === cliente.responsavel_id)?.nome
-  const nomePlano = (id: string | null) =>
-    (planosNomes ?? []).find((p) => p.id === id)?.nome ?? 'Plano'
-
   function mudarEstagio(estagio: EstagioFunil) {
     atualizar.mutate({ id: cliente.id, patch: { estagio } })
   }
@@ -181,43 +175,7 @@ export function ClienteDetalhe({
 
         <TempoDeCasa clienteId={cliente.id} />
 
-        <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">
-          PLANO &amp; CRÉDITOS
-        </h3>
-        {(matriculas ?? []).length === 0 ? (
-          <p className="text-xs text-neutral-400">Sem plano ativo — matricule em Planos.</p>
-        ) : (
-          <ul className="flex flex-col gap-1.5">
-            {(matriculas ?? []).map((m) => (
-              <li key={m.matricula_id ?? ''} className="rounded-md border border-neutral-100 p-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex-1 truncate text-sm font-medium text-neutral-800">
-                    {nomePlano(m.plano_id)}
-                  </span>
-                  {m.status === 'inadimplente' && <Badge variant="danger">em aberto</Badge>}
-                  <span
-                    className={`text-sm font-semibold ${
-                      (m.saldo ?? 0) > 0 ? 'text-neutral-900' : 'text-danger-600'
-                    }`}
-                  >
-                    {m.saldo} crédito{m.saldo === 1 ? '' : 's'}
-                  </span>
-                </div>
-                <div className="mt-0.5 text-[11px] text-neutral-400">
-                  {(m.ciclo_atual ?? 1) <= (m.ciclos_compromisso ?? 1) &&
-                    (m.ciclos_compromisso ?? 1) > 1 &&
-                    `mês ${m.ciclo_atual}/${m.ciclos_compromisso} · `}
-                  válido até {fmtData(m.data_fim)}
-                  {m.cancelamento_efetivo_em
-                    ? ` · cancela em ${fmtData(m.cancelamento_efetivo_em)}`
-                    : m.renova_automaticamente
-                      ? ' · renova sozinha'
-                      : ''}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <PlanoDoCliente clienteId={cliente.id} clienteNome={cliente.nome} gestao={gestao} />
 
         {gestao && (
           <>
