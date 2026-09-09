@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react'
-import { Archive, Package, Plus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Package, Plus } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { Tabs } from '../../components/ui/Tabs'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useConfirmar } from '../../components/ui/ConfirmarAcao'
 import { useMinhaFuncao } from '../../lib/funcao'
 import { ProdutoForm } from './components/ProdutoForm'
 import { ProdutoCard } from './components/ProdutoCard'
+import { DetalheProduto } from './components/DetalheProduto'
+import { SeletorCiclo } from './components/SeletorCiclo'
 import type { RequisitoInput } from './api/produtos'
 import {
   useArquivarProduto,
@@ -17,67 +20,60 @@ import {
 } from './hooks/useProdutos'
 import {
   GRUPOS,
-  RECORRENCIA_AJUDA,
   RECORRENCIA_LABEL,
+  TIPO_PRODUTO_LABEL,
   grupoDoProduto,
   recorrenciaDoProduto,
+  tituloDoProduto,
   type GrupoProduto,
   type Produto,
   type Recorrencia,
 } from './types'
 
-/** Faixa de cor por bloco — o que separa os grupos antes de qualquer leitura. */
-const FAIXA: Record<string, string> = {
-  brand: 'border-brand-300 bg-brand-50/50',
-  success: 'border-success-300 bg-success-50/50',
-  neutral: 'border-neutral-300 bg-neutral-50',
-}
-const TITULO_COR: Record<string, string> = {
-  brand: 'text-brand-800',
-  success: 'text-success-800',
-  neutral: 'text-neutral-700',
-}
+/** Aba de nível 1: os três grupos + o depósito de arquivados. */
+type Aba = GrupoProduto | 'arquivados'
 
 /**
- * Catálogo do estúdio: o que o Studio vende e sob quais regras.
+ * Catálogo do estúdio.
  *
- * A tela anterior era uma lista única de linhas de 1 rem, todas com o
- * mesmo peso, e ainda carregava as matrículas ativas no fim — duas
- * responsabilidades numa página só. As matrículas saíram para
- * /matriculas; aqui ficou só o catálogo, e ele passou a ser organizado
- * pelo que o regulamento realmente separa: crédito, turma fixa e o que
- * se compra fora de plano.
+ * A versão anterior mostrava tudo de uma vez — três blocos empilhados,
+ * Mensal e Semestral lado a lado, e cada cartão explicando o produto
+ * inteiro (cobrança, regras, custo por aula, cinco selos de benefício).
+ * Era completa e ilegível: nada tinha peso diferente de nada.
  *
- * O agrupamento é derivado dos atributos do produto (ver grupoDoProduto
- * em types.ts), não de um campo de categoria — produto novo cai no
- * bloco certo sozinho, sem ninguém classificar nada na mão.
+ * A regra desta versão é uma só: **cada informação aparece em um lugar,
+ * e o lugar mais raso mostra o mínimo para escolher**.
+ *
+ *   1. aba de grupo   — que tipo de produto (o contexto mais amplo)
+ *   2. aba de ciclo   — Mensal ou Semestral (nunca os dois juntos: são
+ *                       alternativas, não uma comparação para ler)
+ *   3. cartão         — o que diferencia dos irmãos: entrega e preço
+ *   4. painel lateral — todo o resto, sob demanda
+ *
+ * Nada foi apagado: cobrança, regras, benefícios, requisitos,
+ * elegibilidade, sucessão e custo por aula estão no painel.
  */
 export function ProdutosPage() {
   const { data: produtos, isLoading } = useProdutos()
   const { data: vinculos } = useProdutoModalidades()
   const { data: requisitos } = useRequisitos()
-  // Secretária vê o catálogo (precisa saber o que vender) mas não
-  // cria nem edita. A RLS já recusa a gravação; aqui escondemos as
-  // ações para não frustrar o clique.
+  // Secretária vê o catálogo (precisa saber o que vender) mas não cria
+  // nem edita. A RLS já recusa a gravação; aqui escondemos as ações
+  // para não frustrar o clique.
   const { data: funcao } = useMinhaFuncao()
   const ehGestao = funcao === 'gestao'
   const confirmar = useConfirmar()
   const arquivar = useArquivarProduto()
   const reativar = useReativarProduto()
 
+  const [aba, setAba] = useState<Aba>('creditos')
+  const [ciclo, setCiclo] = useState<Recorrencia>('mensal')
+  const [abertoId, setAbertoId] = useState<string | null>(null)
   const [form, setForm] = useState<{ produto: Produto | null } | null>(null)
-  const [verArquivados, setVerArquivados] = useState(false)
-
-  const modalidadesDe = (produtoId: string) =>
-    (vinculos ?? []).filter((v) => v.produto_id === produtoId).map((v) => v.modalidade_id)
-
-  const requisitosDe = (produtoId: string): RequisitoInput[] =>
-    (requisitos ?? [])
-      .filter((r) => r.produto_id === produtoId)
-      .map((r) => ({ tipo: r.tipo, parametro_int: r.parametro_int, janela_dias: r.janela_dias }))
 
   const ativos = useMemo(() => (produtos ?? []).filter((p) => p.ativo), [produtos])
   const arquivados = useMemo(() => (produtos ?? []).filter((p) => !p.ativo), [produtos])
+  const porId = useMemo(() => new Map((produtos ?? []).map((p) => [p.id, p])), [produtos])
 
   const porGrupo = useMemo(() => {
     const m = new Map<GrupoProduto, Produto[]>()
@@ -86,7 +82,37 @@ export function ProdutosPage() {
     return m
   }, [ativos])
 
-  const abrirEdicao = (p: Produto) => setForm({ produto: p })
+  // Fora do plano é compra única: não existe Mensal x Semestral ali.
+  const temCiclo = aba === 'creditos' || aba === 'turma_fixa'
+
+  const visiveis = useMemo(() => {
+    const daAba = aba === 'arquivados' ? arquivados : (porGrupo.get(aba) ?? [])
+    return temCiclo ? daAba.filter((p) => recorrenciaDoProduto(p) === ciclo) : daAba
+  }, [aba, arquivados, porGrupo, temCiclo, ciclo])
+
+  /**
+   * Títulos que aparecem mais de uma vez na aba. O título do cartão é
+   * derivado ("4 créditos"), então dois produtos com a mesma entrega
+   * ficam idênticos na tela — foi o que aconteceu com um plano de teste
+   * antigo convivendo com o do catálogo novo. Nesses casos, e só neles,
+   * o cartão mostra também o nome cadastrado.
+   */
+  const titulosRepetidos = useMemo(() => {
+    const contagem = new Map<string, number>()
+    for (const p of visiveis) {
+      const t = tituloDoProduto(p)
+      contagem.set(t, (contagem.get(t) ?? 0) + 1)
+    }
+    return new Set([...contagem].filter(([, n]) => n > 1).map(([t]) => t))
+  }, [visiveis])
+
+  const aberto = abertoId ? porId.get(abertoId) ?? null : null
+
+  // Trocar de aba com um produto aberto deixaria o painel mostrando algo
+  // que não está mais na grade ao lado — parece um bug de seleção.
+  useEffect(() => {
+    if (aberto && !visiveis.some((p) => p.id === aberto.id)) setAbertoId(null)
+  }, [aberto, visiveis])
 
   const pedirArquivar = (p: Produto) =>
     confirmar.pedir({
@@ -99,23 +125,16 @@ export function ProdutosPage() {
           compromisso, e dá para trazer o produto de volta a qualquer momento.
         </>
       ),
-      aoConfirmar: () => arquivar.mutateAsync(p.id),
+      aoConfirmar: async () => {
+        await arquivar.mutateAsync(p.id)
+        setAbertoId(null)
+      },
     })
 
-  const cartao = (p: Produto) => (
-    <ProdutoCard
-      key={p.id}
-      produto={p}
-      requisitos={(requisitos ?? []).filter((r) => r.produto_id === p.id)}
-      gestao={ehGestao}
-      onEditar={() => abrirEdicao(p)}
-      onArquivar={() => pedirArquivar(p)}
-      onReativar={() => reativar.mutate(p.id)}
-    />
-  )
+  const contar = (g: GrupoProduto) => (porGrupo.get(g) ?? []).length
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col">
       <PageHeader
         titulo="Produtos"
         subtitulo="O que o estúdio vende e as regras de cada formato"
@@ -127,11 +146,29 @@ export function ProdutosPage() {
             </Button>
           ) : undefined
         }
+        filtros={
+          (produtos ?? []).length > 0 ? (
+            <Tabs
+              value={aba}
+              onChange={setAba}
+              variant="marca"
+              items={[
+                ...GRUPOS.map((g) => ({
+                  value: g.valor as Aba,
+                  label: `${g.aba} (${contar(g.valor)})`,
+                })),
+                ...(arquivados.length > 0
+                  ? [{ value: 'arquivados' as Aba, label: `Arquivados (${arquivados.length})` }]
+                  : []),
+              ]}
+            />
+          ) : undefined
+        }
       />
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      {!isLoading && ativos.length === 0 && arquivados.length === 0 && (
+      {!isLoading && (produtos ?? []).length === 0 && (
         <EmptyState
           icon={Package}
           title="Nenhum produto cadastrado"
@@ -147,94 +184,85 @@ export function ProdutosPage() {
         />
       )}
 
-      {GRUPOS.map((g) => {
-        const lista = porGrupo.get(g.valor) ?? []
-        if (lista.length === 0) return null
+      {(produtos ?? []).length > 0 && (
+        <>
+          {/* Nível 2: o ciclo, com identidade de cor própria — ver
+              SeletorCiclo. Fora do plano é compra única e não tem ciclo,
+              então ali a grade começa direto. */}
+          {temCiclo && <SeletorCiclo valor={ciclo} onChange={setCiclo} />}
 
-        // Crédito e turma fixa se dividem em Mensal x Semestral
-        // (regulamento 1.5); fora do plano, não — lá é compra única.
-        const porColuna = g.valor === 'outros' ? null : dividirPorRecorrencia(lista)
+          <div className={aberto ? 'grid gap-5 lg:grid-cols-[1fr_20rem]' : ''}>
+            <div>
+              {visiveis.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-neutral-200 px-4 py-8 text-center text-sm text-neutral-400">
+                  {temCiclo
+                    ? `Nenhum produto ${RECORRENCIA_LABEL[ciclo].toLowerCase()} neste grupo.`
+                    : 'Nenhum produto neste grupo.'}
+                </p>
+              ) : aba === 'outros' ? (
+                // Fora do plano não tem eixo de comparação (4, 8, 12
+                // créditos): são produtos distintos. Agrupar por
+                // tipo_produto separa "pacote de aula" de "serviço", que
+                // é a única divisão real que resta ali.
+                <SubgruposPorTipo
+                  produtos={visiveis}
+                  porId={porId}
+                  abertoId={abertoId}
+                  titulosRepetidos={titulosRepetidos}
+                  onAbrir={setAbertoId}
+                />
+              ) : (
+                <Grade
+                  produtos={visiveis}
+                  porId={porId}
+                  abertoId={abertoId}
+                  titulosRepetidos={titulosRepetidos}
+                  onAbrir={setAbertoId}
+                />
+              )}
+            </div>
 
-        return (
-          <section key={g.valor}>
-            <header
-              className={`mb-4 rounded-lg border-l-4 px-4 py-2.5 ${FAIXA[g.cor] ?? FAIXA.neutral}`}
-            >
-              <h2
-                className={`font-display text-sm font-bold uppercase tracking-wider ${
-                  TITULO_COR[g.cor] ?? TITULO_COR.neutral
-                }`}
-              >
-                {g.titulo}
-                <span className="ml-2 font-sans text-xs font-medium normal-case tracking-normal opacity-60">
-                  {lista.length} {lista.length === 1 ? 'produto' : 'produtos'}
-                </span>
-              </h2>
-              <p className="mt-0.5 max-w-3xl text-xs leading-snug text-neutral-600">
-                {g.descricao}
-              </p>
-            </header>
-
-            {porColuna ? (
-              <div className="grid gap-5 lg:grid-cols-2">
-                {(['mensal', 'semestral'] as Recorrencia[]).map((r) => {
-                  const itens = porColuna[r]
-                  if (itens.length === 0) return null
-                  return (
-                    <div key={r}>
-                      <div className="mb-2 flex items-baseline gap-2 border-b border-neutral-100 pb-1.5">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-600">
-                          {RECORRENCIA_LABEL[r]}
-                        </h3>
-                        <span className="text-[11px] text-neutral-400">{RECORRENCIA_AJUDA[r]}</span>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                        {itens.map(cartao)}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                {lista.map(cartao)}
+            {aberto && (
+              <div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
+                <DetalheProduto
+                  produto={aberto}
+                  porId={porId}
+                  requisitos={(requisitos ?? []).filter((r) => r.produto_id === aberto.id)}
+                  gestao={ehGestao}
+                  onEditar={() => setForm({ produto: aberto })}
+                  onArquivar={() => pedirArquivar(aberto)}
+                  onReativar={() => reativar.mutate(aberto.id)}
+                  onFechar={() => setAbertoId(null)}
+                />
               </div>
             )}
-          </section>
-        )
-      })}
-
-      {arquivados.length > 0 && (
-        <section>
-          <button
-            onClick={() => setVerArquivados((v) => !v)}
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 transition hover:text-neutral-600"
-          >
-            <Archive className="size-3.5" />
-            Arquivados ({arquivados.length})
-            <span className="font-sans text-[11px] font-medium normal-case tracking-normal">
-              {verArquivados ? 'esconder' : 'mostrar'}
-            </span>
-          </button>
-          {verArquivados && (
-            <>
-              <p className="mb-3 mt-1.5 max-w-2xl text-xs text-neutral-400">
-                Fora do catálogo — ninguém consegue contratar. As matrículas que já existiam
-                continuam valendo normalmente.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                {arquivados.map(cartao)}
-              </div>
-            </>
-          )}
-        </section>
+          </div>
+        </>
       )}
 
       {form && (
         <ProdutoForm
           produto={form.produto}
-          modalidadesIniciais={form.produto ? modalidadesDe(form.produto.id) : []}
-          requisitosIniciais={form.produto ? requisitosDe(form.produto.id) : []}
+          modalidadesIniciais={
+            form.produto
+              ? (vinculos ?? [])
+                  .filter((v) => v.produto_id === form.produto!.id)
+                  .map((v) => v.modalidade_id)
+              : []
+          }
+          requisitosIniciais={
+            form.produto
+              ? (requisitos ?? [])
+                  .filter((r) => r.produto_id === form.produto!.id)
+                  .map(
+                    (r): RequisitoInput => ({
+                      tipo: r.tipo,
+                      parametro_int: r.parametro_int,
+                      janela_dias: r.janela_dias,
+                    }),
+                  )
+              : []
+          }
           onFechar={() => setForm(null)}
         />
       )}
@@ -243,8 +271,72 @@ export function ProdutosPage() {
   )
 }
 
-function dividirPorRecorrencia(lista: Produto[]): Record<Recorrencia, Produto[]> {
-  const out: Record<Recorrencia, Produto[]> = { mensal: [], semestral: [] }
-  for (const p of lista) out[recorrenciaDoProduto(p)].push(p)
-  return out
+function Grade({
+  produtos,
+  porId,
+  abertoId,
+  titulosRepetidos,
+  onAbrir,
+}: {
+  produtos: Produto[]
+  porId: Map<string, Produto>
+  abertoId: string | null
+  titulosRepetidos: Set<string>
+  onAbrir: (id: string | null) => void
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      {produtos.map((p) => (
+        <ProdutoCard
+          key={p.id}
+          produto={p}
+          porId={porId}
+          selecionado={abertoId === p.id}
+          mostrarNome={titulosRepetidos.has(tituloDoProduto(p))}
+          onAbrir={() => onAbrir(abertoId === p.id ? null : p.id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function SubgruposPorTipo({
+  produtos,
+  porId,
+  abertoId,
+  titulosRepetidos,
+  onAbrir,
+}: {
+  produtos: Produto[]
+  porId: Map<string, Produto>
+  abertoId: string | null
+  titulosRepetidos: Set<string>
+  onAbrir: (id: string | null) => void
+}) {
+  const tipos = ['pacote', 'servico', 'plano'] as const
+  return (
+    <div className="flex flex-col gap-6">
+      {tipos.map((t) => {
+        const lista = produtos.filter((p) => p.tipo_produto === t)
+        if (lista.length === 0) return null
+        return (
+          <section key={t}>
+            <h3 className="mb-2 border-b border-neutral-100 pb-1.5 text-xs font-bold uppercase tracking-wider text-neutral-500">
+              {TIPO_PRODUTO_LABEL[t]}
+              <span className="ml-1.5 font-sans font-medium normal-case tracking-normal text-neutral-300">
+                {lista.length}
+              </span>
+            </h3>
+            <Grade
+              produtos={lista}
+              porId={porId}
+              abertoId={abertoId}
+              titulosRepetidos={titulosRepetidos}
+              onAbrir={onAbrir}
+            />
+          </section>
+        )
+      })}
+    </div>
+  )
 }

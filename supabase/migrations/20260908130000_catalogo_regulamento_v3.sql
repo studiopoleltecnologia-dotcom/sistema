@@ -12,10 +12,16 @@
 -- 7.7 (semestral vira mensal no fim) e 8 (aulas e pacotes fora do
 -- plano).
 --
--- IDEMPOTENTE POR NOME. Rodar duas vezes não duplica, e — o que
--- importa mais — NÃO sobrescreve preço que a equipe tenha ajustado
--- pela tela depois. Migration semeia o que não existe; quem manda no
--- preço, a partir daí, é quem vende.
+-- IDEMPOTENTE POR FORMATO, não só por nome. Rodar duas vezes não
+-- duplica, e — o que importa mais — NÃO sobrescreve preço que a equipe
+-- tenha ajustado pela tela depois. Migration semeia o que não existe;
+-- quem manda no preço, a partir daí, é quem vende.
+--
+-- A guarda compara o FORMATO (quantos créditos ou assentos, com qual
+-- compromisso) e não só o texto do nome. Comparar nome bastava até
+-- aparecer, no DEV, um "Mensal 4 créditos" antigo ao lado do
+-- "Mensal · 4 créditos" novo: dois produtos idênticos, indistinguíveis
+-- na tela, porque um ponto de separação fez o `nome =` falhar.
 --
 -- O produto de teste NÃO é arquivado aqui de propósito: pode haver
 -- matrícula presa nele em DEV, e arquivar é um clique na tela nova.
@@ -51,7 +57,16 @@ begin
     ('Mensal · 12 créditos', 'Um crédito, todas as modalidades da grade regular.', 42000, 12, 12),
     ('Mensal · 16 créditos', 'Um crédito, todas as modalidades da grade regular.', 56000, 16, 13)
   ) as v(nome, descricao, preco, creditos, ordem)
-  where not exists (select 1 from public.produtos p where p.nome = v.nome);
+  -- Guarda por FORMATO, não só por nome: um plano de N créditos com o
+  -- mesmo compromisso já é este produto, ainda que a equipe o tenha
+  -- cadastrado com outro nome. Comparar só o texto criaria uma segunda
+  -- linha idêntica e indistinguível na tela.
+  where not exists (
+    select 1 from public.produtos p
+    where p.nome = v.nome
+       or (p.turmas_fixas = 0 and p.renova_automaticamente and p.gera_credito
+           and p.creditos_por_ciclo = v.creditos and p.ciclos_compromisso = 1)
+  );
 
   -- ==========================================================
   -- 2. Plano por Créditos — Semestral (2.2)
@@ -78,7 +93,16 @@ begin
     ('Semestral · 12 créditos', 'Valor congelado por 6 ciclos. Crédito que sobra acumula.', 41000, 12, 22),
     ('Semestral · 16 créditos', 'Valor congelado por 6 ciclos. Crédito que sobra acumula.', 54500, 16, 23)
   ) as v(nome, descricao, preco, creditos, ordem)
-  where not exists (select 1 from public.produtos p where p.nome = v.nome);
+  -- Guarda por FORMATO, não só por nome: um plano de N créditos com o
+  -- mesmo compromisso já é este produto, ainda que a equipe o tenha
+  -- cadastrado com outro nome. Comparar só o texto criaria uma segunda
+  -- linha idêntica e indistinguível na tela.
+  where not exists (
+    select 1 from public.produtos p
+    where p.nome = v.nome
+       or (p.turmas_fixas = 0 and p.renova_automaticamente and p.gera_credito
+           and p.creditos_por_ciclo = v.creditos and p.ciclos_compromisso > 1)
+  );
 
   -- ==========================================================
   -- 3. Mensalidade por Turma Fixa (2.3)
@@ -114,7 +138,11 @@ begin
      'Vaga reservada em 2 turmas da grade. Valor congelado por 6 ciclos.',
      23000, 6, 2, 10, 1, 41)
   ) as v(nome, descricao, preco, ciclos, turmas, desconto, convidados, ordem)
-  where not exists (select 1 from public.produtos p where p.nome = v.nome);
+  where not exists (
+    select 1 from public.produtos p
+    where p.nome = v.nome
+       or (p.turmas_fixas = v.turmas and p.ciclos_compromisso = v.ciclos)
+  );
 
   -- ==========================================================
   -- 4. Sucessão: ao fim dos 6 ciclos o semestral vira mensal (7.7)
@@ -124,19 +152,30 @@ begin
   -- semestral de turma fixa sucede para o mensal de turma fixa, e não
   -- para um plano de crédito.
   -- ==========================================================
+  -- O par não é uma lista de nomes: o 7.7 define o sucessor como "o
+  -- mesmo FORMATO de plano, no valor Mensal vigente". Derivar disso faz
+  -- o vínculo continuar certo se alguém renomear um produto, e cobre de
+  -- graça qualquer plano novo que a equipe crie depois.
+  --
+  -- `distinct on` porque pode haver mais de um mensal do mesmo formato
+  -- (um plano antigo convivendo com o do catálogo novo); sem ele o laço
+  -- gravaria os dois em sequência e o sucessor dependeria da ordem de
+  -- leitura. O mais barato vence — é o que o aluno espera receber.
   for p_id, suc_id in
-    select s.id, m.id
-    from (values
-      ('Semestral · 4 créditos',    'Mensal · 4 créditos'),
-      ('Semestral · 8 créditos',    'Mensal · 8 créditos'),
-      ('Semestral · 12 créditos',   'Mensal · 12 créditos'),
-      ('Semestral · 16 créditos',   'Mensal · 16 créditos'),
-      ('Semestral · 1 turma fixa',  'Mensal · 1 turma fixa'),
-      ('Semestral · 2 turmas fixas','Mensal · 2 turmas fixas')
-    ) as par(semestral, mensal)
-    join public.produtos s on s.nome = par.semestral
-    join public.produtos m on m.nome = par.mensal
-    where s.produto_sucessor_id is null
+    select distinct on (s.id) s.id, m.id
+    from public.produtos s
+    join public.produtos m
+      on m.ativo
+     and m.renova_automaticamente
+     and m.ciclos_compromisso = 1
+     and m.turmas_fixas      = s.turmas_fixas
+     and m.gera_credito      = s.gera_credito
+     and m.creditos_por_ciclo = s.creditos_por_ciclo
+    where s.ativo
+      and s.renova_automaticamente
+      and s.ciclos_compromisso > 1
+      and s.produto_sucessor_id is null
+    order by s.id, m.preco_centavos, m.criada_em
   loop
     update public.produtos set produto_sucessor_id = suc_id where id = p_id;
   end loop;
