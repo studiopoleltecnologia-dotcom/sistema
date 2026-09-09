@@ -1390,6 +1390,54 @@ export type Database = {
           },
         ]
       }
+      matricula_turmas: {
+        Row: {
+          criada_em: string
+          criada_por: string | null
+          fim: string | null
+          id: string
+          inicio: string
+          matricula_id: string
+          motivo_saida: string | null
+          turma_id: string
+        }
+        Insert: {
+          criada_em?: string
+          criada_por?: string | null
+          fim?: string | null
+          id?: string
+          inicio?: string
+          matricula_id: string
+          motivo_saida?: string | null
+          turma_id: string
+        }
+        Update: {
+          criada_em?: string
+          criada_por?: string | null
+          fim?: string | null
+          id?: string
+          inicio?: string
+          matricula_id?: string
+          motivo_saida?: string | null
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matricula_turmas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_turmas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matriculas: {
         Row: {
           atualizada_em: string
@@ -1481,6 +1529,7 @@ export type Database = {
           ativa: boolean
           categoria_id: string | null
           criada_em: string
+          elegivel_turma_fixa: boolean
           id: string
           nome: string
           ordem: number
@@ -1489,6 +1538,7 @@ export type Database = {
           ativa?: boolean
           categoria_id?: string | null
           criada_em?: string
+          elegivel_turma_fixa?: boolean
           id?: string
           nome: string
           ordem?: number
@@ -1497,6 +1547,7 @@ export type Database = {
           ativa?: boolean
           categoria_id?: string | null
           criada_em?: string
+          elegivel_turma_fixa?: boolean
           id?: string
           nome?: string
           ordem?: number
@@ -1791,6 +1842,7 @@ export type Database = {
           renova_automaticamente: boolean
           teto_acumulo_ciclos: number
           tipo_produto: Database["public"]["Enums"]["tipo_produto"]
+          turmas_fixas: number
           validade_creditos_dias: number | null
           visivel_no_catalogo: boolean
         }
@@ -1818,6 +1870,7 @@ export type Database = {
           renova_automaticamente?: boolean
           teto_acumulo_ciclos?: number
           tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
+          turmas_fixas?: number
           validade_creditos_dias?: number | null
           visivel_no_catalogo?: boolean
         }
@@ -1845,6 +1898,7 @@ export type Database = {
           renova_automaticamente?: boolean
           teto_acumulo_ciclos?: number
           tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
+          turmas_fixas?: number
           validade_creditos_dias?: number | null
           visivel_no_catalogo?: boolean
         }
@@ -2322,7 +2376,31 @@ export type Database = {
           cliente_id: string | null
           data: string | null
           presente: boolean | null
+          turma_fixa: boolean | null
           turma_id: string | null
+        }
+        Relationships: []
+      }
+      vw_matricula_turmas: {
+        Row: {
+          capacidade: number | null
+          cliente_id: string | null
+          dia_semana: number | null
+          duracao_minutos: number | null
+          fim: string | null
+          futuro: boolean | null
+          horario: string | null
+          inicio: string | null
+          matricula_id: string | null
+          modalidade: string | null
+          modalidade_id: string | null
+          motivo_saida: string | null
+          professora: string | null
+          professora_id: string | null
+          sala: string | null
+          turma_id: string | null
+          vigente: boolean | null
+          vinculo_id: string | null
         }
         Relationships: []
       }
@@ -3106,6 +3184,30 @@ export type Database = {
       matricular: {
         Args: { p_cliente: string; p_plano: string }
         Returns: string
+      }
+      matricular_turma_fixa: {
+        Args: { p_cliente: string; p_produto: string; p_turmas: string[] }
+        Returns: string
+      }
+      adicionar_turma_fixa: {
+        Args: { p_matricula: string; p_turma: string }
+        Returns: string
+      }
+      encerrar_turma_fixa: {
+        Args: { p_vinculo: string; p_imediato?: boolean; p_motivo?: string }
+        Returns: string
+      }
+      trocar_turma_fixa: {
+        Args: { p_vinculo: string; p_turma_nova: string; p_imediato?: boolean }
+        Returns: string
+      }
+      assentos_fixos_ocupados: {
+        Args: { p_turma: string; p_data: string }
+        Returns: number
+      }
+      tem_assento_fixo: {
+        Args: { p_cliente: string; p_turma: string; p_data: string }
+        Returns: boolean
       }
       minha_funcao: {
         Args: never

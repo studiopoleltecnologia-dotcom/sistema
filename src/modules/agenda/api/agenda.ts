@@ -196,7 +196,14 @@ export async function listarTodasModalidades() {
 /** Renomear, reordenar ou arquivar/reativar uma modalidade. */
 export async function atualizarModalidade(
   id: string,
-  patch: { nome?: string; ativa?: boolean; ordem?: number; categoria_id?: string | null },
+  patch: {
+    nome?: string
+    ativa?: boolean
+    ordem?: number
+    categoria_id?: string | null
+    /** Regulamento 2.3.6 — se aceita Mensalidade por Turma Fixa. */
+    elegivel_turma_fixa?: boolean
+  },
 ) {
   const { data, error } = await requireSupabase()
     .from('modalidades')
