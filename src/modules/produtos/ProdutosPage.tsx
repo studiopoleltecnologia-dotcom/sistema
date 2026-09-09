@@ -82,7 +82,6 @@ export function ProdutosPage() {
     return m
   }, [ativos])
 
-  const grupoAtual = GRUPOS.find((g) => g.valor === aba) ?? null
   // Fora do plano é compra única: não existe Mensal x Semestral ali.
   const temCiclo = aba === 'creditos' || aba === 'turma_fixa'
 
@@ -188,13 +187,9 @@ export function ProdutosPage() {
       {(produtos ?? []).length > 0 && (
         <>
           {/* Nível 2: o ciclo, com identidade de cor própria — ver
-              SeletorCiclo. Fora do plano é compra única e não tem ciclo:
-              ali entra só a descrição do grupo. */}
-          {temCiclo ? (
-            <SeletorCiclo valor={ciclo} onChange={setCiclo} />
-          ) : (
-            <p className="mb-5 text-xs text-neutral-500">{grupoAtual?.descricao}</p>
-          )}
+              SeletorCiclo. Fora do plano é compra única e não tem ciclo,
+              então ali a grade começa direto. */}
+          {temCiclo && <SeletorCiclo valor={ciclo} onChange={setCiclo} />}
 
           <div className={aberto ? 'grid gap-5 lg:grid-cols-[1fr_20rem]' : ''}>
             <div>

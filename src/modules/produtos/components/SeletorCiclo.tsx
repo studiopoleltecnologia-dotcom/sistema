@@ -1,4 +1,3 @@
-import { Infinity as InfinityIcon, Lock } from 'lucide-react'
 import type { Recorrencia } from '../types'
 
 /**
@@ -6,14 +5,14 @@ import type { Recorrencia } from '../types'
  *
  * Não usa o `Tabs` compartilhado de propósito: lá a pastilha ativa tem
  * uma cor só, e aqui a cor É a informação. O Semestral se identifica com
- * a ameixa da marca em toda a tela — pastilha, faixa e cartões — para
- * que dê para saber em que aba se está pelo canto do olho, sem reler o
- * rótulo. O Mensal fica neutro porque é o padrão, o "sem compromisso".
+ * a ameixa da marca em toda a tela — pastilha e cartões — para que dê
+ * para saber em que aba se está pelo canto do olho, sem reler o rótulo.
+ * O Mensal fica neutro porque é o padrão, o "sem compromisso".
  *
- * A faixa abaixo carrega os benefícios do ciclo uma vez, em vez de
- * repeti-los como selo em cada cartão: eles são iguais para todos os
- * produtos daquela aba (regulamento 2.4), então no cartão seriam quatro
- * selos idênticos por linha.
+ * Sem legenda embaixo: o que o Semestral tem de diferente (compromisso,
+ * valor congelado, acúmulo, convidado, desconto em aulões) é atributo de
+ * cada produto e já está no painel de detalhes. Repetir aqui era um
+ * parágrafo fixo que ninguém releria depois da primeira vez.
  */
 export function SeletorCiclo({
   valor,
@@ -25,51 +24,21 @@ export function SeletorCiclo({
   const semestral = valor === 'semestral'
 
   return (
-    <div className="mb-5 flex flex-col gap-2">
-      <div className="inline-flex self-start gap-1 rounded-lg bg-neutral-100 p-1">
-        <Pastilha
-          ativo={!semestral}
-          onClick={() => onChange('mensal')}
-          className="bg-white text-ink shadow-sm"
-        >
-          Mensal
-        </Pastilha>
-        <Pastilha
-          ativo={semestral}
-          onClick={() => onChange('semestral')}
-          className="bg-brand-600 text-white shadow-sm"
-        >
-          Semestral
-        </Pastilha>
-      </div>
-
-      <div
-        className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border-l-4 px-3.5 py-2 text-xs ${
-          semestral
-            ? 'border-l-brand-500 bg-brand-50 text-brand-800'
-            : 'border-l-neutral-300 bg-neutral-50 text-neutral-600'
-        }`}
+    <div className="mb-5 inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
+      <Pastilha
+        ativo={!semestral}
+        onClick={() => onChange('mensal')}
+        className="bg-white text-ink shadow-sm"
       >
-        {semestral ? (
-          <>
-            <span className="flex items-center gap-1.5 font-semibold">
-              <Lock className="size-3.5" />
-              6 ciclos de compromisso
-            </span>
-            <span className="text-brand-700/80">
-              Valor congelado · crédito acumula · 1 convidado por ciclo · 10% em aulões
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="flex items-center gap-1.5 font-semibold text-neutral-700">
-              <InfinityIcon className="size-3.5" />
-              Sem compromisso
-            </span>
-            <span>Cancela quando quiser · crédito que sobra expira no fim do ciclo</span>
-          </>
-        )}
-      </div>
+        Mensal
+      </Pastilha>
+      <Pastilha
+        ativo={semestral}
+        onClick={() => onChange('semestral')}
+        className="bg-brand-600 text-white shadow-sm"
+      >
+        Semestral
+      </Pastilha>
     </div>
   )
 }

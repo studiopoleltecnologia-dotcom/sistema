@@ -89,29 +89,14 @@ export function grupoDoProduto(p: Pick<Produto, 'turmas_fixas' | 'renova_automat
 
 export const GRUPOS: {
   valor: GrupoProduto
+  /** Nome por extenso — usado onde há espaço, como o optgroup da matrícula. */
   titulo: string
-  /** Rótulo curto da aba — o título por extenso não cabe num segmented control. */
+  /** Rótulo curto da aba: o título por extenso não cabe num segmented control. */
   aba: string
-  descricao: string
 }[] = [
-  {
-    valor: 'creditos',
-    titulo: 'Planos por créditos',
-    aba: 'Por créditos',
-    descricao: 'Um crédito, todas as modalidades da grade regular.',
-  },
-  {
-    valor: 'turma_fixa',
-    titulo: 'Mensalidade por turma fixa',
-    aba: 'Turma fixa',
-    descricao: 'Vaga reservada numa turma específica da grade. Não gera crédito.',
-  },
-  {
-    valor: 'outros',
-    titulo: 'Fora do plano',
-    aba: 'Fora do plano',
-    descricao: 'Compra única: experimental, avulsa, crédito extra, particular, treino livre e Studio+.',
-  },
+  { valor: 'creditos', titulo: 'Planos por créditos', aba: 'Por créditos' },
+  { valor: 'turma_fixa', titulo: 'Mensalidade por turma fixa', aba: 'Turma fixa' },
+  { valor: 'outros', titulo: 'Fora do plano', aba: 'Fora do plano' },
 ]
 
 /**
@@ -128,11 +113,6 @@ export function recorrenciaDoProduto(p: Pick<Produto, 'ciclos_compromisso'>): Re
 export const RECORRENCIA_LABEL: Record<Recorrencia, string> = {
   mensal: 'Mensal',
   semestral: 'Semestral',
-}
-
-export const RECORRENCIA_AJUDA: Record<Recorrencia, string> = {
-  mensal: 'Sem compromisso — cancela quando quiser',
-  semestral: 'Compromisso de 6 ciclos, valor congelado',
 }
 
 // ------------------------------------------------------------
