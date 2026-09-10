@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarRange, ChevronLeft, ChevronRight, Plus, Settings2, Tag, X } from 'lucide-react'
+import {
+  CalendarRange,
+  ChevronLeft,
+  ChevronRight,
+  DoorOpen,
+  Plus,
+  Settings2,
+  Tag,
+  X,
+} from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Tabs } from '../../../components/ui/Tabs'
 import { cn } from '../../../components/ui/cn'
@@ -29,6 +38,7 @@ import { DiaView } from './DiaView'
 import { LegendaCategorias } from './LegendaCategorias'
 import { GradeMensal } from './GradeMensal'
 import { GradeSemanal, type OcupacaoTurma } from './GradeSemanal'
+import { SalasModal } from './SalasModal'
 import { TurmaForm, type TurmaInicial } from './TurmaForm'
 
 type Visao = 'semana' | 'mes'
@@ -58,6 +68,7 @@ export function GradeHorarios() {
   const [exibicao, alterarExibicao] = useExibicao()
   const [configAberta, setConfigAberta] = useState(false)
   const [categoriasAbertas, setCategoriasAbertas] = useState(false)
+  const [salasAbertas, setSalasAbertas] = useState(false)
   
   const [form, setForm] = useState<{ inicial: TurmaInicial; turmaId: string | null } | null>(null)
   const [painelAberto, setPainelAberto] = useState(false)
@@ -226,6 +237,17 @@ export function GradeHorarios() {
           >
             <Tag className="size-4" />
           </BotaoIcone>
+          {/* Salas ficam ao lado de Categorias porque são a mesma natureza:
+              cadastro que decide como a grade se desenha. É por aqui que se
+              cria (ou reativa) a Sala 2 — sem esta tela, a única sala que
+              aparecia no seletor de turma era a que já estava ativa no
+              banco, e não havia nada dizendo que existia outra. */}
+          <BotaoIcone
+            onClick={() => setSalasAbertas(true)}
+            titulo="Salas do estúdio — criar, renomear, ativar ou desativar"
+          >
+            <DoorOpen className="size-4" />
+          </BotaoIcone>
           <BotaoIcone onClick={() => setConfigAberta(true)} titulo="Configurações de exibição">
             <Settings2 className="size-4" />
           </BotaoIcone>
@@ -332,6 +354,7 @@ export function GradeHorarios() {
         />
       )}
       {categoriasAbertas && <CategoriasModal onFechar={() => setCategoriasAbertas(false)} />}
+      {salasAbertas && <SalasModal onFechar={() => setSalasAbertas(false)} />}
       {confirmar.dialogo}
       {form && (
         <TurmaForm inicial={form.inicial} turmaId={form.turmaId} onFechar={() => setForm(null)} />
