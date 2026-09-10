@@ -83,6 +83,61 @@ export async function listarSalas() {
   return data
 }
 
+/**
+ * Todas as salas, desativadas inclusive — só para a tela de cadastro.
+ *
+ * `listarSalas()` filtra `ativa = true` porque alimenta o seletor de turma.
+ * No cadastro é o contrário, e pelo mesmo motivo das modalidades: sem ver a
+ * desativada não há como reativá-la, e a pessoa acaba criando uma segunda
+ * "Sala 2" ao lado da que já existe. `salas.nome` não tem unique, então a
+ * duplicata passaria calada e a grade se dividiria em três colunas.
+ */
+export async function listarTodasSalas() {
+  const { data, error } = await requireSupabase()
+    .from('salas')
+    .select('*')
+    .order('ativa', { ascending: false })
+    .order('ordem')
+  if (error) throw error
+  return data
+}
+
+export async function criarSala({ nome, ordem }: { nome: string; ordem: number }) {
+  const { data, error } = await requireSupabase()
+    .from('salas')
+    .insert({ nome: nome.trim(), ordem })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/** Renomear, reordenar ou ativar/desativar uma sala. */
+export async function atualizarSala(
+  id: string,
+  patch: { nome?: string; ativa?: boolean; ordem?: number },
+) {
+  const { data, error } = await requireSupabase()
+    .from('salas')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/** sala_id → nº de turmas ativas nela. Desativar sala com turma é o aviso. */
+export async function contarTurmasPorSala() {
+  const { data, error } = await requireSupabase().from('turmas').select('sala_id').eq('ativa', true)
+  if (error) throw error
+  const contagem = new Map<string, number>()
+  for (const t of data ?? []) {
+    if (t.sala_id) contagem.set(t.sala_id, (contagem.get(t.sala_id) ?? 0) + 1)
+  }
+  return contagem
+}
+
 export async function listarModalidades() {
   const { data, error } = await requireSupabase()
     .from('modalidades')
