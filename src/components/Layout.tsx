@@ -27,6 +27,27 @@ import { supabase } from '../lib/supabase'
 import { flags } from '../lib/flags'
 import { useMinhaFuncao, type FuncaoInterna } from '../lib/funcao'
 
+/**
+ * Sub-item do menu: uma seção de dentro do módulo.
+ *
+ * `to` é a URL completa da seção. No Financeiro elas são rotas de verdade
+ * (`/financeiro/entradas`); nas demais telas a seção é uma aba, endereçada
+ * por `?aba=` graças ao `useAbaUrl` (ver src/lib/aba.ts). Do ponto de vista
+ * do menu os dois casos são a mesma coisa — um link.
+ *
+ * Só entram aqui as seções **permanentes**. Abas que aparecem e somem
+ * conforme o dado (Pendências da Agenda, Em aberto das Matrículas,
+ * Arquivados dos Produtos) continuam só no topo da própria tela: no menu
+ * elas ora existiriam ora não, e o menu ficaria pulando de altura sozinho.
+ */
+type SubItem = {
+  to: string
+  label: string
+  funcoes?: FuncaoInterna[]
+  /** Outros caminhos que pertencem a esta seção (ex.: DRE dentro de Fiscal). */
+  tambem?: string[]
+}
+
 type NavItem = {
   to: string
   label: string
@@ -34,6 +55,7 @@ type NavItem = {
   flag?: keyof typeof flags
   // Funções que veem o item. Ausente = todas as contas internas.
   funcoes?: FuncaoInterna[]
+  subs?: SubItem[]
 }
 
 type Secao = {
@@ -58,18 +80,81 @@ const SECOES: Secao[] = [
   {
     titulo: 'Operação',
     itens: [
-      { to: '/clientes', label: 'Clientes', icon: Users, funcoes: ['gestao', 'secretaria'] },
-      { to: '/agenda', label: 'Grade de horários', icon: CalendarDays, funcoes: ['gestao', 'secretaria'] },
+      {
+        to: '/clientes',
+        label: 'Clientes',
+        icon: Users,
+        funcoes: ['gestao', 'secretaria'],
+        subs: [
+          { to: '/clientes', label: 'Lista' },
+          { to: '/clientes?aba=funil', label: 'Funil' },
+        ],
+      },
+      {
+        to: '/agenda',
+        label: 'Grade de horários',
+        icon: CalendarDays,
+        funcoes: ['gestao', 'secretaria'],
+        subs: [
+          { to: '/agenda', label: 'Grade' },
+          { to: '/agenda?aba=ocupacao', label: 'Ocupação' },
+          { to: '/agenda?aba=config', label: 'Regras de agendamento', funcoes: ['gestao'] },
+        ],
+      },
       { to: '/followup', label: 'Follow-up', icon: MessageCircleHeart, funcoes: ['gestao', 'secretaria'] },
-      { to: '/matriculas', label: 'Matrículas', icon: ClipboardList, funcoes: ['gestao', 'secretaria'] },
-      { to: '/produtos', label: 'Produtos', icon: CreditCard, funcoes: ['gestao', 'secretaria'] },
+      {
+        to: '/matriculas',
+        label: 'Matrículas',
+        icon: ClipboardList,
+        funcoes: ['gestao', 'secretaria'],
+        subs: [
+          { to: '/matriculas', label: 'Todas' },
+          { to: '/matriculas?aba=creditos', label: 'Por créditos' },
+          { to: '/matriculas?aba=turma_fixa', label: 'Turma fixa' },
+        ],
+      },
+      {
+        to: '/produtos',
+        label: 'Produtos',
+        icon: CreditCard,
+        funcoes: ['gestao', 'secretaria'],
+        subs: [
+          { to: '/produtos', label: 'Por créditos' },
+          { to: '/produtos?aba=turma_fixa', label: 'Turma fixa' },
+          { to: '/produtos?aba=outros', label: 'Fora do plano' },
+        ],
+      },
     ],
   },
   {
     titulo: 'Financeiro',
     itens: [
-      { to: '/financeiro', label: 'Financeiro', icon: Wallet, funcoes: ['gestao'] },
-      { to: '/fechamento', label: 'Fechamento', icon: Coins, funcoes: ['gestao'] },
+      {
+        to: '/financeiro',
+        label: 'Financeiro',
+        icon: Wallet,
+        funcoes: ['gestao'],
+        subs: [
+          { to: '/financeiro', label: 'Resumo' },
+          { to: '/financeiro/entradas', label: 'Entradas' },
+          { to: '/financeiro/saidas', label: 'Saídas' },
+          { to: '/financeiro/fluxo', label: 'Fluxo de caixa' },
+          { to: '/financeiro/dividas', label: 'Dívidas' },
+          { to: '/financeiro/fiscal', label: 'Fiscal', tambem: ['/financeiro/dre'] },
+          { to: '/financeiro/reserva', label: 'Reserva' },
+          { to: '/financeiro/wellhub', label: 'Wellhub' },
+        ],
+      },
+      {
+        to: '/fechamento',
+        label: 'Fechamento',
+        icon: Coins,
+        funcoes: ['gestao'],
+        subs: [
+          { to: '/fechamento', label: 'Folha do mês' },
+          { to: '/fechamento?aba=historico', label: 'Histórico' },
+        ],
+      },
       { to: '/investimentos', label: 'Investimentos', icon: TrendingUp, funcoes: ['gestao'] },
     ],
   },
@@ -77,7 +162,16 @@ const SECOES: Secao[] = [
     titulo: 'Conteúdo',
     itens: [
       { to: '/conteudo', label: 'Conteúdo', icon: FileText, funcoes: ['gestao', 'social'] },
-      { to: '/tarefas', label: 'Tarefas', icon: CheckSquare, funcoes: ['gestao', 'secretaria'] },
+      {
+        to: '/tarefas',
+        label: 'Tarefas',
+        icon: CheckSquare,
+        funcoes: ['gestao', 'secretaria'],
+        subs: [
+          { to: '/tarefas', label: 'Rotinas do dia' },
+          { to: '/tarefas?aba=tarefas', label: 'Tarefas' },
+        ],
+      },
     ],
   },
   {
@@ -115,6 +209,20 @@ function useMenuRecolhido() {
       return !atual
     })
   return [recolhido, alternar] as const
+}
+
+/**
+ * Um sub-item está ativo quando o caminho **e** a aba batem.
+ *
+ * `NavLink` sozinho não serve aqui: ele compara só o pathname, então
+ * `/clientes` e `/clientes?aba=funil` acenderiam os dois links ao mesmo
+ * tempo. `tambem` cobre as rotas que pertencem à seção sem ser o link dela
+ * (o DRE mora dentro de Fiscal).
+ */
+function subAtivo(pathname: string, search: string, sub: SubItem) {
+  const [caminho, query = ''] = sub.to.split('?')
+  if (pathname !== caminho) return (sub.tambem ?? []).includes(pathname)
+  return new URLSearchParams(query).get('aba') === new URLSearchParams(search).get('aba')
 }
 
 /** Lembra grupos recolhidos entre sessões (mesma ideia do CardColapsavel). */
@@ -163,6 +271,19 @@ function Menulateral({
   onAlternarRecolhido?: () => void
 }) {
   const [fechados, alternar] = useGruposFechados()
+  const { pathname, search } = useLocation()
+
+  /*
+   * Sanfona: um módulo aberto por vez. Com submenu em quase todo item, deixar
+   * vários abertos empilharia ~25 links numa coluna de 240px — o menu deixaria
+   * de ser um mapa e viraria uma lista para rolar.
+   *
+   * `null` significa "siga a rota": o módulo em que a pessoa está abre sozinho.
+   * Clicar na setinha de outro módulo espia o conteúdo dele sem sair da tela
+   * atual, e `''` é o estado "fechei o daqui de propósito".
+   */
+  const [expandido, setExpandido] = useState<string | null>(null)
+  useEffect(() => setExpandido(null), [pathname])
 
   const itemCls = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -217,22 +338,85 @@ function Menulateral({
                   </button>
                 ))}
               {!fechada &&
-                secao.itens.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === '/'}
-                    onClick={onNavegar}
-                    className={itemCls}
-                    // Recolhido o ícone é tudo que sobra: sem o title, a
-                    // navegação vira adivinhação.
-                    title={recolhido ? item.label : undefined}
-                    aria-label={recolhido ? item.label : undefined}
-                  >
-                    <item.icon className="size-4 shrink-0" strokeWidth={2} />
-                    {!recolhido && <span className="truncate">{item.label}</span>}
-                  </NavLink>
-                ))}
+                secao.itens.map((item) => {
+                  const noModulo =
+                    item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)
+                  // Recolhido não há onde desenhar sub-item legível — o menu
+                  // é só ícone, e um segundo nível sem rótulo é adivinhação.
+                  const subs = recolhido ? undefined : item.subs
+                  const aberto = subs && (expandido === null ? noModulo : expandido === item.to)
+
+                  return (
+                    <div key={item.to} className="flex flex-col">
+                      <div className="flex items-center">
+                        <NavLink
+                          to={item.to}
+                          end={item.to === '/'}
+                          onClick={onNavegar}
+                          // `min-w-0 flex-1` sempre: agora o link é filho de uma
+                          // linha flex (por causa da setinha), e sem isso ele
+                          // encolhe até o texto — o realce da tela ativa
+                          // deixaria de ocupar a largura da coluna.
+                          className={({ isActive }) =>
+                            cn(itemCls({ isActive }), 'min-w-0 flex-1', subs ? 'pr-1' : '')
+                          }
+                          // Recolhido o ícone é tudo que sobra: sem o title, a
+                          // navegação vira adivinhação.
+                          title={recolhido ? item.label : undefined}
+                          aria-label={recolhido ? item.label : undefined}
+                        >
+                          <item.icon className="size-4 shrink-0" strokeWidth={2} />
+                          {!recolhido && <span className="truncate">{item.label}</span>}
+                        </NavLink>
+                        {subs && (
+                          // Botão à parte, e não dentro do link: clicar no nome
+                          // do módulo tem que levar ao módulo. Se abrir/fechar
+                          // e navegar fossem o mesmo alvo, não haveria como
+                          // espiar as seções sem sair da tela em que se está.
+                          <button
+                            onClick={() =>
+                              setExpandido(aberto ? (noModulo ? '' : null) : item.to)
+                            }
+                            aria-expanded={!!aberto}
+                            aria-label={`${aberto ? 'Recolher' : 'Expandir'} seções de ${item.label}`}
+                            className="ml-0.5 shrink-0 rounded-md p-1.5 text-brand-300 transition hover:bg-white/10 hover:text-white"
+                          >
+                            <ChevronDown
+                              className={cn(
+                                'size-3.5 transition-transform',
+                                aberto ? '' : '-rotate-90',
+                              )}
+                            />
+                          </button>
+                        )}
+                      </div>
+
+                      {aberto && (
+                        // A linha vertical faz o trabalho da indentação: sem
+                        // ela, sub-item e item viram uma lista só de larguras
+                        // diferentes.
+                        <div className="ml-[1.4rem] mt-0.5 flex flex-col gap-px border-l border-white/15 pl-2">
+                          {subs.map((sub) => (
+                            <NavLink
+                              key={sub.to}
+                              to={sub.to}
+                              onClick={onNavegar}
+                              className={cn(
+                                'truncate rounded-md px-2.5 py-1.5 text-[13px] transition',
+                                'outline-none focus-visible:ring-2 focus-visible:ring-brand-300',
+                                subAtivo(pathname, search, sub)
+                                  ? 'bg-white/15 font-semibold text-white'
+                                  : 'text-brand-300 hover:bg-white/10 hover:text-brand-100',
+                              )}
+                            >
+                              {sub.label}
+                            </NavLink>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
             </div>
           )
         })}
@@ -292,13 +476,16 @@ export function Layout() {
 
   // Seção sem nenhum item visível some inteira — senão a secretária veria o
   // rótulo "FINANCEIRO" pairando sobre o nada.
+  const podeVer = (funcoes?: FuncaoInterna[]) =>
+    !funcoes || (funcao != null && funcoes.includes(funcao))
+
   const secoes = SECOES.map((s) => ({
     ...s,
-    itens: s.itens.filter(
-      (i) =>
-        (!i.flag || flags[i.flag]) &&
-        (!i.funcoes || (funcao != null && i.funcoes.includes(funcao))),
-    ),
+    itens: s.itens
+      .filter((i) => (!i.flag || flags[i.flag]) && podeVer(i.funcoes))
+      // Sub-item também tem recorte próprio: "Regras de agendamento" é da
+      // gestão, embora a Agenda inteira seja da operação.
+      .map((i) => (i.subs ? { ...i, subs: i.subs.filter((s) => podeVer(s.funcoes)) } : i)),
   })).filter((s) => s.itens.length > 0)
 
   const items = secoes.flatMap((s) => s.itens)

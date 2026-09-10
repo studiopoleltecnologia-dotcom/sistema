@@ -1,4 +1,7 @@
 import { requireSupabase } from '../../../lib/supabase'
+import { listarTurmas } from '../../agenda/api/agenda'
+import { hojeISO } from '../../agenda/semana'
+import type { CategoriaModalidade } from '../../agenda/types'
 import type { EstagioFunil } from '../../clientes/types'
 
 /**
@@ -7,13 +10,6 @@ import type { EstagioFunil } from '../../clientes/types'
  * Financeiro (reaproveitados). Aqui ficam só as leituras de operação
  * e relacionamento que ainda não tinham hook.
  */
-
-const hoje = () => new Date().toISOString().slice(0, 10)
-const emDias = (n: number) => {
-  const d = new Date()
-  d.setDate(d.getDate() + n)
-  return d.toISOString().slice(0, 10)
-}
 
 export type ContagemFunil = { estagio: EstagioFunil; total: number }
 
@@ -48,22 +44,62 @@ export async function contarInadimplentes(): Promise<number> {
   return count ?? 0
 }
 
-export type OcupacaoDia = { data: string; agendados: number }
+export type AulaDoDia = {
+  turma_id: string
+  horario: string
+  modalidade: string
+  professora: string | null
+  sala: string | null
+  capacidade: number
+  agendados: number
+  /** Só o que `corDaTurma` precisa — a cor do cartão vem daqui. */
+  categoria: CategoriaModalidade | null
+}
 
-/** Agendamentos ativos de hoje até +N dias, agrupados por dia. */
-export async function ocupacaoProximosDias(dias = 7): Promise<OcupacaoDia[]> {
-  const { data, error } = await requireSupabase()
-    .from('agendamentos')
-    .select('data')
-    .eq('status', 'agendado')
-    .gte('data', hoje())
-    .lte('data', emDias(dias))
-  if (error) throw error
-  const mapa = new Map<string, number>()
-  for (const a of data ?? []) mapa.set(a.data, (mapa.get(a.data) ?? 0) + 1)
-  return [...mapa.entries()]
-    .map(([data, agendados]) => ({ data, agendados }))
-    .sort((a, b) => a.data.localeCompare(b.data))
+/**
+ * A grade de hoje, com quantos alunos cada aula já tem.
+ *
+ * Diferente de partir dos **agendamentos** (como fazia o card de barras que
+ * isto substituiu): aula sem ninguém marcado simplesmente não existia ali, e o
+ * painel respondia "nenhuma aula agendada" num dia com dez aulas na grade.
+ * Para saber se dá para vender, o que importa é justamente a aula vazia —
+ * então aqui a lista parte das **turmas** e os agendamentos entram só como
+ * contagem.
+ *
+ * Um dia só, e não a semana: o painel resume, a Agenda detalha. Onze aulas já
+ * é o tamanho do card inteiro.
+ */
+export async function aulasDeHoje(): Promise<AulaDoDia[]> {
+  const data = hojeISO()
+  const dow = new Date(data + 'T00:00:00').getDay()
+
+  const [turmas, agendaRes] = await Promise.all([
+    listarTurmas(),
+    requireSupabase()
+      .from('agendamentos')
+      .select('turma_id')
+      .eq('status', 'agendado')
+      .eq('data', data),
+  ])
+  if (agendaRes.error) throw agendaRes.error
+
+  const conta = new Map<string, number>()
+  for (const a of agendaRes.data ?? []) {
+    conta.set(a.turma_id, (conta.get(a.turma_id) ?? 0) + 1)
+  }
+
+  return turmas
+    .filter((t) => t.dia_semana === dow)
+    .map((t) => ({
+      turma_id: t.id,
+      horario: t.horario,
+      modalidade: t.modalidade,
+      professora: t.professora.nome,
+      sala: t.sala?.nome ?? null,
+      capacidade: t.capacidade,
+      agendados: conta.get(t.id) ?? 0,
+      categoria: t.categoria,
+    }))
 }
 
 export type FolhaPrevista = { total_centavos: number; professoras: number; aulas: number }

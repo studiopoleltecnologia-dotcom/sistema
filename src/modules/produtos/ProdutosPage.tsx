@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { Tabs } from '../../components/ui/Tabs'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useConfirmar } from '../../components/ui/ConfirmarAcao'
+import { useAbaUrl } from '../../lib/aba'
 import { useMinhaFuncao } from '../../lib/funcao'
 import { ProdutoForm } from './components/ProdutoForm'
 import { ProdutoCard } from './components/ProdutoCard'
@@ -32,6 +33,7 @@ import {
 
 /** Aba de nível 1: os três grupos + o depósito de arquivados. */
 type Aba = GrupoProduto | 'arquivados'
+const ABAS = ['creditos', 'turma_fixa', 'outros', 'arquivados'] as const satisfies readonly Aba[]
 
 /**
  * Catálogo do estúdio.
@@ -66,7 +68,8 @@ export function ProdutosPage() {
   const arquivar = useArquivarProduto()
   const reativar = useReativarProduto()
 
-  const [aba, setAba] = useState<Aba>('creditos')
+  // Na URL (?aba=turma_fixa): o menu lateral lista os grupos do catálogo.
+  const [aba, setAba] = useAbaUrl(ABAS, 'creditos')
   const [ciclo, setCiclo] = useState<Recorrencia>('mensal')
   const [abertoId, setAbertoId] = useState<string | null>(null)
   const [form, setForm] = useState<{ produto: Produto | null } | null>(null)

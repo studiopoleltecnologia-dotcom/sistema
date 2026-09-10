@@ -2,14 +2,18 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Coins } from 'lucide-react'
 import { Card } from '../../../components/ui/Card'
 import { fmtCentavos } from '../../../lib/dinheiro'
+import { OCULTO } from '../../../lib/sigilo'
 import type { FolhaPrevista } from '../api/dashboard'
 
 /**
  * Lembrete de obrigação: quanto de pagamento de professora está previsto
  * para o mês (pago dia 15). É o bruto ao vivo — o valor fechado, com
  * ajustes e aprovação, vive no /fechamento, para onde este card leva.
+ *
+ * `oculto` vem do olhinho do bloco Financeiro: quantas professoras e quantas
+ * aulas podem ficar à mostra (é operação), o valor não.
  */
-export function FolhaResumo({ folha }: { folha: FolhaPrevista }) {
+export function FolhaResumo({ folha, oculto }: { folha: FolhaPrevista; oculto?: boolean }) {
   return (
     <Card className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
@@ -21,7 +25,7 @@ export function FolhaResumo({ folha }: { folha: FolhaPrevista }) {
             Folha das professoras · previsto
           </p>
           <p className="mt-0.5 font-display text-2xl font-bold tracking-tight text-neutral-900">
-            {fmtCentavos(folha.total_centavos)}
+            {oculto ? OCULTO : fmtCentavos(folha.total_centavos)}
           </p>
           <p className="mt-0.5 text-xs text-neutral-400">
             {folha.professoras} professora{folha.professoras === 1 ? '' : 's'} ·{' '}
