@@ -217,6 +217,81 @@ ${blocos}
   </div>`
 }
 
+// ---------------------------------------------------------------- C1 e C2
+// A sala dividindo a COLUNA em vez da linha. Duas leituras do mesmo pedido:
+//
+// C1 — o dia sempre se parte em duas sub-colunas, e a da Sala 2 leva uma faixa
+//      vertical clara que corre a tela inteira. A sala vira posição fixa, sem
+//      rótulo repetido. Custo: 12 sub-colunas de ~71px em 1080 de largura.
+// C2 — o dia só se parte nos horários em que as duas salas têm aula. Onde só
+//      uma tem, o bloco ocupa o dia inteiro e a sala é dita por um filete na
+//      borda esquerda (cheio = Sala 1, tracejado = Sala 2).
+function pranchaColuna(p, modo) {
+  const horas = p.horas.filter(h => DIAS.some(d => (GRADE[h]?.[d] || []).length))
+
+  const cabecalho = modo === 'c1'
+    ? `        <div class="cab">
+          <span class="hcanto"></span>
+          ${DIAS.map(d => `<span class="hdia">${d}</span>`).join('\n          ')}
+        </div>`
+    : `        <div class="cab">
+          <span class="hcanto"></span>
+          ${DIAS.map(d => `<span class="hdia">${d}</span>`).join('\n          ')}
+        </div>`
+
+  const linhas = horas.map(h => {
+    if (modo === 'c1') {
+      const cels = DIAS.flatMap(d => [1, 2].map(s => {
+        const as = aulasDe(h, d, s)
+        const dentro = as.length ? as.map(chip).join('') : '<span class="tracinho">·</span>'
+        return `<div class="cel${s === 2 ? ' faixa2' : ''}">${dentro}</div>`
+      })).join('\n            ')
+      return `          <div class="lin">
+            <div class="hora">${h}</div>
+            ${cels}
+          </div>`
+    }
+    // C2: parte o dia só onde há disputa de horário
+    const cels = DIAS.map(d => {
+      const a1 = aulasDe(h, d, 1), a2 = aulasDe(h, d, 2)
+      if (!a1.length && !a2.length) return '<div class="cel"><span class="tracinho">·</span></div>'
+      const bloco = (as, s) => as.map(a =>
+        `<div class="chip s${s} fam-${familia(a[0])}"><b>${esc(a[0])}</b><i>${prof(a[1])}</i></div>`).join('')
+      if (a1.length && a2.length) {
+        return `<div class="cel dupla">${bloco(a1, 1)}${bloco(a2, 2)}</div>`
+      }
+      return `<div class="cel">${a1.length ? bloco(a1, 1) : bloco(a2, 2)}</div>`
+    }).join('\n            ')
+    return `          <div class="lin">
+            <div class="hora">${h}</div>
+            ${cels}
+          </div>`
+  }).join('\n')
+
+  const chave = modo === 'c1'
+    ? '<span class="ch"><i class="amostra a-1"></i>Sala 1</span><span class="ch"><i class="amostra a-2"></i>Sala 2</span>'
+    : '<span class="ch"><i class="filete f-1"></i>Sala 1</span><span class="ch"><i class="filete f-2"></i>Sala 2</span>'
+
+  return `
+  <div class="prancha coluna ${modo}" id="${modo}-${p.id}">
+    <div class="fio"></div>
+    <div class="miolo">
+      ${marca}
+      <div class="titulo-bloco">
+        <div class="chapeu">Grade de horários</div>
+        <h1>${p.titulo}</h1>
+      </div>
+      <div class="chave">${chave}</div>
+${cabecalho}
+      <div class="linhas">
+${linhas}
+      </div>
+      ${legenda(familiasEm(horas))}
+      <div class="rodape">Reserve pelo app · link na bio</div>
+    </div>
+  </div>`
+}
+
 // ---------------------------------------------------------------- CSS
 // Tudo em px absoluto: a prancha é exportada 1:1 em 1080x1920, então não há
 // container query nem viewport para acompanhar.
@@ -319,6 +394,63 @@ const CSS = `
   .periodo .chip b{ font-size:21px; font-weight:800; line-height:1.06; }
   .periodo .chip i{ font-style:normal; font-size:17px; font-weight:700; opacity:.66; }
   .periodo .vazio{ text-align:center; color:#dcd7e8; font-size:22px; align-self:center; }
+
+  /* ---------------- C1 e C2: a sala parte a coluna ---------------- */
+  .coluna .miolo{ padding:60px 44px 52px; }
+  .coluna h1{ font-size:92px; }
+  .coluna .chave{ display:flex; gap:30px; flex:none; }
+  .coluna .ch{ display:flex; align-items:center; gap:10px; font-size:21px; font-weight:800; color:#443a66; }
+  .amostra{ width:26px; height:19px; border-radius:5px; }
+  .a-1{ background:#fbfaf8; box-shadow:inset 0 0 0 2px #d6cfe6; }
+  .a-2{ background:#f1eef7; box-shadow:inset 0 0 0 2px #cdc4e2; }
+  .filete{ width:9px; height:22px; border-radius:5px; }
+  .f-1{ background:#443a66; }
+  .f-2{ background:#fbfaf8; box-shadow:inset 0 0 0 3px #443a66; }
+
+  .coluna .cab, .coluna .lin{ display:grid; column-gap:7px; row-gap:0; }
+  .coluna .cab{ border-bottom:5px solid #241f37; flex:none; }
+  .coluna .hdia{ font-family:"League Spartan",sans-serif; font-size:25px; font-weight:700;
+    text-transform:uppercase; text-align:center; color:#241f37; padding:0 0 10px; }
+  .coluna .linhas{ flex:1; min-height:0; display:flex; flex-direction:column; }
+  .coluna .lin{ flex:1; }
+  .coluna .hora{ font-family:"League Spartan",sans-serif; font-size:25px; font-weight:800;
+    color:#241f37; display:flex; align-items:center; font-variant-numeric:tabular-nums;
+    border-bottom:1px solid #edeaf4; }
+  .coluna .cel{ display:flex; flex-direction:column; justify-content:center; gap:4px;
+    padding:6px 0; border-bottom:1px solid #edeaf4; min-width:0; }
+  .coluna .tracinho{ text-align:center; color:#ddd8e9; font-size:22px; font-weight:800; }
+  .coluna .chip{ border-radius:11px; padding:8px 4px; text-align:center; display:flex;
+    flex-direction:column; justify-content:center; gap:1px; min-width:0;
+    hyphens:auto; overflow-wrap:break-word; }
+  .coluna .chip b{ font-weight:800; line-height:1.05; }
+  .coluna .chip i{ font-style:normal; font-weight:700; opacity:.66; }
+
+  /* C1 — 12 sub-colunas; a faixa clara identifica a Sala 2 do topo ao rodapé */
+  .c1 .cab, .c1 .lin{ grid-template-columns:64px repeat(12,1fr); }
+  .c1 .hdia{ grid-column:span 2; }
+  .c1 .faixa2{ background:#f1eef7; }
+  .c1 .cab .hdia:nth-child(odd){ background:transparent; }
+  .c1 .chip{ padding:7px 3px; }
+  .c1 .chip b{ font-size:17px; }
+  .c1 .chip i{ font-size:13px; }
+  .c1 .tracinho{ font-size:19px; }
+
+  /* C2 — 6 colunas; o dia só se parte no horário disputado */
+  .c2 .cab, .c2 .lin{ grid-template-columns:74px repeat(6,1fr); }
+  .c2 .cel.dupla{ display:grid; grid-template-columns:1fr 1fr; gap:5px; align-items:center; }
+  /* Sem hífen: em português a quebra automática errava nomes de aula
+     ("Sti-letto", "Flo-orwork"). Palavra inteira quebrando de linha lê melhor
+     do que palavra partida no lugar errado. */
+  .c2 .chip{ text-align:left; padding:9px 9px 9px 14px; position:relative; hyphens:none; }
+  .c2 .chip b{ font-size:19px; }
+  .c2 .chip i{ font-size:15px; }
+  .c2 .cel.dupla .chip{ padding:8px 6px 8px 13px; }
+  .c2 .cel.dupla .chip b{ font-size:15px; }
+  .c2 .cel.dupla .chip i{ font-size:12px; }
+  .c2 .chip::before{ content:""; position:absolute; left:5px; top:8px; bottom:8px; width:5px;
+    border-radius:3px; }
+  .c2 .chip.s1::before{ background:#443a66; }
+  .c2 .chip.s2::before{ background:repeating-linear-gradient(#443a66 0 5px, transparent 5px 10px); }
 `
 
 // ---------------------------------------------------------------- montagem
@@ -336,6 +468,8 @@ const html = `<!doctype html>
 ${DIAS.map(pranchaDia).join('\n')}
 ${PERIODOS.map(p => pranchaPeriodo(p, 'm1')).join('\n')}
 ${PERIODOS.map(p => pranchaPeriodo(p, 'm2')).join('\n')}
+${PERIODOS.map(p => pranchaColuna(p, 'c1')).join('\n')}
+${PERIODOS.map(p => pranchaColuna(p, 'c2')).join('\n')}
 </body>
 </html>
 `
