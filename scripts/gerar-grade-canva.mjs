@@ -13,7 +13,7 @@
 // delegada ao layout do navegador.
 //
 // Uso: node scripts/gerar-grade-canva.mjs
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, readFileSync } from 'node:fs'
 import {
   DIAS, DIA_LONGO, SALAS, GRADE, HORAS, BLOCOS, FAMILIAS,
   familia, esc, prof, aulasDe, salaUsada, horasComAula, familiasEm,
@@ -21,10 +21,11 @@ import {
 
 const RAIZ = 'C:/Users/carol/Documents/STUDIO POLE L/Claude'
 const DEST = `${RAIZ}/arte/grade-canva.html`
-// O logo entra por URL pública, não embutido: repetido em base64 nas 8
-// páginas ele sozinho levava o arquivo a 3,9 MB.
-const LOGO = 'https://raw.githubusercontent.com/studiopoleltecnologia-dotcom/sistema/'
-  + 'feat/arte-grade-2-salas/arte/logo-mandala-512.png'
+// Logo embutido, mas reduzido a 160px: renderiza a 80px, então os 512px
+// originais eram 4x de base64 desperdiçado em cada uma das 8 páginas. E
+// embutido em vez de por URL porque o importador do Canva precisa buscar a
+// imagem sozinho — um 404 no meio da importação sai como página sem logo.
+const LOGO = readFileSync(`${RAIZ}/scripts/logo-160.txt`, 'utf8').trim()
 
 // ---------------------------------------------------------------- paleta
 const AMEIXA = '#443a66'
