@@ -62,9 +62,15 @@ const texto = (x, y, w, h, txt, o = {}) => {
     tam = 20, peso = 800, cor = TINTA, fonte = 'Nunito',
     alinha = 'center', maiusc = false, espaco = 0, opacidade = 1, altura = 1.1,
   } = o
+  // x/y/w/h descrevem a CAIXA em que o texto deve ficar centrado, mas a caixa
+  // emitida tem a altura de uma linha, posicionada no meio dela. O Canva
+  // ancora texto no topo do elemento e descarta o alinhamento do flex — então
+  // a centralização vertical precisa virar coordenada antes de sair daqui,
+  // senão "8h" e "SALA 1" colam no topo da faixa depois de importados.
+  const linha = tam * altura
+  const topo = y + (h - linha) / 2
   return el(
-    `left:${px(x)};top:${px(y)};width:${px(w)};height:${px(h)};` +
-    `display:flex;align-items:center;justify-content:${alinha === 'center' ? 'center' : 'flex-start'};` +
+    `left:${px(x)};top:${px(topo)};width:${px(w)};height:${px(linha)};` +
     `font-family:'${fonte}',sans-serif;font-size:${px(tam)};font-weight:${peso};color:${cor};` +
     `line-height:${altura};text-align:${alinha};opacity:${opacidade};` +
     (maiusc ? 'text-transform:uppercase;' : '') +
