@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Placas de porta - Studio Pole L</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  :root{
+    --creme:#fdfbe9;      /* fundo das peças, o mesmo creme do story */
+    --ink:#241f37;        /* quase-preto azulado dos títulos */
+    --ameixa:#443a66;
+    --texto:#585667;
+    --mudo:#8d84b3;
+    --ocre:#be7926;
+    --ocre-tint:#fbf1e4;
+  }
+  body{ background:#e9e6ef; font-family:"Nunito","Segoe UI",system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center; gap:52.91px; padding:52.91px 0; }
+
+  .placa{ background:var(--creme); color:var(--ink); overflow:hidden;
+    break-after:page; flex:none; }
+  .placa:last-child{ break-after:auto; }
+
+  .arroba{ font-family:"League Spartan",sans-serif; text-transform:uppercase;
+    letter-spacing:.3em; font-weight:700; color:var(--mudo); }
+  h1{ font-family:"League Spartan",sans-serif; font-weight:800; line-height:.94;
+    letter-spacing:-.015em; color:var(--ink); }
+
+  .selo, .faixa{ display:flex; align-items:center; justify-content:center; flex:none; }
+
+  
+  .a5{ width:793.7px; height:559.37px; display:flex; }
+
+  /* faixa de cor à esquerda: é ela que identifica o ambiente no corredor,
+     antes mesmo de dar para ler a palavra */
+  .faixa{ width:128.5px; height:100%; }
+  .faixa svg{ width:71.81px; height:71.81px; }
+
+  .corpo{ flex:1; min-width:0; padding:49.13px 60.47px 45.35px; display:flex; flex-direction:column; }
+  .topo{ flex:none; display:flex; justify-content:flex-end; }
+  .mandala{ width:56.69px; height:56.69px; object-fit:contain; }
+
+  /* mesmo corpo nas quatro placas: quem dita o tamanho é COORDENAÇÃO, a
+     palavra mais longa. Ajustar por placa quebraria a unidade do conjunto. */
+  h1{ flex:1; display:flex; align-items:center; font-size:66.14px; }
+
+  .assinatura{ flex:none; font-family:"League Spartan",sans-serif; font-weight:700;
+    font-size:15.87px; letter-spacing:.3em; text-transform:uppercase; color:var(--mudo); }
+</style>
+<style>
+  body{ background:#fff; padding:0; gap:0; display:block; }
+  .placa{ margin:0; }
+</style>
+</head>
+<body>
+<section class="placa a5" data-document-role="page" data-label="Sala Pole">
+  <div class="faixa" style="background:#ddd5ef;color:#3a2f5c"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor"
+      stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 7h16"/><path d="M13 41h22"/><path d="M24 7v34"/>
+      <path d="M33 15a11 11 0 0 1 0 18"/><path d="M15 15a11 11 0 0 0 0 18"/></svg></div>
+  <div class="corpo">
+    <header class="topo"><img class="mandala pequena" src="https://raw.githubusercontent.com/studiopoleltecnologia-dotcom/sistema/feat/placas-sinalizacao/docs/marketing/canva/logo-mandala-512.png" alt=""></header>
+    <h1>SALA POLE</h1>
+    <footer class="assinatura">Studio Pole L</footer>
+  </div>
+</section>
+
+<section class="placa a5" data-document-role="page" data-label="Sala Multi">
+  <div class="faixa" style="background:#cfe9e7;color:#175f5d"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor"
+      stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" ><path d="M8 19c5.3-7 10.7-7 16 0s10.7 7 16 0"/>
+      <path d="M8 30c5.3-7 10.7-7 16 0s10.7 7 16 0"/></svg></div>
+  <div class="corpo">
+    <header class="topo"><img class="mandala pequena" src="https://raw.githubusercontent.com/studiopoleltecnologia-dotcom/sistema/feat/placas-sinalizacao/docs/marketing/canva/logo-mandala-512.png" alt=""></header>
+    <h1>SALA MULTI</h1>
+    <footer class="assinatura">Studio Pole L</footer>
+  </div>
+</section>
+
+<section class="placa a5" data-document-role="page" data-label="Coordenação">
+  <div class="faixa" style="background:#f7e2c2;color:#8a5410"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor"
+      stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" ><path d="M39 25c0 5-4.4 9-9.8 9H22l-7.4 5.6.9-6.4C12.4 31.6 9 28.6 9 25V17c0-5 4.4-9 9.8-9
+      h10.4c5.4 0 9.8 4 9.8 9z"/><path d="M17 18h14"/><path d="M17 25h9"/></svg></div>
+  <div class="corpo">
+    <header class="topo"><img class="mandala pequena" src="https://raw.githubusercontent.com/studiopoleltecnologia-dotcom/sistema/feat/placas-sinalizacao/docs/marketing/canva/logo-mandala-512.png" alt=""></header>
+    <h1>COORDENAÇÃO</h1>
+    <footer class="assinatura">Studio Pole L</footer>
+  </div>
+</section>
+
+<section class="placa a5" data-document-role="page" data-label="Banheiro">
+  <div class="faixa" style="background:#e0e8c9;color:#4c5a18"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor"
+      stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" ><circle cx="15" cy="14" r="7.5"/><path d="M15 21.5v17"/><path d="M9 32.5h12"/>
+      <circle cx="34" cy="33" r="7.5"/><path d="M39.4 27.6L45 22"/><path d="M38.5 22H45v6.5"/></svg></div>
+  <div class="corpo">
+    <header class="topo"><img class="mandala pequena" src="https://raw.githubusercontent.com/studiopoleltecnologia-dotcom/sistema/feat/placas-sinalizacao/docs/marketing/canva/logo-mandala-512.png" alt=""></header>
+    <h1>BANHEIRO</h1>
+    <footer class="assinatura">Studio Pole L</footer>
+  </div>
+</section>
+</body>
+</html>
