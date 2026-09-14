@@ -75,6 +75,13 @@
     font-family:"League Spartan",sans-serif; font-weight:700; font-size:16.63px;
     letter-spacing:.14em; text-transform:uppercase; color:var(--mudo); }
 
+  /* O Canva desenha os títulos mais largos que o Chromium — medido nos PNGs
+     reexportados: 1,23x nas A4 e 1,14x nas A5. "NÃO ESQUEÇA" estourava a
+     margem e o cedilha encostava no K da linha de baixo. O corpo cai aqui
+     para caber; no PDF continua no tamanho cheio, que lá sai certo. */
+  .titulo p{ font-size:75.59px; line-height:1.18; }
+  .a5 h1{ font-size:58.58px; }
+
   /* flex:1 não sobrevive à importação — o título ancora no topo da página em
      vez de ficar no meio. Posicionar por coordenada é a mesma correção que a
      grade de horários já levou (commit "Centraliza o texto por coordenada"). */
