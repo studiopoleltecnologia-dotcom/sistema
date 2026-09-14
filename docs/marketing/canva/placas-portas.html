@@ -49,6 +49,17 @@
 
   .assinatura{ flex:none; font-family:"League Spartan",sans-serif; font-weight:700;
     font-size:15.87px; letter-spacing:.3em; text-transform:uppercase; color:var(--mudo); }
+
+  /* O Canva remonta cada texto numa caixa própria e aperta a entrelinha: com
+     .94 o cedilha de ESQUEÇA encosta no D da linha de baixo. */
+  h1{ line-height:1.06; }
+
+  /* flex:1 não sobrevive à importação — o título ancora no topo da página em
+     vez de ficar no meio. Posicionar por coordenada é a mesma correção que a
+     grade de horários já levou (commit "Centraliza o texto por coordenada"). */
+  .a5 .corpo{ position:relative; }
+  .a5 h1{ position:absolute; left:60.47px; right:60.47px; top:264.57px; display:block; }
+  .a5 .assinatura{ margin-top:auto; }
 </style>
 <style>
   body{ background:#fff; padding:0; gap:0; display:block; }
