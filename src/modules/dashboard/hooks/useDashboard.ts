@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   aniversariantesDoMes,
+  aulasDeHoje,
   contarFollowupsPendentes,
   contarFunil,
   contarInadimplentes,
   folhaPrevistaMes,
-  ocupacaoProximosDias,
 } from '../api/dashboard'
 
 export function useFunil() {
@@ -20,8 +20,9 @@ export function useInadimplentes() {
   return useQuery({ queryKey: ['dash-inadimplentes'], queryFn: contarInadimplentes })
 }
 
-export function useOcupacao(dias = 7) {
-  return useQuery({ queryKey: ['dash-ocupacao', dias], queryFn: () => ocupacaoProximosDias(dias) })
+/** Grade de hoje — inclui a aula sem ninguém agendado (é o ponto). */
+export function useAulasDeHoje() {
+  return useQuery({ queryKey: ['dash-aulas-hoje'], queryFn: aulasDeHoje })
 }
 
 export function useAniversariantes() {

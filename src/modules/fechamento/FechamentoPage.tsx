@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useAbaUrl } from '../../lib/aba'
 import { fmtCentavos } from '../../lib/dinheiro'
 import { cn } from '../../components/ui/cn'
 import { useProfessoras } from '../professoras/hooks/useProfessoras'
@@ -6,6 +7,7 @@ import { FechamentoDetalhe } from './components/FechamentoDetalhe'
 import { useFechamentosMes, useHistorico, usePagamentoMes } from './hooks/useFechamento'
 
 type Vista = 'folha' | 'historico'
+const VISTAS = ['folha', 'historico'] as const satisfies readonly Vista[]
 
 const mesAtual = () => {
   const h = new Date()
@@ -17,7 +19,7 @@ const inputCls =
 
 export function FechamentoPage() {
   const [competencia, setCompetencia] = useState(mesAtual)
-  const [vista, setVista] = useState<Vista>('folha')
+  const [vista, setVista] = useAbaUrl(VISTAS, 'folha')
   const [selecionada, setSelecionada] = useState<string | null>(null)
 
   const { data: professoras } = useProfessoras()

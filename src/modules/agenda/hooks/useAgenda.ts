@@ -5,11 +5,14 @@ import {
   atualizarCategoria,
   atualizarConfigAgendamento,
   atualizarModalidade,
+  atualizarSala,
   atualizarTurma,
   cancelarAgendamento,
   contarTurmasPorModalidade,
+  contarTurmasPorSala,
   criarCategoria,
   criarModalidade,
+  criarSala,
   criarTurma,
   desativarTurma,
   listarCategorias,
@@ -21,6 +24,7 @@ import {
   listarOcupacao,
   listarOcupacaoPeriodo,
   listarSalas,
+  listarTodasSalas,
   listarTurmas,
   obterConfigAgendamento,
   registrarPresenca,
@@ -40,6 +44,44 @@ export function useNomesProfessoras() {
 
 export function useSalas() {
   return useQuery({ queryKey: ['salas'], queryFn: listarSalas })
+}
+
+/** Cadastro de salas — inclui as desativadas, para poder reativar. */
+export function useTodasSalas() {
+  return useQuery({ queryKey: ['salas-todas'], queryFn: listarTodasSalas })
+}
+
+/** sala_id → nº de turmas ativas nela. */
+export function useTurmasPorSala() {
+  return useQuery({ queryKey: ['turmas-por-sala'], queryFn: contarTurmasPorSala })
+}
+
+/**
+ * Escrita de sala invalida `turmas` junto: o nome da sala aparece no cartão
+ * da grade e é ele que decide se a semana se divide em colunas por sala.
+ */
+function useInvalidarSalas() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['salas'] })
+    qc.invalidateQueries({ queryKey: ['salas-todas'] })
+    qc.invalidateQueries({ queryKey: ['turmas-por-sala'] })
+    qc.invalidateQueries({ queryKey: ['turmas'] })
+  }
+}
+
+export function useCriarSala() {
+  const invalidar = useInvalidarSalas()
+  return useMutation({ mutationFn: criarSala, onSuccess: invalidar })
+}
+
+export function useAtualizarSala() {
+  const invalidar = useInvalidarSalas()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof atualizarSala>[1] }) =>
+      atualizarSala(id, patch),
+    onSuccess: invalidar,
+  })
 }
 
 export function useModalidades() {

@@ -18,8 +18,15 @@ function labelMes(iso: string) {
   return `${MESES[mes - 1]}/${String(ano).slice(2)}`
 }
 
-/** Receita total recebida/prevista por mês — a linha de vida do estúdio. */
-export function ReceitaEvolucao({ mix }: { mix: MixReceitaMensal[] }) {
+/**
+ * Receita total recebida/prevista por mês — a linha de vida do estúdio.
+ *
+ * Com `oculto`, o gráfico inteiro sai da tela em vez de aparecer com os
+ * rótulos borrados: a forma da curva (subindo, caindo, um mês fora da
+ * curva) já conta metade da história, e o eixo Y entregaria a ordem de
+ * grandeza mesmo sem número legível.
+ */
+export function ReceitaEvolucao({ mix, oculto }: { mix: MixReceitaMensal[]; oculto?: boolean }) {
   const porMes = new Map<string, number>()
   for (const r of mix) {
     if (!r.mes) continue
@@ -32,7 +39,11 @@ export function ReceitaEvolucao({ mix }: { mix: MixReceitaMensal[] }) {
   return (
     <Card>
       <CardHeader title="Receita por mês" subtitle="Todas as origens somadas" />
-      {dados.length < 2 ? (
+      {oculto ? (
+        <p className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50/60 py-10 text-center text-sm text-neutral-400">
+          Gráfico oculto
+        </p>
+      ) : dados.length < 2 ? (
         <p className="py-10 text-center text-sm text-neutral-400">
           Ainda não há meses suficientes para o gráfico.
         </p>
