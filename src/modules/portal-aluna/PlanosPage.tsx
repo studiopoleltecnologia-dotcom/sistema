@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Info } from 'lucide-react'
 import { fmtData } from '../../lib/datas'
-import { fmtCentavos } from '../../lib/dinheiro'
+import { useRequisitos } from '../produtos/hooks/useProdutos'
 import { usePortalClienteId } from './PortalClienteContext'
 import {
   useConfigAgendamento,
@@ -9,181 +10,400 @@ import {
   useMeuSaldo,
   usePlanos,
 } from './hooks/usePortalAluna'
+import {
+  REQUISITO_SELO,
+  TIPOS_PLANO,
+  economiaNoCompromisso,
+  fmtPreco,
+  lugarDoProduto,
+  menorPreco,
+  mensagemErroContratacao,
+  recorrenciaDoProduto,
+  sufixoPreco,
+  type Produto,
+  type Recorrencia,
+  type TipoPlano,
+} from './components/planos/catalogo'
+import {
+  CartaoPlano,
+  EscolhaTipo,
+  LinhaAvulso,
+  LinkFolha,
+  Rotulo,
+  SeletorPeriodo,
+} from './components/planos/Escolhas'
+import {
+  ComparativoPeriodo,
+  ConfirmarCompra,
+  PedirTurmaFixa,
+  RegrasCreditos,
+  RegrasTurmaFixa,
+  TituloPlano,
+} from './components/planos/Detalhes'
+import { Folha } from './components/planos/Folha'
 
-function descricaoPlano(p: {
-  gera_credito: boolean
-  creditos_por_ciclo: number
-  periodicidade_dias: number
-  validade_creditos_dias: number | null
-  renova_automaticamente: boolean
-}) {
-  if (!p.gera_credito) return 'Horário combinado com o estúdio'
-  const n = p.creditos_por_ciclo
-  const aulas = `${n} aula${n === 1 ? '' : 's'}`
-  if (p.renova_automaticamente) return `${aulas} por mês, em qualquer modalidade`
-  const dias = p.validade_creditos_dias ?? p.periodicidade_dias
-  return `${aulas} para usar em ${dias} dias`
-}
+type FolhaAberta =
+  | { tipo: 'comprar'; produtoId: string }
+  | { tipo: 'turma_fixa'; produtoId: string }
+  | { tipo: 'comparar' }
+  | { tipo: 'regras'; de: TipoPlano }
 
+const PERIODOS: Recorrencia[] = ['mensal', 'semestral']
+
+/**
+ * Planos do Portal do Aluno.
+ *
+ * A versão anterior listava todo o catálogo numa coluna só — mensal,
+ * semestral, turma fixa e avulsos misturados, cada cartão com as regras
+ * inteiras. Para escolher era preciso LER tudo.
+ *
+ * Agora a tela faz uma pergunta por vez, na mesma lógica do catálogo da
+ * equipe (produtos/ProdutosPage):
+ *
+ *   1. formato  — Por créditos | Turma fixa
+ *   2. período  — Mensal | Semestral (só os produtos daquele formato)
+ *   3. cartão   — quanto entrega e quanto custa; nada mais
+ *   4. folha    — regras, cobrança e confirmação, sob demanda
+ *
+ * Avulsos ficam numa vitrine própria no fim, mais leve, para não
+ * competir com a decisão principal.
+ *
+ * Formato e período moram na URL (?tipo=&periodo=): o "voltar" do
+ * celular desfaz a última escolha, e a equipe pode mandar um link que
+ * já abre em "Turma fixa → Semestral".
+ */
 export function PlanosPage() {
   const clienteId = usePortalClienteId()
   const navigate = useNavigate()
-  const { data: planos, isLoading } = usePlanos()
+  const [params, setParams] = useSearchParams()
+  const { data: produtos, isLoading } = usePlanos()
   const { data: saldos } = useMeuSaldo()
   const { data: config } = useConfigAgendamento()
+  const { data: requisitos } = useRequisitos()
   const contratar = useContratarPlano()
 
-  const [confirmando, setConfirmando] = useState<string | null>(null)
+  const [folha, setFolha] = useState<FolhaAberta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [contratou, setContratou] = useState(false)
+  const [contratado, setContratado] = useState<Produto | null>(null)
 
-  const planoAtivo = (saldos ?? []).find((s) => (s.saldo ?? 0) > 0)
+  const porId = useMemo(() => new Map((produtos ?? []).map((p) => [p.id, p])), [produtos])
 
-  function confirmar(planoId: string) {
+  const porLugar = useMemo(() => {
+    const m: Record<TipoPlano | 'avulso', Produto[]> = { creditos: [], turma_fixa: [], avulso: [] }
+    for (const p of produtos ?? []) m[lugarDoProduto(p)].push(p)
+    return m
+  }, [produtos])
+
+  /** Selos de requisito por produto ("Primeira vez aqui"). */
+  const selosPorProduto = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const r of requisitos ?? []) {
+      m.set(r.produto_id, [...(m.get(r.produto_id) ?? []), REQUISITO_SELO[r.tipo]])
+    }
+    return m
+  }, [requisitos])
+
+  // ---- 1. formato ----
+  const tiposDisponiveis = TIPOS_PLANO.filter((t) => porLugar[t].length > 0)
+  // Com um formato só no catálogo não há o que perguntar.
+  const tipo: TipoPlano | null =
+    tiposDisponiveis.length === 1
+      ? tiposDisponiveis[0]
+      : (tiposDisponiveis.find((t) => t === params.get('tipo')) ?? null)
+  const doTipo = tipo ? porLugar[tipo] : []
+
+  // ---- 2. período ----
+  const periodosDisponiveis = PERIODOS.filter((r) =>
+    doTipo.some((p) => recorrenciaDoProduto(p) === r),
+  )
+  const periodo: Recorrencia =
+    periodosDisponiveis.find((r) => r === params.get('periodo')) ?? periodosDisponiveis[0] ?? 'mensal'
+  const visiveis = doTipo.filter((p) => recorrenciaDoProduto(p) === periodo)
+
+  const referencia = (r: Recorrencia) => doTipo.find((p) => recorrenciaDoProduto(p) === r)
+  const semestralRef = referencia('semestral')
+  const temEconomia = doTipo.some(
+    (p) => recorrenciaDoProduto(p) === 'semestral' && (economiaNoCompromisso(p, porId) ?? 0) > 0,
+  )
+  const legendasPeriodo: Record<Recorrencia, string> = {
+    mensal: 'sem compromisso',
+    semestral: semestralRef
+      ? `${semestralRef.ciclos_compromisso} meses${temEconomia ? ' · valor menor' : ''}`
+      : '',
+  }
+
+  // O cartão diz "8 aulas", não o nome. Dois produtos com o mesmo número
+  // no mesmo período (um plano antigo ao lado do novo) ficariam idênticos;
+  // só nesses casos o nome aparece para desempatar.
+  const chaveNumero = (p: Produto) => `${p.turmas_fixas}-${p.creditos_por_ciclo}`
+  const numerosRepetidos = new Map<string, number>()
+  for (const p of visiveis) {
+    numerosRepetidos.set(chaveNumero(p), (numerosRepetidos.get(chaveNumero(p)) ?? 0) + 1)
+  }
+
+  function escolherTipo(t: TipoPlano) {
+    const novo = new URLSearchParams(params)
+    novo.set('tipo', t)
+    setParams(novo)
+  }
+
+  function escolherPeriodo(r: Recorrencia) {
+    const novo = new URLSearchParams(params)
+    novo.set('periodo', r)
+    // Trocar de período não é um passo: o "voltar" deve desfazer o formato.
+    setParams(novo, { replace: true })
+  }
+
+  function abrirFolha(f: FolhaAberta) {
+    setErro(null)
+    setFolha(f)
+  }
+
+  function confirmar(p: Produto) {
     setErro(null)
     contratar.mutate(
-      { clienteId, planoId },
+      { clienteId, planoId: p.id },
       {
         onSuccess: () => {
-          setConfirmando(null)
-          setContratou(true)
+          setFolha(null)
+          setContratado(p)
+          window.scrollTo({ top: 0 })
         },
-        onError: () => setErro('Não foi possível contratar. Tente novamente.'),
+        onError: (e) => setErro(mensagemErroContratacao(e)),
       },
     )
   }
 
-  if (contratou) {
+  const horasCancelamento = (p: Produto | undefined) =>
+    p?.horas_cancelamento ?? config?.horas_cancelamento ?? null
+
+  const planoAtivo = (saldos ?? []).find((s) => (s.saldo ?? 0) > 0)
+
+  if (contratado) {
     return (
-      <div className="pt-10 text-center">
-        <div className="mb-3 text-4xl">🎉</div>
-        <h1 className="mb-2 text-xl font-semibold text-neutral-900">Plano ativado!</h1>
-        <p className="mb-1 text-sm text-neutral-600">Suas aulas já estão liberadas.</p>
-        <p className="mb-8 text-xs text-neutral-400">
-          O pagamento é combinado direto com o estúdio (PIX ou na recepção).
-          Em breve você poderá pagar por aqui, no cartão recorrente.
-        </p>
-        <button
-          onClick={() => navigate('../agenda')}
-          className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          Agendar primeira aula
-        </button>
-      </div>
+      <Contratado
+        produto={contratado}
+        onAgendar={() => navigate('../agenda')}
+        onInicio={() => navigate('..')}
+      />
     )
   }
 
+  const produtoDaFolha =
+    folha && (folha.tipo === 'comprar' || folha.tipo === 'turma_fixa')
+      ? porId.get(folha.produtoId)
+      : undefined
+
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold text-neutral-900">Planos</h1>
-      <p className="mb-4 text-xs text-neutral-400">
-        Escolha e ative na hora — o pagamento é combinado com o estúdio.
-      </p>
+      <h1 className="mb-5 text-xl font-semibold text-neutral-900">Planos</h1>
 
       {planoAtivo && (
-        <div className="mb-4 rounded-lg border border-brand-100 bg-brand-50 p-3 text-sm text-brand-700">
+        <div className="mb-6 rounded-xl border border-brand-100 bg-brand-50 p-3.5 text-sm text-brand-700">
           {/* A data que importa para ela é a que o CRÉDITO vence, não a
               do ciclo — são diferentes quando o produto tem validade
               própria. Até agora esta caixa nem aparecia: o saldo vinha
               sempre 0 porque faltava policy de leitura no razão. */}
-          Você tem {planoAtivo.saldo} aula{planoAtivo.saldo === 1 ? '' : 's'} para usar
+          Você tem <strong>{planoAtivo.saldo}</strong> aula{planoAtivo.saldo === 1 ? '' : 's'} para
+          usar
           {planoAtivo.proxima_validade
             ? `, até ${fmtData(planoAtivo.proxima_validade)}`
             : `, até ${fmtData(planoAtivo.data_fim)}`}
           .
           {planoAtivo.cancelamento_efetivo_em ? (
             <span className="mt-1 block text-xs">
-              Sua assinatura foi cancelada e não será cobrada de novo. Você continua com
-              acesso até {fmtData(planoAtivo.cancelamento_efetivo_em)}.
+              Sua assinatura foi cancelada e não será cobrada de novo. Você continua com acesso até{' '}
+              {fmtData(planoAtivo.cancelamento_efetivo_em)}.
             </span>
           ) : planoAtivo.renova_automaticamente ? (
             <span className="mt-1 block text-xs">
-              Renova sozinho em {fmtData(planoAtivo.data_fim)}, com nova cobrança. Para
-              parar, fale com o estúdio.
+              Renova sozinho em {fmtData(planoAtivo.data_fim)}, com nova cobrança. Para parar, fale
+              com o estúdio.
             </span>
           ) : null}
         </div>
       )}
 
-      {erro && <p className="mb-3 text-sm text-red-600">{erro}</p>}
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      <div className="flex flex-col gap-2.5">
-        {(planos ?? []).map((p) => (
-          <div key={p.id} className="rounded-lg border border-neutral-200 bg-white p-4">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-semibold text-neutral-900">{p.nome}</span>
-              <span className="text-sm font-semibold text-brand-700">
-                {p.renova_automaticamente
-                  ? `${fmtCentavos(p.preco_centavos)}/mês`
-                  : fmtCentavos(p.preco_centavos)}
-              </span>
-            </div>
-            <p className="mt-0.5 text-xs text-neutral-500">{descricaoPlano(p)}</p>
-            {p.descricao && <p className="mt-0.5 text-xs text-neutral-400">{p.descricao}</p>}
+      {!isLoading && (produtos ?? []).length === 0 && (
+        <p className="py-4 text-center text-sm text-neutral-400">Nenhum plano disponível no momento.</p>
+      )}
 
-            {/* Recorrência dita antes do botão, não em nota de rodapé.
-                O regulamento (1.3) insiste que "sem compromisso" quer
-                dizer que dá para cancelar quando quiser — não que a
-                cobrança para sozinha. É essa frase que evita a discussão
-                de cobrança dois meses depois. */}
-            {p.renova_automaticamente && (
-              <p className="mt-2 rounded-md bg-brand-50 px-2.5 py-1.5 text-[11px] leading-snug text-brand-700">
-                <strong>Cobrança automática a cada {p.periodicidade_dias} dias.</strong>{' '}
-                {p.ciclos_compromisso > 1
-                  ? `Permanência mínima de ${p.ciclos_compromisso} ciclos.`
-                  : 'Renova sozinho até você cancelar.'}
-              </p>
-            )}
+      {/* ---- 1. Qual formato ---- */}
+      {tiposDisponiveis.length > 1 && (
+        <section className="mb-6">
+          <Rotulo>Qual plano combina com você?</Rotulo>
+          <EscolhaTipo
+            valor={tipo}
+            onChange={escolherTipo}
+            opcoes={tiposDisponiveis.map((t) => {
+              const menor = menorPreco(porLugar[t])
+              return {
+                tipo: t,
+                aPartirDe: menor ? `${fmtPreco(menor.preco_centavos)}${sufixoPreco(menor)}` : null,
+              }
+            })}
+          />
+        </section>
+      )}
 
-            {config && p.gera_credito && (
-              <ul className="mt-2 flex flex-col gap-0.5 text-[11px] text-neutral-400">
-                <li>
-                  • Cancelamento até {p.horas_cancelamento ?? config.horas_cancelamento}h antes
-                  devolve o crédito
-                </li>
-                <li>• Faltou sem cancelar: crédito é consumido</li>
-              </ul>
-            )}
-
-            {confirmando === p.id ? (
-              <div className="mt-3 rounded-md bg-neutral-50 p-2.5 text-xs">
-                <p className="text-neutral-600">
-                  Contratar <strong>{p.nome}</strong> por {fmtCentavos(p.preco_centavos)}? As
-                  aulas são liberadas na hora.
-                </p>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    onClick={() => confirmar(p.id)}
-                    disabled={contratar.isPending}
-                    className="flex-1 rounded-md bg-brand-600 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                  >
-                    {contratar.isPending ? 'Contratando…' : 'Sim, contratar'}
-                  </button>
-                  <button
-                    onClick={() => setConfirmando(null)}
-                    className="flex-1 rounded-md border border-neutral-200 py-1.5 text-xs text-neutral-600"
-                  >
-                    Voltar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmando(p.id)}
-                className="mt-3 w-full rounded-md bg-brand-600 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+      {/* ---- 2 e 3. Período e planos ---- */}
+      {tipo && (
+        <section className="mb-8">
+          {periodosDisponiveis.length > 1 && (
+            <>
+              <Rotulo
+                acao={
+                  <LinkFolha onClick={() => abrirFolha({ tipo: 'comparar' })}>
+                    Qual a diferença?
+                  </LinkFolha>
+                }
               >
-                Contratar
-              </button>
-            )}
+                Escolha o período
+              </Rotulo>
+              <div className="mb-4">
+                <SeletorPeriodo valor={periodo} onChange={escolherPeriodo} legendas={legendasPeriodo} />
+              </div>
+            </>
+          )}
+
+          <div className="flex flex-col gap-2.5">
+            {visiveis.map((p) => (
+              <CartaoPlano
+                key={p.id}
+                produto={p}
+                semestral={periodo === 'semestral'}
+                economia={periodo === 'semestral' ? economiaNoCompromisso(p, porId) : null}
+                mostrarNome={(numerosRepetidos.get(chaveNumero(p)) ?? 0) > 1}
+                onEscolher={() =>
+                  abrirFolha(
+                    tipo === 'turma_fixa'
+                      ? { tipo: 'turma_fixa', produtoId: p.id }
+                      : { tipo: 'comprar', produtoId: p.id },
+                  )
+                }
+              />
+            ))}
           </div>
-        ))}
-        {!isLoading && (planos ?? []).length === 0 && (
-          <p className="py-4 text-center text-sm text-neutral-400">
-            Nenhum plano disponível no momento.
+
+          <div className="mt-3.5 flex justify-center">
+            <LinkFolha onClick={() => abrirFolha({ tipo: 'regras', de: tipo })}>
+              <Info className="size-3.5" />
+              {tipo === 'creditos' ? 'Como funcionam os créditos?' : 'Ver regras da turma fixa'}
+            </LinkFolha>
+          </div>
+        </section>
+      )}
+
+      {/* ---- Avulsos ---- */}
+      {porLugar.avulso.length > 0 && (
+        <section className="border-t border-neutral-200 pt-6">
+          <Rotulo>Aulas avulsas e experiências</Rotulo>
+          <p className="-mt-1 mb-3 text-xs text-neutral-500">
+            Sem mensalidade: pague só pelo que for usar.
           </p>
-        )}
-      </div>
+          <div className="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            {porLugar.avulso.map((p) => (
+              <LinhaAvulso
+                key={p.id}
+                produto={p}
+                selos={selosPorProduto.get(p.id) ?? []}
+                onAbrir={() => abrirFolha({ tipo: 'comprar', produtoId: p.id })}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ---- Folhas ---- */}
+      {folha?.tipo === 'comprar' && produtoDaFolha && (
+        <Folha titulo={<TituloPlano produto={produtoDaFolha} />} onFechar={() => setFolha(null)}>
+          <ConfirmarCompra
+            produto={produtoDaFolha}
+            horasCancelamento={horasCancelamento(produtoDaFolha)}
+            selos={selosPorProduto.get(produtoDaFolha.id) ?? []}
+            erro={erro}
+            pendente={contratar.isPending}
+            onConfirmar={() => confirmar(produtoDaFolha)}
+            onVoltar={() => setFolha(null)}
+          />
+        </Folha>
+      )}
+
+      {folha?.tipo === 'turma_fixa' && produtoDaFolha && (
+        <Folha titulo={<TituloPlano produto={produtoDaFolha} />} onFechar={() => setFolha(null)}>
+          <PedirTurmaFixa
+            produto={produtoDaFolha}
+            onVerRegras={() => abrirFolha({ tipo: 'regras', de: 'turma_fixa' })}
+            onFechar={() => setFolha(null)}
+          />
+        </Folha>
+      )}
+
+      {folha?.tipo === 'comparar' && tipo && (
+        <Folha titulo="Mensal ou semestral?" onFechar={() => setFolha(null)}>
+          <ComparativoPeriodo tipo={tipo} mensal={referencia('mensal')} semestral={semestralRef} />
+        </Folha>
+      )}
+
+      {folha?.tipo === 'regras' && (
+        <Folha
+          titulo={folha.de === 'creditos' ? 'Como funcionam os créditos' : 'Como funciona a turma fixa'}
+          onFechar={() => setFolha(null)}
+        >
+          {folha.de === 'creditos' ? (
+            <RegrasCreditos
+              referencia={visiveis[0]}
+              horasCancelamento={horasCancelamento(visiveis[0])}
+            />
+          ) : (
+            <RegrasTurmaFixa />
+          )}
+        </Folha>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Tela de sucesso. O texto depende do que foi comprado: aula particular
+ * e treino livre não liberam crédito nenhum, e "suas aulas já estão
+ * liberadas" mandaria a pessoa para uma Agenda onde não há o que agendar.
+ */
+function Contratado({
+  produto: p,
+  onAgendar,
+  onInicio,
+}: {
+  produto: Produto
+  onAgendar: () => void
+  onInicio: () => void
+}) {
+  const liberaAulas = p.gera_credito && p.creditos_por_ciclo > 0
+  const ehPlano = lugarDoProduto(p) !== 'avulso'
+
+  return (
+    <div className="pt-10 text-center">
+      <div className="mb-3 text-4xl">🎉</div>
+      <h1 className="mb-2 text-xl font-semibold text-neutral-900">
+        {ehPlano ? 'Plano ativado!' : 'Compra confirmada!'}
+      </h1>
+      <p className="mb-1 text-sm text-neutral-600">
+        {liberaAulas
+          ? 'Suas aulas já estão liberadas.'
+          : 'Agora é só combinar o horário com o estúdio.'}
+      </p>
+      <p className="mb-8 text-xs text-neutral-400">
+        O pagamento é combinado direto com o estúdio (PIX ou na recepção). Em breve você poderá
+        pagar por aqui, no cartão recorrente.
+      </p>
+      <button
+        onClick={liberaAulas ? onAgendar : onInicio}
+        className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
+      >
+        {liberaAulas ? 'Agendar primeira aula' : 'Voltar ao início'}
+      </button>
     </div>
   )
 }
