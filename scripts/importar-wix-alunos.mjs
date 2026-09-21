@@ -23,18 +23,33 @@ if (!API_KEY) {
   process.exit(1)
 }
 
-// Wix -> ERP. Deixado explícito de propósito: o catálogo dos dois lados não
-// bate (docs/05-BACKLOG.md X4) e essa divergência é decisão de negócio, não
-// coisa para o script adivinhar por semelhança de nome. `null` = ainda sem
-// produto correspondente no ERP.
+// Wix -> ERP, explícito de propósito: equivalência de plano é decisão de
+// negócio, não semelhança de string.
+//
+// Desde 21/09/2026 (migration 20260921130000) os planos antigos existem no
+// ERP com o MESMO NOME do Wix, como produto legado — fora do catálogo do
+// aluno, mantido só para honrar quem já contratou. Por isso a maioria das
+// entradas aqui é identidade: o destino é o produto legado homônimo, não o
+// plano novo. Quem migra o aluno para o catálogo novo é a renovação, quando
+// o ciclo contratado acabar — não este import.
+//
+// `null` = não vira matrícula nenhuma.
 const MAPA_PRODUTO = {
-  'Plano Mensal - 1x na semana': 'Mensal · 4 créditos',
-  'Plano Mensal - 2x na semana': 'Mensal · 8 créditos',
-  'Plano Mensal - 3x na semana': 'Mensal · 12 créditos',
-  'Plano Mensal - 4x na semana': 'Mensal · 16 créditos',
-  'Plano Trimestral - 1x por semana': null, // decidir: vira ciclos_compromisso = 3?
-  'Pacotes - 4 Aulas': null,                // Wix R$190 x ERP "Studio+ · 4 aulas" R$135
-  'Pacotes - 6 Aulas': null,                // não existe no ERP
+  'Plano Mensal  - 1x na semana': 'Plano Mensal  - 1x na semana', // dois espaços, é assim no Wix
+  'Plano Mensal - 2x na semana': 'Plano Mensal - 2x na semana',
+  'Plano Mensal - 3x na semana': 'Plano Mensal - 3x na semana',
+  'Plano Mensal - 4x por semana': 'Plano Mensal - 4x por semana',
+  'Plano Trimestral - 1x por semana': 'Plano Trimestral - 1x por semana',
+  'Plano Semestral - 1x por semana': 'Plano Semestral - 1x por semana',
+  'Plano Semestral - 2x por semana': 'Plano Semestral - 2x por semana',
+  'Plano Mensal Dança do Ventre': 'Plano Mensal Dança do Ventre',
+  'Hatha Yoga - Perfil Social': 'Hatha Yoga - Perfil Social',
+  'Hatha Yoga - Perfil Amplo': 'Hatha Yoga - Perfil Amplo',
+  'Pacotes - 4 Aulas': 'Pacotes - 4 Aulas',
+  'Pacotes - 6 Aulas': 'Pacotes - 6 Aulas',
+  'Plano Equipe': 'Plano Equipe',
+  // Estes dois já existiam no catálogo novo com o mesmo preço — não houve
+  // legado a criar, o import cai direto no produto atual.
   'Aula Experimental': 'Aula experimental',
   'Aula Avulsa': 'Aula avulsa',
 }
