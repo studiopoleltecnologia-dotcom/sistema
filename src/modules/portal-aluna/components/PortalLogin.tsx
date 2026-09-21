@@ -28,11 +28,15 @@ export function PortalLogin() {
     } else if (modo === 'entrar') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        setError(
+        const amigavel =
           error.message === 'Email not confirmed'
             ? 'Seu e-mail ainda não foi confirmado. Procure o link na sua caixa de entrada (ou spam).'
-            : 'E-mail ou senha inválidos.',
-        )
+            : 'E-mail ou senha inválidos.'
+        // Em DEV, o motivo real também aparece. "Inválidos" engolia limite de
+        // tentativas, projeto Supabase errado e falha de rede na mesma frase —
+        // e aí não dá para saber se o problema é a senha ou o ambiente. O aluno
+        // em produção continua vendo só a frase amigável.
+        setError(import.meta.env.DEV ? `${amigavel} [${error.message}]` : amigavel)
       }
     } else {
       const { data, error } = await supabase.auth.signUp({
@@ -65,6 +69,17 @@ export function PortalLogin() {
               ? 'Crie sua conta de aluno'
               : 'Recuperar senha'}
         </p>
+
+        {/* Só em DEV: diz em qual Supabase esta tela está batendo. São dois
+            projetos com a mesma cara, e conta que existe em um não existe no
+            outro — sem isso, "e-mail ou senha inválidos" pode ser só a aba
+            errada aberta. Some no build de produção. */}
+        {import.meta.env.DEV && (
+          <p className="mb-6 -mt-4 rounded-md bg-warning-50 px-2.5 py-1.5 text-[11px] text-warning-800">
+            Ambiente de desenvolvimento ·{' '}
+            {String(import.meta.env.VITE_SUPABASE_URL).replace('https://', '').split('.')[0]}
+          </p>
+        )}
 
         <label className="mb-4 block">
           <span className="mb-1 block text-xs font-medium text-neutral-600">E-mail</span>
