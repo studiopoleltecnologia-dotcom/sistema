@@ -226,7 +226,31 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 
 ---
 
-## 11. Asaas — passo a passo
+## 11. Gateway de pagamento — passo a passo
+
+### 11.0 Por que Asaas e não InfinitePay (21/09/2026)
+
+A InfinitePay foi avaliada a pedido da gestão (conta já existente, PIX a 0%) e
+**não atende o requisito**: a cobrança precisa ser automática. A recorrência
+dela existe só dentro do painel — a API pública é o *Checkout Integrado*
+(`POST api.checkout.infinitepay.io/links`), que cria cobrança **avulsa**. Daria
+para gerar um link por ciclo, mas o aluno teria que pagar ativamente todo mês,
+e usar a assinatura do painel deles deixaria o ERP sem saber do pagamento —
+baixa manual, que é justamente o que o sistema existe para eliminar.
+
+**O que muda em relação ao plano original:** o Asaas hoje suporta **Pix
+Automático** (o do Banco Central) na API, com `paymentCreationMode:
+SUBSCRIPTION`. O aluno autoriza **uma vez** (Jornada 3: o QR Code da primeira
+cobrança já carrega a autorização dos ciclos seguintes) e os débitos passam a
+acontecer sozinhos, sem nova confirmação. Isso é cobrança automática de verdade
+ao custo de PIX (R$1,99 fixo) em vez dos ~3% do cartão — com 47 mensalistas a
+R$250, é ~R$94/mês contra ~R$374/mês.
+
+⚠️ Verificar elegibilidade antes de prometer: o Pix Automático exige CNPJ ativo
+há pelo menos 6 meses, conta aprovada e CNAE compatível. O cartão recorrente
+tokenizado continua como alternativa para quem não puder usá-lo.
+
+### 11.1 A conta
 
 Pesquisa comercial de 21/07 confirmada: conta **gratuita**, sem mensalidade,
 R$50 de crédito na abertura.
@@ -241,7 +265,7 @@ R$50 de crédito na abertura.
 e PIX ~R$100. O cartão cobra sozinho; o PIX exige o aluno pagar ativamente.
 Recomendação: oferecer os dois, com **PIX como padrão visível**.
 
-### 11.1 Fora do código (gestão)
+### 11.2 Fora do código (gestão)
 
 1. Abrir conta em `asaas.com` com o **CNPJ do MEI** — precisa de CPF do titular,
    endereço, telefone e selfie com documento. Análise em até 2 dias úteis.
@@ -251,7 +275,7 @@ Recomendação: oferecer os dois, com **PIX como padrão visível**.
 4. Gerar a **API key de sandbox** e, depois de homologar, a de produção.
    Guardar as duas fora do repo (`supabase secrets set`).
 
-### 11.2 No sistema (código)
+### 11.3 No sistema (código)
 
 5. Migration: `formas_pagamento` (cartão tokenizado — **nunca** o número) e
    `cobrancas` (`provider`, `provider_ref`, status, valor, vencimento). A
