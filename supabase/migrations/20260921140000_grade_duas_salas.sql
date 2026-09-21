@@ -54,16 +54,21 @@ from (values
 left join public.categorias_modalidade c on c.nome = v.grupo
 where not exists (select 1 from public.modalidades m where m.nome = v.nome);
 
--- 3. Professoras que dão aula na grade e não estavam cadastradas.
---    ⚠️ `valor_por_aluna_centavos = 0` é deliberado: ninguém aqui sabe
---    quanto elas ganham, e chutar um valor entraria silenciosamente na
---    folha. Zero aparece como R$0 no Fechamento — erro visível, que a
---    gestão corrige na tela de Remuneração. Sem e-mail também: quem
---    cadastra e-mail de professora é a equipe (é o convite de acesso).
-insert into public.professoras (nome, valor_por_aluna_centavos, ativa)
-select v.nome, 0, true
-from (values ('Joanne Vênus'), ('Leticia Lemos')) as v(nome)
-where not exists (select 1 from public.professoras p where p.nome = v.nome);
+-- 3. Professora NÃO se cadastra por migration. Duas dão aula na grade e
+--    não estão no sistema: **Joanne Vênus** e **Leticia Lemos**.
+--
+--    Tentei criá-las aqui e o banco recusou, com razão:
+--    `validar_contato_emergencia_professora` exige nome e telefone de
+--    contato de emergência (20260819150000). Não é burocracia — é a
+--    pessoa para quem se liga quando alguém se machuca na aula, e
+--    preencher com marcador para a migration passar seria pior do que
+--    não ter: ninguém revisita um campo que já parece preenchido.
+--
+--    Consequência assumida: o INNER JOIN de baixo **descarta em
+--    silêncio** as aulas dessas duas, e a migration avisa no fim
+--    quantas ficaram de fora. Depois que a equipe cadastrá-las pela
+--    tela, basta reaplicar o bloco 4 — ele é idempotente por
+--    (dia, horário, sala), então só entra o que falta.
 
 -- 4. A grade.
 insert into public.turmas (
@@ -127,8 +132,16 @@ where not exists (
 );
 
 do $$
-declare n int;
+declare n int; faltam text;
 begin
   select count(*) into n from public.turmas where ativa;
   raise notice 'Grade ativa: % turmas', n;
+
+  select string_agg(v.professora, ', ') into faltam
+  from (values ('Joanne Vênus'), ('Leticia Lemos')) as v(professora)
+  where not exists (select 1 from public.professoras p where p.nome = v.professora);
+
+  if faltam is not null then
+    raise warning 'GRADE INCOMPLETA — professora(s) sem cadastro: %. As aulas delas não entraram. Cadastre pela tela (com contato de emergência) e reaplique o bloco 4 desta migration.', faltam;
+  end if;
 end $$;
