@@ -97,9 +97,15 @@ porteiro próprios):
 - `#/prof` e não `#/professoras`: o admin já usa `/professoras` para o módulo de
   gestão. O teste de rota é por **segmento exato**, senão `#/professoras` cairia
   no portal da professora.
-- **Aluna e professora são mutuamente exclusivas** (trigger
-  `validar_papel_exclusivo`). Equipe + professora é permitido de propósito —
-  sócia que também dá aula é caso real.
+- **Aluna e professora podem ser a mesma conta** desde 21/09/2026
+  (`20260921150000` removeu `validar_papel_exclusivo`). A professora tem
+  cortesia de aula e precisa agendar como qualquer aluno; exigir um segundo
+  e-mail era atrito inventado. As quatro tabelas com policy dos dois papéis
+  (`agendamentos`, `presencas`, `turmas`, `matricula_turmas`) somam dois
+  recortes pessoais — as aulas que ela dá e as reservas dela —, que é
+  exatamente "a professora que também treina aqui". Equipe + professora
+  continua permitido; **equipe + aluna, não** (`promover_a_equipe()` recusa
+  e-mail que já é de aluna — equipe vê dinheiro, é outro risco).
 - **Nenhum papel se concede sozinho.** `handle_new_user()` só cria vínculo de
   professora, e só quando o e-mail do signup casa com um e-mail já cadastrado em
   `professoras` pela equipe (é isso que faz o "convite"). Equipe entra apenas por

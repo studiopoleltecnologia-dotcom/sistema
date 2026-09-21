@@ -71,7 +71,7 @@ antes** (fora do repo, que é público).
 
 | # | Tarefa | Nat. | Nota |
 |---|---|---|---|
-| G1 | **Cadastrar e-mail das professoras e ativá-las** | 📋 | 9 professoras ativas, **nenhuma com e-mail**. Sem e-mail ninguém cria acesso: o convite é justamente o e-mail do signup casar com o cadastro. Em andamento pela gestão. |
+| G1 | **Completar o cadastro das professoras** | 📋 | Nenhuma das 11 tem e-mail — sem isso ninguém cria acesso, e o convite é o e-mail do signup casar com o cadastro. **Joanne Vênus e Leticia Lemos** entraram em 21/09 pela migration, a pedido da gestão, **sem contato de emergência e com remuneração zerada**: as duas aparecem como pendência na tela e precisam ser completadas antes do primeiro fechamento de folha. |
 | G2 | **Dar acesso aos alunos** | 📋💻 | `contas_aluna` = 0. Depende do import do Wix (§3) para existir quem convidar. |
 | G3 | **Cutover do Wix** | 💻📋 | A operação continua lá. Capítulo próprio em §3. |
 | G4 | ~~Prazo de cancelamento divergente~~ | ✅ | **Feito em 21/09.** Produção estava em 3h e o Wix em 240 min. Agora os dois em **4h**, valor confirmado pela gestão. DEV já estava em 4h. |
@@ -92,7 +92,7 @@ partir dele, num caminho só, até a virada.
 |---|---|---|---|---|
 | X1 | **Gerar uma API key do Wix** | 🔴 | ⚙️ | `manage.wix.com` → Configurações → **Chaves de API** → criar chave com permissão de leitura em **Bookings**, **Pricing Plans**, **Contatos** e **Membros**. Guardar a chave + o **Account ID** fora do repo (o repo é público). Sem ela, todo import é manual. |
 | X2 | ~~Script de import~~ | ✅ | 💻 | **Feito em 21/09.** `scripts/importar-wix-alunos.mjs` (CSV de import) e `scripts/relatorio-wix-planos.mjs` (relatório para a gestão conferir e falar com cada aluno). Levantados: 147 pessoas com plano ativo — 80 Wellhub, 34 TotalPass, 47 mensalistas. |
-| X3 | **Grade de 2 salas** | 🔴 | 📋 | Migration `20260921140000` carrega as 45 aulas da semana com sala, capacidade e professora. A sala **não vem do Wix** (endereço único, sem campo de sala) — é a regra por modalidade definida pela gestão em 21/09, verificada contra a grade inteira sem nenhuma sobreposição. **Faltam 5 aulas:** as de Joanne Vênus e Leticia Lemos, que não estão cadastradas como professoras. Cadastrar pela tela (o banco exige contato de emergência) e reaplicar o bloco 4. |
+| X3 | ~~Grade de 2 salas~~ | ✅ | 💻 | **Feito em 21/09** (`20260921140000` + `20260921160000`): 45 aulas com sala, capacidade e professora. A sala **não vem do Wix** (endereço único, sem campo de sala) — é a regra por modalidade da gestão, verificada contra a grade inteira sem nenhuma sobreposição. 35 na Sala 1 · Pole, 10 na Sala 2 · Multi. |
 | X4 | ~~Conciliar o catálogo~~ | ✅ | 🔀 | **Resolvido em 21/09.** Os 13 planos do Wix com gente ativa viraram produto legado (`20260921130000`): fora do catálogo do aluno, renovação preservada, preço herdado por matrícula. Dança do Ventre e Hatha Yoga entram como **turma fixa**, não crédito. Trimestral 2x/3x/4x e pacotes de 5/8/10 aulas não têm ninguém ativo e não foram criados. |
 | X5 | **TotalPass como canal próprio** | 🟡 | 💻 | **Decidido em 21/09.** Há planos TotalPass ativos no Wix e o ERP só conhece `wellhub`/`classpass`. Migration nova no enum de canal/origem + categoria financeira + receita "a reconciliar", no mesmo molde do Wellhub. |
 | X6 | **Plano da virada** | 🟡 | 🔀 | Data do corte, o que fazer com reservas já feitas no Wix para depois da data, e o aviso aos alunos. Enquanto os dois coexistirem, **mudança de horário tem que ser feita nos dois lugares**. |
