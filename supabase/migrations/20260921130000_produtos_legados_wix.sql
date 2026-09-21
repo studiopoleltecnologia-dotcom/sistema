@@ -68,11 +68,17 @@ from (values
 where not exists (select 1 from public.produtos p where p.nome = v.nome);
 
 -- 2. Planos de modalidade única (Dança do Ventre, Hatha Yoga).
---    ⚠️ `creditos_por_ciclo` destes três é ESTIMATIVA: o nome não diz a
---    frequência ("Perfil Social" / "Perfil Amplo" é recorte de preço, não
---    de quantidade) e o Wix não guarda essa informação em lugar nenhum.
---    Foram postos em 4 (1x/semana) e a descrição avisa. Confirmar com a
---    professora antes de o aluno agendar — são 4 pessoas ao todo.
+--
+--    A gestão confirmou em 21/09: são **turma fixa**, não crédito. Faz
+--    sentido — quem assina "Dança do Ventre" não está comprando saldo
+--    para circular pela grade, está comprando a vaga daquela aula. Então
+--    seguem o formato de 2.3 do regulamento: `gera_credito = false`,
+--    `creditos_por_ciclo = 0`, `turmas_fixas = 1`, e as regras de
+--    agendamento ficam nulas porque não há agendamento a fazer — a vaga
+--    é reservada, não escolhida semana a semana.
+--
+--    Qual turma cada uma ocupa é decidido na matrícula (`matricula_turmas`),
+--    não aqui: um produto por horário da grade seria catálogo demais.
 insert into public.produtos (
   nome, descricao, tipo_produto, preco_centavos, periodicidade_dias,
   ciclos_compromisso, renova_automaticamente, gera_credito, creditos_por_ciclo,
@@ -80,14 +86,14 @@ insert into public.produtos (
   max_agendamentos_simultaneos, horas_cancelamento, desconto_eventos_pct,
   convidados_por_ciclo, turmas_fixas, ordem, ativo, visivel_no_catalogo)
 select v.nome, v.descricao, 'plano', v.preco, 30,
-       1, false, true, 4,
-       false, 1, 14,
-       8, 4, 0,
-       0, 0, v.ordem, true, false
+       1, false, false, 0,
+       false, 1, null,
+       null, null, 0,
+       0, 1, v.ordem, true, false
 from (values
-  ('Plano Mensal Dança do Ventre', 'Legado do Wix. CRÉDITOS A CONFIRMAR (estimados em 4/mês).', 16000, 930),
-  ('Hatha Yoga - Perfil Social',   'Legado do Wix. CRÉDITOS A CONFIRMAR (estimados em 4/mês).',  8000, 931),
-  ('Hatha Yoga - Perfil Amplo',    'Legado do Wix. CRÉDITOS A CONFIRMAR (estimados em 4/mês).', 15000, 932)
+  ('Plano Mensal Dança do Ventre', 'Legado do Wix. Vaga fixa na turma de Dança do Ventre.', 16000, 930),
+  ('Hatha Yoga - Perfil Social',   'Legado do Wix. Vaga fixa na turma de Hatha Yoga.',        8000, 931),
+  ('Hatha Yoga - Perfil Amplo',    'Legado do Wix. Vaga fixa na turma de Hatha Yoga.',       15000, 932)
 ) as v(nome, descricao, preco, ordem)
 where not exists (select 1 from public.produtos p where p.nome = v.nome);
 
@@ -112,11 +118,20 @@ from (values
 ) as v(nome, preco, creditos, ordem)
 where not exists (select 1 from public.produtos p where p.nome = v.nome);
 
--- 4. Plano Equipe — cortesia (R$0, sem validade no Wix). São 12 pessoas
---    ativas, a maior fatia dos "planos" de lá. Não é venda: é acesso de
---    professora/sócia/parceria. Fica com crédito alto e sem renovação
---    automática para não virar cobrança nem expirar sozinho no meio do
---    mês; quem controla é a equipe, manualmente.
+-- 4. Plano Equipe — cortesia de professora e sócia (confirmado pela
+--    gestão em 21/09). R$0, sem validade no Wix, 16 pessoas ativas: a
+--    maior fatia dos "planos" de lá. Não é venda.
+--
+--    Crédito alto e sem renovação automática de propósito: alto porque
+--    cortesia não tem cota a controlar, e sem renovação para nunca virar
+--    cobrança nem expirar sozinho no meio do mês. Quem repõe é a equipe.
+--
+--    ⚠️ A professora que também treina precisa de ficha em `clientes`,
+--    separada do cadastro em `professoras` — são coisas diferentes e o
+--    sistema não as liga. Se ela for usar o portal do aluno para
+--    agendar, precisa de um e-mail DIFERENTE do que usa no portal da
+--    professora: `validar_papel_exclusivo` proíbe o mesmo login nos dois
+--    papéis (ver 20260721110000). A alternativa é a equipe agendar por ela.
 insert into public.produtos (
   nome, descricao, tipo_produto, preco_centavos, periodicidade_dias,
   ciclos_compromisso, renova_automaticamente, gera_credito, creditos_por_ciclo,
