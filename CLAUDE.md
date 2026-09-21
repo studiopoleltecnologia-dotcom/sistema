@@ -173,6 +173,16 @@ funcionando e validado pelas sócias.
   banco — nunca float. Datas em ISO/`timestamptz`.
 - **Idioma:** UI, dados e nomes de domínio em **português**; código/identificadores
   técnicos podem ser em inglês quando for convenção (ex: hooks, libs).
+- **Aba de tela mora na URL, não em `useState`:** usar `useAbaUrl`
+  ([src/lib/aba.ts](src/lib/aba.ts)), que grava em `?aba=`. O menu lateral lista
+  as seções de cada módulo e um link só chega numa aba se a aba tiver endereço;
+  aba em estado local fica inalcançável pelo menu. Só entram no menu as abas
+  **permanentes** — as que aparecem conforme o dado (Pendências, Em aberto,
+  Arquivados) ficam só no topo da própria tela.
+- **Valor financeiro no painel passa pelo olhinho:** `useSigilo`
+  ([src/lib/sigilo.ts](src/lib/sigilo.ts)) começa **oculto**. O painel é a tela
+  de abertura e é aberta na recepção com gente do lado — número em dinheiro
+  novo ali nasce mascarado, não à mostra.
 
 ---
 

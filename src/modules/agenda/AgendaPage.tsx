@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Tabs } from '../../components/ui/Tabs'
+import { useAbaUrl } from '../../lib/aba'
 import { fmtCentavos, parseCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
 import { GradeHorarios } from './components/GradeHorarios'
@@ -15,12 +16,14 @@ import {
   useSuspensoes,
 } from './hooks/useAgenda'
 
+/** Todas as abas possíveis; quais aparecem é decidido em tempo de execução. */
+const ABAS = ['grade', 'ocupacao', 'pendencias', 'faltas', 'config'] as const
+
 export function AgendaPage() {
   // Abre na grade: a pergunta mais frequente é "como está a semana", e o dia
-  // agora vive ao lado dela, não numa aba concorrente.
-  const [aba, setAba] = useState<'grade' | 'ocupacao' | 'pendencias' | 'faltas' | 'config'>(
-    'grade',
-  )
+  // agora vive ao lado dela, não numa aba concorrente. Guardada na URL
+  // (?aba=ocupacao) para o menu lateral conseguir apontar direto para a seção.
+  const [aba, setAba] = useAbaUrl(ABAS, 'grade')
   // Fila de check-ins sem turma: a aba só aparece quando há o que resolver,
   // para não virar mais um item morto no topo da Agenda.
   const { data: pendencias } = useCheckinsPendentes()
@@ -48,6 +51,11 @@ export function AgendaPage() {
     ...(ehGestao ? [{ value: 'config' as const, label: 'Config' }] : []),
   ]
 
+  // Agora que a aba vem da URL, ela pode pedir uma aba que não existe nesta
+  // sessão: link para ?aba=config aberto pela secretária, ou ?aba=pendencias
+  // depois de a fila ser resolvida. Sem este ajuste a tela ficaria em branco.
+  const atual = abas.some((a) => a.value === aba) ? aba : 'grade'
+
   return (
     <div>
       {/* `mb-4` em vez do `mb-6` padrão: nesta tela a grade é o conteúdo, e
@@ -58,16 +66,16 @@ export function AgendaPage() {
           // Grande e na cor da marca: este seletor é a navegação da tela
           // inteira, não um ajuste fino. Em cinza sobre branco ele sumia
           // entre o título e a barra de controles logo abaixo.
-          <Tabs value={aba} onChange={setAba} items={abas} size="lg" variant="marca" />
+          <Tabs value={atual} onChange={setAba} items={abas} size="lg" variant="marca" />
         }
         className="mb-4"
       />
 
-      {aba === 'grade' && <GradeHorarios />}
-      {aba === 'ocupacao' && <OcupacaoView />}
-      {aba === 'pendencias' && <PendenciasView />}
-      {aba === 'faltas' && <FaltasView />}
-      {aba === 'config' && ehGestao && <ConfigAgendamentoForm />}
+      {atual === 'grade' && <GradeHorarios />}
+      {atual === 'ocupacao' && <OcupacaoView />}
+      {atual === 'pendencias' && <PendenciasView />}
+      {atual === 'faltas' && <FaltasView />}
+      {atual === 'config' && ehGestao && <ConfigAgendamentoForm />}
     </div>
   )
 }

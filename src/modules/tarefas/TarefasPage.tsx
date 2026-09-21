@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CalendarClock, CheckCircle2, Circle, Moon, Plus, Sun, Trash2, X } from 'lucide-react'
 import { useConfirmar } from '../../components/ui/ConfirmarAcao'
+import { useAbaUrl } from '../../lib/aba'
 import { fmtData } from '../../lib/datas'
 import { useSocias } from '../clientes/hooks/useClientes'
 import {
@@ -18,8 +19,10 @@ import { ROTINA_LABEL, ROTINAS, type RotinaChecklist } from './types'
 
 const hojeISO = () => new Date().toISOString().slice(0, 10)
 
+const ABAS = ['rotinas', 'tarefas'] as const
+
 export function TarefasPage() {
-  const [aba, setAba] = useState<'rotinas' | 'tarefas'>('rotinas')
+  const [aba, setAba] = useAbaUrl(ABAS, 'rotinas')
   const abaCls = (ativa: boolean) =>
     `rounded-md px-2.5 py-1 text-xs font-medium transition ${
       ativa ? 'bg-brand-50 text-brand-700' : 'text-neutral-400 hover:text-neutral-700'

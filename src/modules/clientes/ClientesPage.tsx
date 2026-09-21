@@ -3,6 +3,7 @@ import { Plus, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Tabs } from '../../components/ui/Tabs'
+import { useAbaUrl } from '../../lib/aba'
 import { ClienteDetalhe } from './components/ClienteDetalhe'
 import { ClienteForm } from './components/ClienteForm'
 import { ClientesLista } from './components/ClientesLista'
@@ -10,7 +11,8 @@ import { FunilBoard } from './components/FunilBoard'
 import { useAtualizarCliente, useClientes, useCriarCliente, useSocias } from './hooks/useClientes'
 import type { Cliente, ClienteInsert } from './types'
 
-type Visao = 'funil' | 'lista'
+/** Ordem = ordem do seletor e do menu lateral; o primeiro é o padrão. */
+const VISOES = ['lista', 'funil'] as const
 
 export function ClientesPage() {
   const { data: clientes, isLoading, error } = useClientes()
@@ -20,7 +22,9 @@ export function ClientesPage() {
 
   // Abre na Lista (roster do dia a dia): a maioria dos registros são alunos
   // ativos, não leads. O Funil fica a um clique para o trabalho de captação.
-  const [visao, setVisao] = useState<Visao>('lista')
+  // Na URL (?aba=funil), não em useState: o menu lateral lista as duas visões
+  // e um link só chega numa aba se a aba tiver endereço.
+  const [visao, setVisao] = useAbaUrl(VISOES, 'lista')
   const [busca, setBusca] = useState('')
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null)
   const [formAberto, setFormAberto] = useState(false)

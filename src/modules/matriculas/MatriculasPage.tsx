@@ -6,6 +6,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Tabs } from '../../components/ui/Tabs'
 import { useConfirmar } from '../../components/ui/ConfirmarAcao'
+import { useAbaUrl } from '../../lib/aba'
 import { fmtData } from '../../lib/datas'
 import { fmtCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
@@ -20,6 +21,7 @@ import {
 import type { MatriculaCompleta } from './types'
 
 type Filtro = 'todas' | 'creditos' | 'turma_fixa' | 'em_aberto'
+const FILTROS = ['todas', 'creditos', 'turma_fixa', 'em_aberto'] as const satisfies readonly Filtro[]
 
 /**
  * Matrículas: quem contratou o quê, e em que situação está.
@@ -44,7 +46,9 @@ export function MatriculasPage() {
   const cancelar = useCancelarAssinatura()
 
   const [novo, setNovo] = useState(false)
-  const [filtro, setFiltro] = useState<Filtro>('todas')
+  // Na URL (?aba=em_aberto): o menu lateral aponta direto para cada recorte,
+  // e o alerta de inadimplência do painel pode linkar 'Em aberto' de uma vez.
+  const [filtro, setFiltro] = useAbaUrl(FILTROS, 'todas')
 
   const contagens = useMemo(() => {
     const l = matriculas
