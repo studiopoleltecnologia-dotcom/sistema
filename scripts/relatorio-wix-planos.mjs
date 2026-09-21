@@ -178,9 +178,52 @@ ${tabela(cortesias, 'Plano Equipe')}
 <p class="v">${plataforma.filter((l) => l.canal === 'TotalPass').map((l) => esc(l.nome)).join(' · ')}</p>
 </main></body></html>`
 
+// ------------------------------------------------------------
+// CSV para o Google Sheets — a mesma informação, mas filtrável.
+//
+// Decisões que fazem diferença na hora de abrir a planilha:
+//   - BOM no começo: sem ele o Excel come os acentos. O Sheets ignora.
+//   - telefone com "+" na frente: sem isso a planilha trata como número
+//     e o zero da frente some.
+//   - data em DD/MM/AAAA e valor inteiro sem "R$": é o que o Sheets em
+//     português reconhece como data e como número. Com "R$ 170,00" vira
+//     texto e não dá para somar nem ordenar.
+// ------------------------------------------------------------
+const COLUNAS = [
+  ['Aluno', (l) => l.nome],
+  ['E-mail', (l) => l.email],
+  ['Telefone', (l) => (l.tel ? '+' + l.tel : '')],
+  ['WhatsApp', (l) => (l.tel ? `https://wa.me/55${l.tel}` : '')],
+  ['Canal', (l) => l.canal],
+  ['Plano no Wix', (l) => l.plano],
+  ['Vira no sistema', (l) => l.destino],
+  ['Formato', (l) => l.formato],
+  ['Valor', (l) => (l.preco ? String(l.preco) : '0')],
+  ['Pagamento', (l) => ({ PAID: 'pago', UNPAID: 'em aberto', NOT_APPLICABLE: '—' }[l.pagamento] || l.pagamento)],
+  ['Cobrança', (l) => l.cobranca],
+  ['Recorrente', (l) => (l.recorrente ? 'sim' : 'não')],
+  ['Ciclo', (l) => String(l.ciclo ?? '')],
+  ['Início', (l) => br(l.inicio)],
+  ['Vence', (l) => br(l.fim)],
+]
+const celula = (v) => {
+  const s = String(v ?? '')
+  return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+const csv = '﻿' + [
+  COLUNAS.map(([t]) => t).join(','),
+  ...linhas
+    .sort((a, b) => a.canal.localeCompare(b.canal) || a.nome.localeCompare(b.nome))
+    .map((l) => COLUNAS.map(([, f]) => celula(f(l))).join(',')),
+].join('\n')
+
 const { writeFileSync, mkdirSync } = await import('node:fs')
 const { dirname } = await import('node:path')
 mkdirSync(dirname(SAIDA), { recursive: true })
 writeFileSync(SAIDA, html)
+const SAIDA_CSV = SAIDA.replace(/\.html?$/i, '') + '.csv'
+writeFileSync(SAIDA_CSV, csv)
 console.log(`${linhas.length} assinaturas | ${pagantes.length} pagas | ${emAberto.length} em aberto | ${cortesias.length} cortesias`)
-console.log(`Relatório: ${SAIDA} (contém dado pessoal — não versionar)`)
+console.log(`Relatório: ${SAIDA}`)
+console.log(`Planilha:  ${SAIDA_CSV}`)
+console.log('Os dois têm dado pessoal — não versionar.')
