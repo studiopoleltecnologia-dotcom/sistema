@@ -71,7 +71,7 @@ antes** (fora do repo, que é público).
 
 | # | Tarefa | Nat. | Nota |
 |---|---|---|---|
-| G1 | **Cadastrar e-mail das professoras e ativá-las** | 📋 | 9 professoras ativas, **nenhuma com e-mail**. Sem e-mail ninguém cria acesso: o convite é justamente o e-mail do signup casar com o cadastro. Em andamento pela gestão. |
+| G1 | **Completar o cadastro das professoras** | 📋 | Nenhuma das 11 tem e-mail — sem isso ninguém cria acesso, e o convite é o e-mail do signup casar com o cadastro. **Joanne Vênus e Leticia Lemos** entraram em 21/09 pela migration, a pedido da gestão, **sem contato de emergência e com remuneração zerada**: as duas aparecem como pendência na tela e precisam ser completadas antes do primeiro fechamento de folha. |
 | G2 | **Dar acesso aos alunos** | 📋💻 | `contas_aluna` = 0. Depende do import do Wix (§3) para existir quem convidar. |
 | G3 | **Cutover do Wix** | 💻📋 | A operação continua lá. Capítulo próprio em §3. |
 | G4 | ~~Prazo de cancelamento divergente~~ | ✅ | **Feito em 21/09.** Produção estava em 3h e o Wix em 240 min. Agora os dois em **4h**, valor confirmado pela gestão. DEV já estava em 4h. |
@@ -91,9 +91,9 @@ partir dele, num caminho só, até a virada.
 | # | Tarefa | Pri | Nat. | Nota |
 |---|---|---|---|---|
 | X1 | **Gerar uma API key do Wix** | 🔴 | ⚙️ | `manage.wix.com` → Configurações → **Chaves de API** → criar chave com permissão de leitura em **Bookings**, **Pricing Plans**, **Contatos** e **Membros**. Guardar a chave + o **Account ID** fora do repo (o repo é público). Sem ela, todo import é manual. |
-| X2 | **Script de import** `scripts/importar-wix.mjs` | 🔴 | 💻 | Lê a chave de variável de ambiente, pagina `GET /pricing-plans/v2/orders?orderStatuses=ACTIVE`, cruza com Contatos (nome, e-mail, telefone) e gera o SQL/CSV de import. Repetível — é o que o MCP não dá. |
-| X3 | **Puxar a grade de 2 salas** | 🔴 | 💻📋 | As turmas foram apagadas em 21/09 de propósito: a grade nova entra limpa, com sala e capacidade reais, em vez de 35 aulas todas na "Sala 1". Via Bookings API (serviços + sessões). |
-| X4 | **Conciliar o catálogo** | 🟡 | 🔀 | O Wix tem produtos que o ERP **não** tem, com preço diferente: `Plano Trimestral - 1x por semana` (R$160 × 3 ciclos), `Pacotes - 4 Aulas` (R$190) e `Pacotes - 6 Aulas` (R$240) — o ERP tem `Studio+ · 4 aulas` a R$135 e nenhum pacote de 6. Decidir: o trimestral vira produto no ERP (é só `ciclos_compromisso = 3`) ou some na migração? |
+| X2 | ~~Script de import~~ | ✅ | 💻 | **Feito em 21/09.** `scripts/importar-wix-alunos.mjs` (CSV de import) e `scripts/relatorio-wix-planos.mjs` (relatório para a gestão conferir e falar com cada aluno). Levantados: 147 pessoas com plano ativo — 80 Wellhub, 34 TotalPass, 47 mensalistas. |
+| X3 | ~~Grade de 2 salas~~ | ✅ | 💻 | **Feito em 21/09** (`20260921140000` + `20260921160000`): 45 aulas com sala, capacidade e professora. A sala **não vem do Wix** (endereço único, sem campo de sala) — é a regra por modalidade da gestão, verificada contra a grade inteira sem nenhuma sobreposição. 35 na Sala 1 · Pole, 10 na Sala 2 · Multi. |
+| X4 | ~~Conciliar o catálogo~~ | ✅ | 🔀 | **Resolvido em 21/09.** Os 13 planos do Wix com gente ativa viraram produto legado (`20260921130000`): fora do catálogo do aluno, renovação preservada, preço herdado por matrícula. Dança do Ventre e Hatha Yoga entram como **turma fixa**, não crédito. Trimestral 2x/3x/4x e pacotes de 5/8/10 aulas não têm ninguém ativo e não foram criados. |
 | X5 | **TotalPass como canal próprio** | 🟡 | 💻 | **Decidido em 21/09.** Há planos TotalPass ativos no Wix e o ERP só conhece `wellhub`/`classpass`. Migration nova no enum de canal/origem + categoria financeira + receita "a reconciliar", no mesmo molde do Wellhub. |
 | X6 | **Plano da virada** | 🟡 | 🔀 | Data do corte, o que fazer com reservas já feitas no Wix para depois da data, e o aviso aos alunos. Enquanto os dois coexistirem, **mudança de horário tem que ser feita nos dois lugares**. |
 | X7 | Desligar o Wix Bookings e redirecionar os links | ⚪ | ⚙️ | Só depois de X6 validado. |
@@ -226,7 +226,31 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 
 ---
 
-## 11. Asaas — passo a passo
+## 11. Gateway de pagamento — passo a passo
+
+### 11.0 Por que Asaas e não InfinitePay (21/09/2026)
+
+A InfinitePay foi avaliada a pedido da gestão (conta já existente, PIX a 0%) e
+**não atende o requisito**: a cobrança precisa ser automática. A recorrência
+dela existe só dentro do painel — a API pública é o *Checkout Integrado*
+(`POST api.checkout.infinitepay.io/links`), que cria cobrança **avulsa**. Daria
+para gerar um link por ciclo, mas o aluno teria que pagar ativamente todo mês,
+e usar a assinatura do painel deles deixaria o ERP sem saber do pagamento —
+baixa manual, que é justamente o que o sistema existe para eliminar.
+
+**O que muda em relação ao plano original:** o Asaas hoje suporta **Pix
+Automático** (o do Banco Central) na API, com `paymentCreationMode:
+SUBSCRIPTION`. O aluno autoriza **uma vez** (Jornada 3: o QR Code da primeira
+cobrança já carrega a autorização dos ciclos seguintes) e os débitos passam a
+acontecer sozinhos, sem nova confirmação. Isso é cobrança automática de verdade
+ao custo de PIX (R$1,99 fixo) em vez dos ~3% do cartão — com 47 mensalistas a
+R$250, é ~R$94/mês contra ~R$374/mês.
+
+⚠️ Verificar elegibilidade antes de prometer: o Pix Automático exige CNPJ ativo
+há pelo menos 6 meses, conta aprovada e CNAE compatível. O cartão recorrente
+tokenizado continua como alternativa para quem não puder usá-lo.
+
+### 11.1 A conta
 
 Pesquisa comercial de 21/07 confirmada: conta **gratuita**, sem mensalidade,
 R$50 de crédito na abertura.
@@ -241,7 +265,7 @@ R$50 de crédito na abertura.
 e PIX ~R$100. O cartão cobra sozinho; o PIX exige o aluno pagar ativamente.
 Recomendação: oferecer os dois, com **PIX como padrão visível**.
 
-### 11.1 Fora do código (gestão)
+### 11.2 Fora do código (gestão)
 
 1. Abrir conta em `asaas.com` com o **CNPJ do MEI** — precisa de CPF do titular,
    endereço, telefone e selfie com documento. Análise em até 2 dias úteis.
@@ -251,7 +275,7 @@ Recomendação: oferecer os dois, com **PIX como padrão visível**.
 4. Gerar a **API key de sandbox** e, depois de homologar, a de produção.
    Guardar as duas fora do repo (`supabase secrets set`).
 
-### 11.2 No sistema (código)
+### 11.3 No sistema (código)
 
 5. Migration: `formas_pagamento` (cartão tokenizado — **nunca** o número) e
    `cobrancas` (`provider`, `provider_ref`, status, valor, vencimento). A
