@@ -35,21 +35,33 @@ Legenda de natureza — quem resolve muda tudo:
 `main` estão iguais, não há PR aberto, o build passa limpo e os 7 crons rodam.
 O que falta não é software: é a operação real entrar nele.
 
-### 1.1 As três URLs de produção
+### 1.1 As URLs de produção
 
-A jornada é decidida pelo **caminho**, não mais pelo hash — cada portal tem
-`index.html` próprio no build (`deploy.yml`), porque o GitHub Pages não faz
-rewrite de SPA. O hash antigo (`#/portal`, `#/prof`) só continua reconhecido
-para não quebrar favorito salvo; `/portal` hoje dá **404**.
+A jornada é decidida em `jornadaAtual()` (`src/App.tsx`), nesta ordem:
+**hostname → caminho → hash**. Cada caminho tem `index.html` próprio no build
+(`deploy.yml`), porque o GitHub Pages não faz rewrite de SPA. O hash antigo
+(`#/portal`, `#/prof`) só continua reconhecido para não quebrar favorito
+salvo; `/portal` hoje dá **404**.
 
 | Portal | URL |
 |---|---|
 | Interno (equipe) | `sistema.studiopolel.com.br/` |
-| Aluno | `sistema.studiopolel.com.br/agendamentos/` |
+| Aluno | `aluno.studiopolel.com.br/` — **qualquer caminho** |
+| Aluno (endereço antigo, segue valendo) | `sistema.studiopolel.com.br/agendamentos/` |
 | Professora | `sistema.studiopolel.com.br/portalequipe/` |
 
-⚠️ O CLAUDE.md §5.1 ainda descreve os hashes como se fossem as rotas atuais.
-A verdade está em `jornadaAtual()`, em `src/App.tsx`.
+O aluno ganhou **domínio próprio** em 21/09: no host dele o ERP não existe,
+nem digitando a URL. Quem chegar na tela da equipe com conta de aluno ou
+professora é levado para o portal certo em vez de ver "peça para a gestão
+liberar o seu e-mail". O endereço antigo não tem prazo para sair — é o que
+está salvo no celular das alunas.
+
+⚠️ **Pendente de configuração** (código pronto, PR mergeada): criar o repo de
+hospedagem, o token, o registro de DNS no Registro.br e liberar o endereço no
+Supabase Auth. Passo a passo em
+[docs/interno/dominio-portal-aluno.md](interno/dominio-portal-aluno.md).
+Enquanto não for feito, o deploy publica só o site da gestão, com aviso no
+log, e tudo segue funcionando no endereço antigo.
 
 ### 1.2 Dados em produção (depois da limpeza de 21/09)
 
@@ -133,7 +145,7 @@ Código pronto e publicado; o que falta é configuração e certificação.
 | S7 | ~~Escalação de privilégio via `UPDATE` em `socias`~~ | ✅ | | 22/08. |
 | S8 | Trocar `"socias veem socias"` de `is_socia()` para `is_gestao()` | ⚪ | 💻 | Risco residual aceito: qualquer conta interna que consultar `socias` direto vê o e-mail de toda a equipe. Fechar exige auditar quem lê `socias` fora de `vw_equipe`. |
 | S9 | Converter as 6 views `security_definer_view` em funções | ⚪ | 💻 | É o único jeito de zerar esse lint (o Advisor varre views, não funções). ~1–2 dias. Todas as 6 estão documentadas em `comment on view` explicando por que são *definer* — inclusive `vw_matricula_turmas`, que entrou depois. Não é dívida escondida, é decisão registrada. |
-| S10 | ~~Funções de trigger publicadas como RPC~~ | ✅ | | **Feito em 21/09** (`20260921120000`). O PostgREST publica toda função de `public` com EXECUTE, e o EXECUTE nasce concedido a PUBLIC: 5 funções de gatilho estavam em `/rest/v1/rpc`, 4 delas SECURITY DEFINER. EXECUTE revogado de `anon`/`authenticated` (não afeta o gatilho) + `search_path` fixo em `preencher_competencia_saida`. Os outros 46 achados de `authenticated_security_definer_function_executable` são as **RPCs reais** dos três portais e ficam publicadas de caso pensado. |
+| S10 | ~~Funções de trigger publicadas como RPC~~ | ✅ | 💻 | **Feito em 21/09**, em duas tentativas. A `20260921120000` revogava de `anon, authenticated` e **não fez nada**: quem tinha o privilégio era `PUBLIC` (padrão do Postgres para toda função nova), e revogar de quem nunca teve é no-op silencioso — o Advisor continuou com os 4 achados. A `20260921170000` revoga de PUBLIC nas 15 funções de gatilho, que é onde o privilégio estava. As RPCs reais têm grant explícito e não foram tocadas. ⚠️ A próxima função de gatilho vai nascer com o mesmo grant: a trava definitiva (`alter default privileges`) pegaria também as RPCs novas, que parariam de funcionar caladas. |
 | S11 | `pg_net` instalado no schema `public` | ⚪ | 💻 | Aviso do Advisor. Mover extensão de schema é operação de risco com o `pg_cron` em produção chamando `net.http_post`. Aceito por ora. |
 | S12 | **MFA (`aal2`) sobre o Financeiro** | ⚪ | 💻 | Sempre foi reforço **extra** sobre a trava de S3, não a trava em si. Não implementado, não bloqueia. |
 

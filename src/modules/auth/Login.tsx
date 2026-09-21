@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
+import { URL_PORTAL_ALUNO } from '../../lib/portais'
 
 const inputCls =
   'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand-500'
@@ -144,6 +145,20 @@ export function Login() {
               ? 'Já tem conta? Entrar'
               : 'Voltar para o login'}
         </button>
+
+        {/*
+          Saída para quem chegou aqui por engano. O portal do aluno tem
+          domínio próprio (aluno.studiopolel.com.br), mas o link antigo
+          continua circulando — e quem errar precisa achar o caminho de
+          volta sem ligar para o estúdio. Discreto de propósito: esta tela
+          é da equipe, não um menu de portais.
+        */}
+        <p className="mt-6 border-t border-neutral-100 pt-4 text-center text-xs text-neutral-400">
+          É aluno?{' '}
+          <a href={URL_PORTAL_ALUNO} className="text-brand-700 hover:underline">
+            Agendar aula
+          </a>
+        </p>
       </form>
     </div>
   )

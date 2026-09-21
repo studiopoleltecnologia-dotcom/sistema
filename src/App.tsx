@@ -44,15 +44,28 @@ const ERA_LINK_RECUPERACAO = window.location.hash.includes('type=recovery')
 
 type Jornada = 'admin' | 'aluna' | 'professora'
 
-// Domínio próprio (sistema.studiopolel.com.br): a jornada é decidida pelo
-// caminho da URL — /agendamentos (aluna) e /portalequipe (professora) têm
-// cada um seu index.html físico no build (deploy.yml), já que o GitHub
+// Endereço dedicado ao aluno. Ali **todo** caminho é o portal do aluno: o
+// ERP não existe nesse domínio, nem digitando a URL na mão. É esse o motivo
+// de ter um domínio separado em vez de só um caminho separado — o aluno não
+// tem como esbarrar na tela da gestão e achar que o acesso dele quebrou.
+//
+// Lista, e não comparação única, porque o mesmo bundle roda em mais de um
+// host (localhost, github.io, e um dia um host de homologação).
+const HOSTS_DO_ALUNO = ['aluno.studiopolel.com.br']
+
+// Fora do host do aluno (sistema.studiopolel.com.br): a jornada é decidida
+// pelo caminho da URL — /agendamentos (aluna) e /portalequipe (professora)
+// têm cada um seu index.html físico no build (deploy.yml), já que o GitHub
 // Pages não tem servidor para rewrite de SPA. Fora deles, cai no admin.
+// `/agendamentos/` continua valendo depois do domínio novo: é o link que já
+// está salvo no favorito e circulando no WhatsApp das alunas.
 //
 // O hash antigo (#/portal, #/prof — era o único mecanismo antes do domínio
 // próprio, quando o site vivia em github.io/sistema/) continua reconhecido
 // para não quebrar link/favorito salvo de antes.
 function jornadaAtual(): Jornada {
+  if (HOSTS_DO_ALUNO.includes(window.location.hostname)) return 'aluna'
+
   const path = window.location.pathname
   if (path === '/agendamentos' || path.startsWith('/agendamentos/')) return 'aluna'
   if (path === '/portalequipe' || path.startsWith('/portalequipe/')) return 'professora'
