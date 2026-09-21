@@ -88,6 +88,7 @@ antes** (fora do repo, que é público).
 | G3 | **Cutover do Wix** | 💻📋 | A operação continua lá. Capítulo próprio em §3. |
 | G4 | ~~Prazo de cancelamento divergente~~ | ✅ | **Feito em 21/09.** Produção estava em 3h e o Wix em 240 min. Agora os dois em **4h**, valor confirmado pela gestão. DEV já estava em 4h. |
 | G5 | **Secrets do Wellhub em produção** | ⚙️ | Em andamento. Detalhe em §4 (W2) — hoje falha todo dia às 06:00. |
+| G6 | **Ativar o domínio `aluno.studiopolel.com.br`** | ⚙️ | **Código já em produção (21/09); falta só configuração no navegador**, e a gestão pediu para deixar para depois. São 7 passos: repo `portal-aluno`, token, secret `PAGES_PORTAL_ALUNO_TOKEN` no ambiente Production, rodar o deploy, ligar o Pages, CNAME no Registro.br e Redirect URL no Supabase Auth. Passo a passo com os valores exatos em [interno/dominio-portal-aluno.md](interno/dominio-portal-aluno.md). Enquanto não for feito, o deploy pula o passo com aviso e tudo segue em `/agendamentos/`. O passo mais fácil de esquecer é o do Supabase: sem ele o link de "esqueci minha senha" devolve o aluno para o domínio da gestão. |
 
 ---
 
@@ -109,6 +110,8 @@ partir dele, num caminho só, até a virada.
 | X5 | **TotalPass como canal próprio** | 🟡 | 💻 | **Decidido em 21/09.** Há planos TotalPass ativos no Wix e o ERP só conhece `wellhub`/`classpass`. Migration nova no enum de canal/origem + categoria financeira + receita "a reconciliar", no mesmo molde do Wellhub. |
 | X6 | **Plano da virada** | 🟡 | 🔀 | Data do corte, o que fazer com reservas já feitas no Wix para depois da data, e o aviso aos alunos. Enquanto os dois coexistirem, **mudança de horário tem que ser feita nos dois lugares**. |
 | X7 | Desligar o Wix Bookings e redirecionar os links | ⚪ | ⚙️ | Só depois de X6 validado. |
+| X8 | **Importar o preço REAL, não o de tabela** | 🔴 | 💻 | Descoberto em 21/09 ao responder a gestão. O Wix tem **cupom por pedido**: `planPrice` é o preço de tabela e `pricing.prices[0].price.total` é o que a pessoa paga. Hoje **4 pedidos ativos divergem** — um Trimestral 1x pagando **R$128** com o cupom `promo1` (tabela R$160), dois `Pacotes - 4 Aulas` zerados pelo `casinha100` e uma Aula Avulsa zerada. `matriculas.preco_contratado_centavos` tem que receber o valor **pago**; herdar o de tabela cobraria a mais de quem tem desconto. O relatório já foi corrigido (colunas **Valor que paga** / **Valor de tabela** / **Cupom**); falta o `importar-wix-alunos.mjs`. |
+| X9 | **Preço do compromisso vale até o fim do compromisso** | 🔴 | 📋💻 | Quem está em plano **Trimestral/Semestral** contratou a mensalidade N vezes — o preço antigo vale até o último ciclo, mesmo que o reajuste entre no meio. O modelo já suporta (`preco_contratado_centavos` é congelado e `renovar_ciclo()` nunca relê `produtos.preco_centavos`); o que falta é **importar com a data certa**. Hoje são 5 pessoas: 2 Semestrais 1x (R$155, ciclo 6/6, terminam 09/10 e 11/10), 1 Semestral 2x (R$280, ciclo 5/6, termina 06/11), 2 Trimestrais 1x (uma no ciclo 1/3 até 28/11, outra no 3/3 até 09/10 pagando R$128). **Três delas acabam em outubro** — decidir antes se renovam no preço novo. |
 
 ---
 
@@ -166,6 +169,49 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | A7 | **E-mails faltantes** | 🟡 | 💻 | Em andamento. Prontos: `vaga_liberada`, `confirmacao_agendamento`, `lembrete_aula`, `vencimento`. Faltam **boas-vindas** e **cobrança recusada** (este só faz sentido depois de A3). |
 | A8 | **Central de Comunicados** | 🟡 | 💻 | **Decidido em 21/09: criar.** Especificação em §12. |
 | A9 | PWA instalável + push | ⚪ | 💻 | V3. |
+| A10 | **Desconto da experimental na 1ª mensalidade** | 🟡 | 💻 | **Não existe no sistema hoje** — levantado pela gestão em 21/09. A regra é: quem comprou a experimental e fecha plano em até 7 dias abate o valor dela na primeira mensalidade. O modelo atual não expressa isso: `matriculas.preco_contratado_centavos` é **um** valor usado em **todos** os ciclos (`gerar_cobranca_prevista` não sabe diferenciar o ciclo 1). Desenho em §6.1. |
+
+### 6.1 Desconto da experimental na 1ª mensalidade (A10)
+
+**Regra do negócio:** quem compra a aula experimental e fecha plano em até
+7 dias abate o valor dela na primeira mensalidade.
+
+**Por que não dá para fazer sem mexer no banco.** `matriculas.preco_
+contratado_centavos` é **um** valor, congelado na contratação, e
+`gerar_cobranca_prevista()` usa o mesmo em **todos** os ciclos. Não existe
+onde escrever "o primeiro ciclo custa menos". Baixar o preço contratado
+resolveria o mês 1 e daria desconto **para sempre** — o oposto do combinado.
+
+**Desenho proposto** (3 peças, nenhuma delas grande):
+
+1. **`regras_desconto`** — tabela configurável pela gestão, no espírito do
+   §9.4 do CLAUDE.md ("regras manipuláveis pelas administradoras, não fixas
+   em código"): produto de origem (a experimental), produto de destino (nulo
+   = qualquer plano), `janela_dias`, e o tipo do abatimento — *o que ela
+   pagou na origem*, valor fixo ou percentual. Muda a promoção sem migration.
+2. **`matriculas.desconto_primeiro_ciclo_centavos`** (+ a compra que o
+   originou, para auditoria). `matricular()` resolve a regra na hora da
+   contratação e **congela** o valor ali — mesma filosofia do preço
+   contratado: promoção que mudar depois não altera matrícula já feita, e a
+   fatura consegue dizer *por que* saiu mais barata.
+3. **`gerar_cobranca_prevista()`** desconta quando `p_ciclo = 1`, com piso em
+   zero.
+
+**Decisões que faltam** — são de negócio, não de código:
+
+- **Os 7 dias contam da COMPRA ou da AULA feita?** Recomendação: da **aula**.
+  A pessoa pode comprar numa segunda e treinar no sábado; o gatilho comercial
+  é ter experimentado, e o funil já registra `fez_experimental`.
+- **Vale para "2 aulas experimentais" (R$70)?** Se valer, o abatimento é o que
+  ela pagou de fato, não um valor fixo.
+- **Experimental de cortesia (R$0)** abate zero — sem efeito, e é o correto.
+- **Num plano semestral**, o abatimento é só na 1ª das 6 mensalidades.
+- **Cancelou no 1º ciclo:** o desconto foi usado, não volta.
+
+⚠️ **Isto não é um caso isolado.** O Wix já opera com cupom (`promo1`,
+`casinha100` — ver X8), então o sistema vai precisar de um conceito de
+desconto de qualquer forma. Vale construir A10 como *a primeira regra* de um
+mecanismo geral, e não como um `if` de experimental.
 
 ---
 
@@ -204,7 +250,7 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | T5 | **Bundle único, agora 1,31 MB (356 kB gzip)** | 🟡 | Era 970 kB / 271 kB em julho. Os três portais no mesmo JS; quem paga é o aluno abrindo no 4G. Code-splitting por jornada resolve. |
 | T6 | ~~Dados de teste misturados com reais~~ | ✅ | Limpeza de 21/09 (§1.2). |
 | T7 | **DEV e PROD com configurações de negócio diferentes** | 🟡 | `faltas_para_suspensao` 3 no DEV × 2 na PROD; `valor_checkin_wellhub_centavos` R$15 × R$27. Homologar regra de falta no DEV dá resultado diferente do que produção fará. |
-| T8 | **CLAUDE.md §5.1 desatualizado** | 🟡 | Documenta `#/portal` e `#/prof` como rotas atuais (ver §1.1). |
+| T8 | ~~CLAUDE.md §5.1 desatualizado~~ | ✅ | **Corrigido em 21/09.** A §5.1 agora descreve a ordem real (hostname → caminho → hash), o domínio do aluno e o motivo de cada endereço. |
 | T9 | **O smoke test não cobre as rotas de produção** | 🟡 | `scripts/smoke.mjs` sobe `''`, `#/`, `#/portal` e `#/prof`. Os dois últimos só funcionam por compatibilidade; o que o aluno e a professora abrem de verdade é `/agendamentos/` e `/portalequipe/`, que têm `index.html` próprio no build. Uma quebra ali passa pelo CI sem ninguém ver. |
 
 ---
