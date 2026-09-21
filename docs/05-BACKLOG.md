@@ -169,49 +169,96 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | A7 | **E-mails faltantes** | 🟡 | 💻 | Em andamento. Prontos: `vaga_liberada`, `confirmacao_agendamento`, `lembrete_aula`, `vencimento`. Faltam **boas-vindas** e **cobrança recusada** (este só faz sentido depois de A3). |
 | A8 | **Central de Comunicados** | 🟡 | 💻 | **Decidido em 21/09: criar.** Especificação em §12. |
 | A9 | PWA instalável + push | ⚪ | 💻 | V3. |
-| A10 | **Desconto da experimental na 1ª mensalidade** | 🟡 | 💻 | **Não existe no sistema hoje** — levantado pela gestão em 21/09. A regra é: quem comprou a experimental e fecha plano em até 7 dias abate o valor dela na primeira mensalidade. O modelo atual não expressa isso: `matriculas.preco_contratado_centavos` é **um** valor usado em **todos** os ciclos (`gerar_cobranca_prevista` não sabe diferenciar o ciclo 1). Desenho em §6.1. |
+| A10 | **Desconto configurável (a experimental é a 1ª regra)** | 🟡 | 💻 | **Não existe hoje.** Regra fechada com a gestão em 21/09: quem fez a experimental e fecha plano em **até 7 dias da AULA** abate **o valor de uma** experimental na 1ª mensalidade — vale também para quem comprou o pacote de 2. O modelo não expressa: `preco_contratado_centavos` é um valor só, usado em todos os ciclos. O mesmo campo serve para desconto manual (o cupom que o Wix já usa, X8). Desenho em §6.1. |
+| A11 | **Bonificar aluna com créditos / aula extra** | 🟡 | 💻 | **O modelo já existe** — `creditos_lotes.origem` aceita `ajuste`/`reposicao`, com validade e motivo, e o bônus já entra no saldo e no extrato. Falta só o caminho: uma RPC `conceder_creditos()` restrita à gestão (hoje **nenhuma** RPC cria lote — todo insert está dentro de `renovar_ciclo()`) e um botão na ficha da aluna, com motivo obrigatório. É a menor das duas. Desenho em §6.1. |
 
-### 6.1 Desconto da experimental na 1ª mensalidade (A10)
+### 6.1 Descontos e bonificações (A10 · A11)
 
-**Regra do negócio:** quem compra a aula experimental e fecha plano em até
-7 dias abate o valor dela na primeira mensalidade.
+Duas necessidades que a gestão levantou em 21/09 e que o sistema **não
+atende hoje**: abater o valor da experimental na 1ª mensalidade, e bonificar
+uma aluna com créditos ou aula extra. São a mesma família — dar alguma coisa
+a alguém fora da tabela — mas caem em lugares diferentes do modelo.
 
-**Por que não dá para fazer sem mexer no banco.** `matriculas.preco_
-contratado_centavos` é **um** valor, congelado na contratação, e
-`gerar_cobranca_prevista()` usa o mesmo em **todos** os ciclos. Não existe
-onde escrever "o primeiro ciclo custa menos". Baixar o preço contratado
-resolveria o mês 1 e daria desconto **para sempre** — o oposto do combinado.
+#### A10 — Desconto da experimental na 1ª mensalidade
 
-**Desenho proposto** (3 peças, nenhuma delas grande):
+**Regra, já decidida pela gestão (21/09):**
 
-1. **`regras_desconto`** — tabela configurável pela gestão, no espírito do
-   §9.4 do CLAUDE.md ("regras manipuláveis pelas administradoras, não fixas
-   em código"): produto de origem (a experimental), produto de destino (nulo
-   = qualquer plano), `janela_dias`, e o tipo do abatimento — *o que ela
-   pagou na origem*, valor fixo ou percentual. Muda a promoção sem migration.
-2. **`matriculas.desconto_primeiro_ciclo_centavos`** (+ a compra que o
-   originou, para auditoria). `matricular()` resolve a regra na hora da
-   contratação e **congela** o valor ali — mesma filosofia do preço
-   contratado: promoção que mudar depois não altera matrícula já feita, e a
-   fatura consegue dizer *por que* saiu mais barata.
-3. **`gerar_cobranca_prevista()`** desconta quando `p_ciclo = 1`, com piso em
+| Ponto | Decisão |
+|---|---|
+| Janela | **7 dias** |
+| Contados a partir de | **a aula feita**, não a compra. A pessoa compra na segunda e treina no sábado; o gatilho é ter experimentado. |
+| Vale para | **"Aula experimental"** e **"2 aulas experimentais"** |
+| Quanto abate | sempre o valor de **UMA** experimental — quem comprou o pacote de duas não abate os dois |
+| Onde abate | só na **1ª** mensalidade (num semestral, na 1ª das 6) |
+
+**Por que precisa de banco.** `matriculas.preco_contratado_centavos` é **um**
+valor, congelado na contratação, e `gerar_cobranca_prevista()` usa o mesmo em
+**todos** os ciclos. Não existe onde escrever "o primeiro ciclo custa menos".
+Baixar o preço contratado resolveria o mês 1 e daria o desconto **para
+sempre** — o oposto do combinado.
+
+**Desenho:**
+
+1. **`regras_desconto`** — configurável pela gestão, no espírito do §9.4 do
+   CLAUDE.md ("regras manipuláveis pelas administradoras, não fixas em
+   código"). Uma linha por produto de origem:
+
+   | coluna | para a regra da experimental |
+   |---|---|
+   | `produto_origem_id` | *Aula experimental* — e uma 2ª linha para *2 aulas experimentais* |
+   | `produto_referencia_id` | *Aula experimental* nas **duas** linhas — é ele que define o valor abatido |
+   | `produto_destino_id` | nulo = qualquer plano |
+   | `janela_dias` | 7 |
+   | `contar_de` | `aula_feita` \| `compra` |
+   | `ativa` | sim |
+
+   Duas linhas em vez de uma com lista de origens: cada promoção fica
+   editável sozinha, sem tabela-filha e sem migration para mudar o valor.
+
+2. **`matriculas.desconto_primeiro_ciclo_centavos`** (+ qual compra o
+   originou, para auditoria). `matricular()` resolve a regra na contratação e
+   **congela** o valor — mesma filosofia do preço contratado: promoção que
+   mudar depois não mexe em matrícula já feita, e a fatura consegue dizer
+   *por que* saiu mais barata. O mesmo campo serve para **desconto manual**,
+   digitado pela equipe num caso fora de regra (é o equivalente do cupom que
+   o Wix já usa — ver X8).
+
+3. **`gerar_cobranca_prevista()`** abate quando `p_ciclo = 1`, com piso em
    zero.
 
-**Decisões que faltam** — são de negócio, não de código:
+**O ponto técnico que falta resolver:** "aula feita" precisa de uma fonte.
+A confiável é a `presencas` do agendamento pago pelo crédito daquela
+matrícula de experimental — é automático e exato. O estágio do funil
+(`fez_experimental`) **não** serve sozinho: depende de alguém mover o funil
+à mão.
 
-- **Os 7 dias contam da COMPRA ou da AULA feita?** Recomendação: da **aula**.
-  A pessoa pode comprar numa segunda e treinar no sábado; o gatilho comercial
-  é ter experimentado, e o funil já registra `fez_experimental`.
-- **Vale para "2 aulas experimentais" (R$70)?** Se valer, o abatimento é o que
-  ela pagou de fato, não um valor fixo.
-- **Experimental de cortesia (R$0)** abate zero — sem efeito, e é o correto.
-- **Num plano semestral**, o abatimento é só na 1ª das 6 mensalidades.
-- **Cancelou no 1º ciclo:** o desconto foi usado, não volta.
+#### A11 — Bonificar uma aluna com créditos ou aula extra
 
-⚠️ **Isto não é um caso isolado.** O Wix já opera com cupom (`promo1`,
-`casinha100` — ver X8), então o sistema vai precisar de um conceito de
-desconto de qualquer forma. Vale construir A10 como *a primeira regra* de um
-mecanismo geral, e não como um `if` de experimental.
+**O modelo de dados já existe e não precisa mudar.** `creditos_lotes` tem
+`origem` (`motivo_credito`, que já inclui `ajuste` e `reposicao`), `validade`
+e `detalhe`; `creditos_eventos` é o livro-razão append-only que a aluna vê no
+extrato. Um bônus é um lote novo com `origem = 'ajuste'`, validade escolhida
+e o motivo escrito — e ele **já aparece** no saldo e no extrato, porque
+`saldo_disponivel()` soma por lote válido.
+
+**O que falta é só o caminho:**
+
+1. `conceder_creditos(matricula, quantidade, validade, motivo, detalhe)` —
+   *security definer*, restrita a `is_gestao()`/`is_operacional()`, gravando
+   `criado_por`. Hoje **não existe RPC nenhuma** que crie lote: todos os
+   `insert` em `creditos_lotes` estão dentro de `renovar_ciclo()` e afins.
+2. Um botão na ficha da aluna (Matrículas), com motivo obrigatório — bônus
+   sem motivo escrito vira discussão três meses depois.
+
+⚠️ **Nada disso pode virar `if` de caso especial.** O Wix já opera com cupom
+(`promo1`, `casinha100` — ver X8), a experimental é só a primeira regra, e
+bonificação avulsa acontece o tempo todo. Construir como mecanismo desde o
+início custa o mesmo e evita reescrever na terceira promoção.
+
+⏱️ **Sequência:** nada disso é usável antes de existir aluno no sistema
+(G2/§3). A11 é pequena (uma RPC + um botão) e independente; A10 mexe em
+cobrança e vale entrar junto com o gateway (§11), que é quem transforma
+`gerar_cobranca_prevista()` em dinheiro de verdade.
 
 ---
 
