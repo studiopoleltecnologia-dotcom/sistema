@@ -1,11 +1,15 @@
 # 05 — Backlog & Visão Geral
 
-Levantamento único de tudo que está pendente no sistema, feito em **21/07/2026**
-a partir do código, das migrations aplicadas e do estado real do projeto
-Supabase (`fgvxhwpqsxohqrccrlfn`) — não de memória.
+Levantamento único de tudo que está pendente no sistema. Revisão de
+**21/09/2026**, feita contra o estado real: repositório, banco de produção
+(`fgvxhwpqsxohqrccrlfn`), logs das Edge Functions e o site no ar — não de
+memória. A revisão anterior (22/08) tinha envelhecido a ponto de induzir a erro.
 
 Legenda de prioridade:
-🔴 **bloqueia** algo (segurança ou outra tarefa) · 🟡 **próximo** · ⚪ **depois**
+🔴 **bloqueia** o go-live · 🟡 **próximo** · ⚪ **depois**
+
+Legenda de natureza — quem resolve muda tudo:
+💻 **código** · 📋 **cadastro/dado** · 🔀 **decisão de negócio** · ⚙️ **painel/config externa**
 
 ---
 
@@ -16,215 +20,321 @@ Legenda de prioridade:
 | Fase 0 — Fundação (repo, Auth, deploy Actions→Pages, design system, flags) | ✅ pronto |
 | Fase 1 — Clientes + CRM | ✅ pronto |
 | Fase 2 — Financeiro + MEI | ✅ pronto |
-| Fase 3 — Follow-up (com `pg_cron` diário rodando) | ✅ pronto |
-| Fase 4 — Agenda & Presença + Professoras + Planos | ✅ pronto |
-| Portal da Aluna — MVP (agendar, cancelar, autocompra sem gateway) | ✅ pronto |
-| Portal da Professora (`#/prof`) | ✅ pronto, **nunca usado em aula real** |
-| Fase 5 — Dashboard Executivo | ❌ placeholder |
-| Fase 6 — Conteúdo, Social, Tarefas, Investimentos | ❌ placeholder |
-| Wellhub | ⚠️ código escrito, **nada publicado** |
+| Fase 3 — Follow-up (`pg_cron` diário rodando) | ✅ pronto |
+| Fase 4 — Agenda & Presença + Professoras + Produtos | ✅ pronto |
+| Fase 5 — Dashboard Executivo | ✅ pronto |
+| Análises (BI) + Inteligência de Clientes | ✅ pronto |
+| Fechamento de professoras (folha) | ✅ pronto |
+| Portal do Aluno — MVP | ✅ pronto, **nunca usado por aluno real** |
+| Portal da Professora (`/portalequipe`) | ✅ pronto, **nunca usado em aula real** |
+| Fase 6 — Conteúdo, Social, Investimentos | ❌ placeholder |
+| Wellhub | ⚠️ publicado, **parado por falta de secrets** |
+| Reservas e grade | ⚠️ **ainda rodando no Wix** |
 
-Dados no banco hoje: **zero.** Banco resetado em 29/07/2026 a pedido (ver M8) —
-todo o dado de teste (clientes, turmas, professoras, planos, financeiro, funil)
-foi apagado, inclusive o catálogo-seed de modalidades/salas. Mantidos só a
-conta de gestão (`socias`) e as configurações do sistema. Cadastro (grade,
-professoras, planos) precisa ser refeito do zero antes de operar.
+**O sistema já está no ar.** `sistema.studiopolel.com.br` responde, `develop` e
+`main` estão iguais, não há PR aberto, o build passa limpo e os 7 crons rodam.
+O que falta não é software: é a operação real entrar nele.
+
+### 1.1 As três URLs de produção
+
+A jornada é decidida pelo **caminho**, não mais pelo hash — cada portal tem
+`index.html` próprio no build (`deploy.yml`), porque o GitHub Pages não faz
+rewrite de SPA. O hash antigo (`#/portal`, `#/prof`) só continua reconhecido
+para não quebrar favorito salvo; `/portal` hoje dá **404**.
+
+| Portal | URL |
+|---|---|
+| Interno (equipe) | `sistema.studiopolel.com.br/` |
+| Aluno | `sistema.studiopolel.com.br/agendamentos/` |
+| Professora | `sistema.studiopolel.com.br/portalequipe/` |
+
+⚠️ O CLAUDE.md §5.1 ainda descreve os hashes como se fossem as rotas atuais.
+A verdade está em `jornadaAtual()`, em `src/App.tsx`.
+
+### 1.2 Dados em produção (depois da limpeza de 21/09)
+
+A pedido da gestão, todo o dado operacional de teste foi apagado em 21/09 —
+clientes, CRM, funil, agendamentos, presenças, créditos, matrículas, turmas,
+lista de espera, suspensões e inscrições de evento. **Backup em JSON foi tirado
+antes** (fora do repo, que é público).
+
+| Preservado | Zerado |
+|---|---|
+| Financeiro inteiro (entradas, saídas, dívidas, recorrentes, config) | Clientes, CRM, funil, follow-ups |
+| 19 produtos com os **preços reais** de set/2026 | Agendamentos, presenças, matrículas, créditos |
+| 9 professoras, 2 salas, 13 modalidades | Turmas (serão substituídas pela grade do Wix) |
+| 4 contas de equipe + configurações | Inscrições de evento |
 
 ---
 
-## 2. Segurança & acesso
+## 2. Bloqueadores do go-live
 
-| # | Tarefa | Pri | Nota |
+| # | Tarefa | Nat. | Nota |
 |---|---|---|---|
-| S1 | **Ativar confirmação de e-mail** no Supabase Auth | 🔴 | O convite da professora depende disso: sem confirmação, quem souber o e-mail dela cria a conta dela. Toggle no painel, não é código. |
-| S2 | **Ligar proteção contra senha vazada** (HaveIBeenPwned) | 🟡 | Apontado pelo linter do Supabase. Também é toggle. |
-| S3 | ~~Trava do Financeiro só para a gestão~~ | ✅ | **Feito em 21/07/2026 (M8).** Funções internas gestao/secretaria/social; Financeiro trancado no banco por `is_gestao()`; painel e menu escondem dinheiro de não-gestão; `professoras` gestão-only. MFA vira reforço opcional, não bloqueia. |
-| S3b | **Migrar policies operacionais para `is_operacional()`** antes de criar conta `social` | 🔴 (quando for criar social) | Hoje operação usa `is_socia()` (qualquer conta interna). Correto enquanto só há gestao/secretaria. Uma conta social herdaria a operação — migrar antes. Sem conta social, sem vazamento. **Junto disto:** as RPCs `matricular`/`renovar_ciclo`/`marcar_inadimplente` (SECURITY DEFINER, compartilhadas com o portal do aluno) precisam de guarda `is_gestao()` interna — hoje travadas só na UI (ver S6). |
-| S4 | ~~Tela para provisionar acessos internos~~ | ✅ | **Feito em 21/07/2026 (M9).** Tela **Equipe & Acessos** (gestão): convida por e-mail + função, muda função, remove. `convidar_equipe` promove na hora se já existe login, senão deixa convite que o signup consome. Protege a última gestão de se auto-remover. Falta a equipe real ser cadastrada (dado, não código). |
-| S5 | ~~Revisar as views *definer* apontadas pelo linter~~ | ✅ | **Feito em 22/08/2026.** Eram 6 achados ERROR do Advisor: `auth_users_exposed` em `vw_equipe` (**corrigido de verdade** — a view parou de `join auth.users`, passou a ler `socias.email`, nova coluna sincronizada por `convidar_equipe()`/`handle_new_user()`/trigger) + 5× `security_definer_view` (`vw_equipe`, `vw_professoras_nomes`, `vw_grade_publica`, `vw_vagas_turma`, `vw_alunas_da_aula`). Os 5 ficam **deliberadamente como estão** — documentado via `comment on view` em cada uma e no cabeçalho de `20260822120000_seguranca_vw_equipe_e_socias.sql`: gestão/secretaria/cliente/professora compartilham o mesmo role Postgres `authenticated`, então só SECURITY DEFINER + `WHERE` reproduz o recorte por papel; RLS/GRANT não conseguem. Verificado em produção via `get_advisors`: 6 → 5. |
-| S6 | ~~Agenda→Config e Planos: refinar acesso dentro do módulo~~ | ✅ | **Feito em 22/07/2026.** Aba **Config** da Agenda só gestão (UI + RLS em `config_agendamento`). **Planos**: operação vê, só gestão cria/edita/matricula/renova/inadimple (UI + escrita de `planos` por `is_gestao()`). As ações de matrícula ficam travadas **só na UI** — reforço no banco depende de S3b. |
-| S7 | ~~Escalação de privilégio via `UPDATE` em `socias`~~ | ✅ | **Feito em 22/08/2026,** achado durante a revisão de segurança (fora do Advisor). A policy `"socia atualiza o proprio perfil"` liberava `UPDATE` de qualquer coluna da própria linha — sem trava por coluna, qualquer conta interna (inclusive secretaria) conseguia `PATCH funcao='gestao'` direto no PostgREST, contornando `definir_funcao()` e a trava do Financeiro (S3). Fechado: `revoke update on socias from authenticated, anon` + `grant update (nome)`. |
-| S8 | Trocar a policy `"socias veem socias"` de `is_socia()` para `is_gestao()` | ⚪ | Risco residual aceito na correção de S5/S7 (22/08/2026): com `socias.email` novo, qualquer conta interna que consultar `socias` direto (fora de `vw_equipe`) vê o e-mail de toda a equipe, não só a gestão. Avaliado como aceitável por ora (secretária é pessoa de confiança), mas é decisão consciente — fechar exige auditar quem lê `socias` direto antes de trocar a policy. |
-| S9 | Converter as 5 views `security_definer_view` aceitas em funções `security definer` | ⚪ | Decisão de produto, não urgente — é o único jeito de zerar os 6→5 achados do Advisor por completo (ele varre `information_schema.views`, não funções). Custo estimado ~1–2 dias: 5 call-sites `.from()` → `.rpc()` (3 encadeiam `.order()/.gte()/.lte()` do PostgREST, viram SQL dentro da função), mais `vw_ocupacao_professora_modalidade` que faz join com `vw_professoras_nomes`, mais regenerar `database.types.ts`. Ordem sugerida por custo crescente: `vw_equipe` → `vw_professoras_nomes` → `vw_alunas_da_aula` → `vw_grade_publica`/`vw_vagas_turma`. |
+| G1 | **Cadastrar e-mail das professoras e ativá-las** | 📋 | 9 professoras ativas, **nenhuma com e-mail**. Sem e-mail ninguém cria acesso: o convite é justamente o e-mail do signup casar com o cadastro. Em andamento pela gestão. |
+| G2 | **Dar acesso aos alunos** | 📋💻 | `contas_aluna` = 0. Depende do import do Wix (§3) para existir quem convidar. |
+| G3 | **Cutover do Wix** | 💻📋 | A operação continua lá. Capítulo próprio em §3. |
+| G4 | ~~Prazo de cancelamento divergente~~ | ✅ | **Feito em 21/09.** Produção estava em 3h e o Wix em 240 min. Agora os dois em **4h**, valor confirmado pela gestão. DEV já estava em 4h. |
+| G5 | **Secrets do Wellhub em produção** | ⚙️ | Em andamento. Detalhe em §4 (W2) — hoje falha todo dia às 06:00. |
 
 ---
 
-## 3. Wellhub
+## 3. Cutover do Wix — o trabalho de verdade
 
-Contexto técnico completo em [CLAUDE.md §12](../CLAUDE.md#12-integração-wellhub-gympass--requisitos-técnicos).
-O que existe: a Edge Function `wellhub-webhook` escrita no repo e a RPC
-`conciliar_wellhub` funcionando. O que **não** existe: qualquer coisa publicada.
+Hoje a grade, as reservas, os planos e o check-in vivem no **Wix Bookings**.
+O ERP tem tudo isso implementado, mas vazio. Este capítulo é novo nesta revisão
+e não existia como plano escrito em lugar nenhum.
 
-| # | Tarefa | Pri | Nota |
-|---|---|---|---|
-| W1 | **Publicar a Edge Function** `wellhub-webhook` | ✅ | **Feito em 25/07** (via MCP, `verify_jwt` off). No ar e blindada: rejeita POST sem/assinatura errada com 401 e GET com 405. Assinatura HMAC-SHA1 confirmada em teste real (`200 ok (ticket não validado)` = assinatura passou, validate recusou id de exemplo). |
-| W2 | Cadastrar os secrets no Supabase | 🔴 | Via `supabase secrets set`, nunca no repo (é público). Sandbox: `WELLHUB_WEBHOOK_SECRET` (gerado por nós, valida o `X-Gympass-Signature`), `WELLHUB_API_TOKEN` (o `api_key` do e-mail), `WELLHUB_GYM_ID=548`. Produção troca o token por OAuth (`WELLHUB_CLIENT_ID/SECRET`) e `WELLHUB_API_BASE=https://api.partners.gympass.com`. |
-| W3 | Implementar a chamada à **Access Control API** (`POST /access/v1/validate`) | ✅ | **Feito em 25/07.** Webhook reescrito: valida assinatura HMAC-SHA1 do corpo (`X-Gympass-Signature`, hex maiúsculo) → roteia evento → chama `validate` (`X-Gym-Id` + Bearer) → só com ticket válido registra presença. Booking roteado sem processar (W7). Assinatura conferida contra referência openssl. Falta só publicar (W1) + secrets (W2). |
-| W4 | Testar ponta a ponta no **sandbox** (`gym_id` 548) | ✅ | **Feito em 25/07.** E2E verde pelo webhook publicado: `simulate/checkins` (user 1000000000001 + product **1095**) → webhook com corpo **assinado** → `validate` positivo → gravou **cliente** (`origem=wellhub`), **presença** (`canal=wellhub`) e **entrada "a reconciliar"** (R$15, competência 25/07, prevista 15/08). Turma e dados de teste removidos, banco no baseline. Produtos do gym 548: `GET /setup/v1/gyms/548/products` → 1095 Outdoor / 1096 Virtual. |
-| W5 | Informar à Wellhub a URL do webhook + o secret | 🟡 | Recomendação deles: **uma única URL** para check-in e booking. |
-| W6 | Import do relatório de repasse do Portal do Parceiro | 🟡 | A Wellhub **não expõe financeiro por API** (confirmado). Conciliação é import manual/CSV contra os check-ins "a reconciliar". |
-| W7 | **Booking API** (aluna reserva pelo app Wellhub) | ⚪ | Opcional. Janela de 15 min para confirmar/recusar por `PATCH`. Só faz sentido com a Agenda madura. |
-| W8 | **Catalogar a aluna que vem pelo Wellhub** (nome, telefone, histórico) | 🟡 | A aluna Wellhub já é modelável como um `cliente` com `origem='wellhub'` + `gympass_id` (campo existe). Falta: o webhook de check-in **criar/enriquecer** esse registro e a ficha do cliente mostrar o histórico de check-ins. Casado com C1 (ficha 360°). |
+**Decisão de 21/09:** o Wix continua operando por enquanto. O ERP é populado a
+partir dele, num caminho só, até a virada.
 
----
-
-## 4. Portal da Aluna
-
-MVP funciona. As fases seguintes estão especificadas em
-[04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
-
-| # | Tarefa | Pri | Nota |
-|---|---|---|---|
-| A1 | Validar o MVP em uso real com alunas de verdade | 🟡 | Nunca foi usado fora de teste. Antes de construir V1. |
-| A2 | Escolher o **gateway de pagamento** | 🟡 | Recomendação técnica: Asaas (PIX + cartão recorrente + boleto, BR-first, MEI simples). Falta confirmar taxa comercialmente. Arquitetura é agnóstica (`provider` + `provider_ref`). |
-| A3 | Cobrança online: `formas_pagamento`, `cobrancas`, `iniciar_pagamento`, webhook | ⚪ | Hoje a aluna contrata e os créditos liberam na hora; o pagamento é combinado fora do app. Com gateway, `matricular()` passa a rodar **depois** da confirmação. |
-| A4 | ~~Registrar um domínio próprio~~ | ✅ | **Feito.** `studiopolel.com.br`. |
-| A5 | ~~Conta no Resend + 3 registros de DNS + chave de API~~ | ✅ | **Feito.** `RESEND_API_KEY` no cofre do Supabase; remetente `contato@studiopolel.com.br`. |
-| A6 | ~~Edge Function de envio + varredura da fila~~ | ✅ | **Feito.** Function `enviar-emails` (ACTIVE, v6) varre `emails_fila` (status `pendente`) e envia pela Resend; `pg_cron` chama a function periodicamente via `net.http_post` (`20260724120000_cron_disparo_emails.sql`). Reenvio com backoff até 5 tentativas, depois marca `erro`. |
-| A7 | Demais e-mails: boas-vindas, cobrança recusada, lembrete de aula | 🟡 | **Parcial.** `render()` em `enviar-emails/index.ts` já cobre `vaga_liberada`, `confirmacao_agendamento`, `lembrete_aula` e `vencimento`. Faltam `boas-vindas` e `cobrança recusada` (este último só faz sentido depois do gateway, A2/A3). |
-| A8 | Central de comunicados | ⚪ | Tabelas `comunicados` / `comunicados_leitura` não existem. |
-| A9 | PWA instalável + push | ⚪ | V3. |
-
-**Já pronto:** modelo de ciclos, expiração de crédito, inadimplência bloqueando
-agendamento, lista de espera inteira no banco (fila FIFO, reserva de 30 min
-enforçada em `validar_vaga_agendamento()`, tela no portal) **e o pipeline de
-e-mail transacional no ar** (domínio, Resend, Edge Function, cron) — vaga
-liberada, confirmação de agendamento, lembrete de aula e vencimento de plano
-já saem sozinhos. Falta só ampliar os tipos de e-mail (A7) e ligar o gateway
-(A2/A3) para cobrança recusada fazer sentido.
-
----
-
-## 10. Asaas — pesquisa comercial (21/07/2026)
-
-Conta **gratuita**: sem mensalidade, sem adesão, R$50 de crédito na abertura.
-MEI é atendido; precisa de CNPJ, CPF, endereço, telefone e selfie com
-documento. Análise em até 2 dias úteis.
-
-| Forma | Taxa | Numa mensalidade de R$200 |
-|---|---|---|
-| PIX | R$ 1,99 fixo | R$ 1,99 — **1,0%** |
-| Boleto | R$ 1,99 fixo | R$ 1,99 — 1,0% |
-| Cartão (assinatura) | R$ 0,49 + 2,99% | R$ 6,47 — **3,2%** |
-
-Promoção de 3 meses para novos cadastros (boleto a R$0,99).
-
-**A conta que decide:** com 50 alunas a R$200, cartão custa ~R$323/mês em taxas
-e PIX ~R$100 — **R$2.700/ano** de diferença. O trade-off é que o cartão cobra
-sozinho e o PIX exige a aluna pagar ativamente (mais trabalho de cobrança).
-Sugestão: oferecer os dois com **PIX como padrão visível**.
-
-**Não ligar** as notificações do próprio Asaas (R$0,99 por pacote de e-mail/SMS,
-R$0,55 por WhatsApp) — o sistema manda os e-mails dele.
-
-**Desenho da integração** (quando for implementar): assinatura mensal no Asaas
-(semestral = a mesma assinatura limitada a 6 cobranças), cartão tokenizado lá
-— nunca guardamos número de cartão. Tudo reativo a webhook:
-`pagamento confirmado` → `renovar_ciclo()`; `vencido/recusado` →
-`marcar_inadimplente()`; `assinatura cancelada` → encerra no fim do ciclo pago.
-Segredo só na Edge Function (o repo é público).
-
----
-
-## 5. Portal da Professora
-
-Acabou de ser construído (21/07/2026) e **nunca rodou numa aula real**.
-
-| # | Tarefa | Pri | Nota |
-|---|---|---|---|
-| P1 | Cadastrar e-mail das professoras reais e ativá-las | 🔴 | As 2 professoras no banco estão **`ativa = false` e sem e-mail** — nenhuma consegue criar acesso hoje. Depende de S1. |
-| P2 | Testar a chamada numa aula de verdade | 🟡 | Marcar presença, marcar falta, incluir aluna que chegou sem agendar. |
-| P3 | Conferir se o valor previsto bate com o que a equipe paga | 🟡 | A view calcula por aluna presente; validar contra o acerto real do mês. |
-| P4 | Professora editar o próprio cadastro | ⚪ | Hoje o perfil dela é só leitura ("fale com a equipe"). |
-
----
-
-## 6. Módulos ainda não construídos
-
-| # | Módulo | Fase | Pri | Nota |
+| # | Tarefa | Pri | Nat. | Nota |
 |---|---|---|---|---|
-| M1 | ~~**Dashboard Executivo**~~ | 5 | ✅ | **Feito.** Rota `/` (`DashboardPage`): KPIs (faturamento do mês, teto MEI, saldo em caixa, alunos ativos — gestão; painel operacional diferente para secretária), alertas, receita por mês, ocupação da semana, resumo do funil, folha prevista, aniversariantes. Nota estava desatualizada — corrigida em 29/07. |
-| M2 | Planejamento de Conteúdo | 6 | ⚪ | Placeholder. |
-| M3 | Social Media | 6 | ⚪ | Placeholder. |
-| M4 | ~~Tarefas~~ | 6 | ✅ | **Feito em 29/07** (antes deste levantamento). Módulo `/tarefas`: checklists de rotina (abertura/fechamento) + tarefas avulsas. |
-| M5 | Investimentos | 6 | ⚪ | Placeholder. |
-| M6 | Pró-labore | — | ⚪ | Atrás da flag `prolabore: false`. Ligar quando o negócio permitir. |
-| M7 | ClassPass | — | ⚪ | Flag `classpass`. Enum e categoria financeira já existem. |
-| M8 | **Análises (BI) v1** | — | ✅ | **Feito em 29/07/2026.** Central de Alertas + análise de horários/modalidade/professor, rota `/analises` (gestão + secretaria). Views novas (sem tabela nova): `fn_ocupacao_turma` (generaliza `vw_ocupacao_turma` para período arbitrário), `vw_ocupacao_turma_tendencia`, `vw_analise_modalidade`, `vw_analise_professora`, `vw_analise_resumo`, `vw_alertas` — tudo regra de limiar, sem ML. `tendencia='insuficiente'` evita conclusão forçada. **Extensão no mesmo dia:** `fn_evolucao_semanal` (gráfico de evolução com filtro 4/12/26/52 semanas), `acao_sugerida` em `vw_alertas`, Rankings (horários/modalidades/professoras/dias da semana, client-side) e filtro de modalidade/dia da semana em Horários. **Banco resetado a pedido (29/07):** todo o dado de teste foi apagado (`TRUNCATE` em clientes, turmas, professoras, planos, financeiro, funil etc. + as 3 contas de teste no Supabase Auth) — mantidos só `socias` e as configurações (`config_agendamento`/`config_financeiro`). Análises agora partem de zero real. Fora do escopo: Previsões (só com meses de dado real). |
-| M9 | **Análises — Inteligência de Clientes** | — | ✅ | **Feito em 29/07/2026,** destravado pela ficha 360° (C1). `fn_analise_clientes_sumidos(p_dias)` (matrícula ativa/inadimplente sem aula há N dias, configurável na tela 14/20/30/45/60 — com botão "Entrar em contato" que abre `wa.me`), `vw_analise_clientes_risco` (score de limiar: queda de frequência, faltas, vencimento próximo, poucos créditos, sem interação → prioridade alta/média/baixa), `vw_analise_clientes_ranking` (maiores clientes por faturamento — **gestão-only** na UI, mesma trava `is_gestao()` das outras views financeiras). Sem tabela nova, sem ML. Fora do escopo: Previsões. |
+| X1 | **Gerar uma API key do Wix** | 🔴 | ⚙️ | `manage.wix.com` → Configurações → **Chaves de API** → criar chave com permissão de leitura em **Bookings**, **Pricing Plans**, **Contatos** e **Membros**. Guardar a chave + o **Account ID** fora do repo (o repo é público). Sem ela, todo import é manual. |
+| X2 | **Script de import** `scripts/importar-wix.mjs` | 🔴 | 💻 | Lê a chave de variável de ambiente, pagina `GET /pricing-plans/v2/orders?orderStatuses=ACTIVE`, cruza com Contatos (nome, e-mail, telefone) e gera o SQL/CSV de import. Repetível — é o que o MCP não dá. |
+| X3 | **Puxar a grade de 2 salas** | 🔴 | 💻📋 | As turmas foram apagadas em 21/09 de propósito: a grade nova entra limpa, com sala e capacidade reais, em vez de 35 aulas todas na "Sala 1". Via Bookings API (serviços + sessões). |
+| X4 | **Conciliar o catálogo** | 🟡 | 🔀 | O Wix tem produtos que o ERP **não** tem, com preço diferente: `Plano Trimestral - 1x por semana` (R$160 × 3 ciclos), `Pacotes - 4 Aulas` (R$190) e `Pacotes - 6 Aulas` (R$240) — o ERP tem `Studio+ · 4 aulas` a R$135 e nenhum pacote de 6. Decidir: o trimestral vira produto no ERP (é só `ciclos_compromisso = 3`) ou some na migração? |
+| X5 | **TotalPass como canal próprio** | 🟡 | 💻 | **Decidido em 21/09.** Há planos TotalPass ativos no Wix e o ERP só conhece `wellhub`/`classpass`. Migration nova no enum de canal/origem + categoria financeira + receita "a reconciliar", no mesmo molde do Wellhub. |
+| X6 | **Plano da virada** | 🟡 | 🔀 | Data do corte, o que fazer com reservas já feitas no Wix para depois da data, e o aviso aos alunos. Enquanto os dois coexistirem, **mudança de horário tem que ser feita nos dois lugares**. |
+| X7 | Desligar o Wix Bookings e redirecionar os links | ⚪ | ⚙️ | Só depois de X6 validado. |
 
 ---
 
-## 7. Dívidas técnicas
+## 4. Wellhub
+
+Contexto técnico em [CLAUDE.md §12](../CLAUDE.md#12-integração-wellhub-gympass--requisitos-técnicos).
+Código pronto e publicado; o que falta é configuração e certificação.
+
+| # | Tarefa | Pri | Nat. | Nota |
+|---|---|---|---|---|
+| W1 | ~~Publicar a Edge Function~~ | ✅ | | No ar. `GET` devolve 405, `POST` sem assinatura devolve 401. |
+| W2 | **Secrets em produção** | 🔴 | ⚙️ | Em andamento. **Falha medida:** `wellhub-publicar-grade` devolve **HTTP 500 todo dia às 06:00** desde que entrou no ar — é a guarda de `WELLHUB_API_TOKEN`/`GYM_ID`/`DEFAULT_PRODUCT_ID` ausentes. 0 slots publicados. Passo a passo em [docs/interno/runbook-producao-wellhub.md](interno/runbook-producao-wellhub.md) §2. |
+| W3 | ~~Access Control API (`validate`)~~ | ✅ | | Implementado e testado no sandbox. |
+| W4 | ~~E2E no sandbox (gym 548)~~ | ✅ | | Verde em 25/07. |
+| W5 | **Informar URL do webhook + secret à Wellhub** | 🟡 | ⚙️ | Em andamento. Recomendação deles: **uma única URL** para check-in e booking. |
+| W6 | **Import do relatório de repasse** | 🟡 | 💻 | Em andamento. A Wellhub **não** expõe financeiro por API — é CSV do Portal do Parceiro contra os check-ins "a reconciliar". |
+| W7 | **Booking API** (Class/Slot) | 🟡 | 💻 | Código escrito (`20260823100000` + `wellhub-publicar-grade`), parado junto com W2. É o fim estrutural da ambiguidade de turma (§9.7 do CLAUDE.md). Depende de X3: sem grade em `turmas`, não há o que publicar. |
+| W8 | **Catalogar o aluno que vem pelo Wellhub** | 🟡 | 💻 | Em andamento. O webhook deve criar/enriquecer o `cliente` com `origem='wellhub'` + `gympass_id`. |
+| W9 | **Attendance Trigger** | 🔴 | 💻 | Em andamento. A Wellhub exige **dois** modelos e um deles obrigatoriamente o Automated; temos só o Automated. O Attendance encaixa onde já existe marcação de presença (`resolver_checkin_pendente` e o portal da professora), chamando o `validate`. **É pré-requisito de certificação, não melhoria.** |
+
+---
+
+## 5. Segurança & acesso
+
+| # | Tarefa | Pri | Nat. | Nota |
+|---|---|---|---|---|
+| S1 | ~~Confirmação de e-mail no Auth~~ | ✅ | | Os 5 logins de produção foram confirmados 1–2 min depois de criados, o que só acontece com a confirmação ligada. Vale um olhar no painel antes de convidar professora. |
+| S2 | **Ligar proteção contra senha vazada** | 🟡 | ⚙️ | Único item de Auth que o Advisor ainda aponta. Painel do Supabase → **Authentication** → **Policies** (ou *Sign In / Providers* → Email) → ligar **Leaked password protection** (checa o HaveIBeenPwned no cadastro e na troca de senha). É toggle, não tem código. |
+| S3 | ~~Trava do Financeiro só para a gestão~~ | ✅ | | M8, 21/07. `is_gestao()` no banco. |
+| S3b | **Policies operacionais em `is_operacional()`** | 🔴 *(quando criar conta `social`)* | 💻 | Hoje a operação usa `is_socia()` — correto enquanto só existem gestao/secretaria. Uma conta `social` herdaria a operação inteira. **Junto disto:** as RPCs `matricular`/`renovar_ciclo`/`marcar_inadimplente` precisam de guarda `is_gestao()` interna — hoje travadas só na UI. |
+| S4 | ~~Tela de acessos internos~~ | ✅ | | M9, 21/07. **Equipe & Acessos**. |
+| S5 | ~~`auth_users_exposed` em `vw_equipe`~~ | ✅ | | 22/08. |
+| S6 | ~~Acesso dentro de Agenda→Config e Produtos~~ | ✅ | | 22/07. |
+| S7 | ~~Escalação de privilégio via `UPDATE` em `socias`~~ | ✅ | | 22/08. |
+| S8 | Trocar `"socias veem socias"` de `is_socia()` para `is_gestao()` | ⚪ | 💻 | Risco residual aceito: qualquer conta interna que consultar `socias` direto vê o e-mail de toda a equipe. Fechar exige auditar quem lê `socias` fora de `vw_equipe`. |
+| S9 | Converter as 6 views `security_definer_view` em funções | ⚪ | 💻 | É o único jeito de zerar esse lint (o Advisor varre views, não funções). ~1–2 dias. Todas as 6 estão documentadas em `comment on view` explicando por que são *definer* — inclusive `vw_matricula_turmas`, que entrou depois. Não é dívida escondida, é decisão registrada. |
+| S10 | ~~Funções de trigger publicadas como RPC~~ | ✅ | | **Feito em 21/09** (`20260921120000`). O PostgREST publica toda função de `public` com EXECUTE, e o EXECUTE nasce concedido a PUBLIC: 5 funções de gatilho estavam em `/rest/v1/rpc`, 4 delas SECURITY DEFINER. EXECUTE revogado de `anon`/`authenticated` (não afeta o gatilho) + `search_path` fixo em `preencher_competencia_saida`. Os outros 46 achados de `authenticated_security_definer_function_executable` são as **RPCs reais** dos três portais e ficam publicadas de caso pensado. |
+| S11 | `pg_net` instalado no schema `public` | ⚪ | 💻 | Aviso do Advisor. Mover extensão de schema é operação de risco com o `pg_cron` em produção chamando `net.http_post`. Aceito por ora. |
+| S12 | **MFA (`aal2`) sobre o Financeiro** | ⚪ | 💻 | Sempre foi reforço **extra** sobre a trava de S3, não a trava em si. Não implementado, não bloqueia. |
+
+---
+
+## 6. Portal do Aluno
+
+Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
+
+| # | Tarefa | Pri | Nat. | Nota |
+|---|---|---|---|---|
+| A1 | **Validar o MVP em uso real** | 🔴 | 📋 | Nunca saiu de teste. Depende de G2. |
+| A2 | **Abrir a conta no gateway (Asaas)** | 🟡 | 🔀⚙️ | **Decidido em 21/09: vamos configurar.** Passo a passo em §11. |
+| A3 | **Cobrança online no sistema** | 🟡 | 💻 | Depende de A2. Desenho em §11.2. |
+| A4 | ~~Domínio próprio~~ | ✅ | | `studiopolel.com.br`. |
+| A5 | ~~Resend + DNS~~ | ✅ | | Remetente `contato@studiopolel.com.br`. |
+| A6 | ~~Edge Function de envio + cron~~ | ✅ | | `enviar-emails`, roda a cada 2 min, HTTP 200. |
+| A7 | **E-mails faltantes** | 🟡 | 💻 | Em andamento. Prontos: `vaga_liberada`, `confirmacao_agendamento`, `lembrete_aula`, `vencimento`. Faltam **boas-vindas** e **cobrança recusada** (este só faz sentido depois de A3). |
+| A8 | **Central de Comunicados** | 🟡 | 💻 | **Decidido em 21/09: criar.** Especificação em §12. |
+| A9 | PWA instalável + push | ⚪ | 💻 | V3. |
+
+---
+
+## 7. Portal da Professora
+
+| # | Tarefa | Pri | Nat. | Nota |
+|---|---|---|---|---|
+| P1 | **E-mail das professoras** | 🔴 | 📋 | Mesmo item que G1. |
+| P2 | **Testar a chamada numa aula real** | 🟡 | 📋 | Marcar presença, marcar falta, incluir aluno que chegou sem agendar. |
+| P3 | **Conferir o valor previsto contra o acerto real** | 🟡 | 📋 | A view calcula por aluno presente e pelo modelo de remuneração de cada uma. |
+| P4 | Professora editar o próprio cadastro | ⚪ | 💻 | Hoje é só leitura. |
+
+---
+
+## 8. Módulos ainda não construídos
+
+| # | Módulo | Pri | Nota |
+|---|---|---|---|
+| M2 | Planejamento de Conteúdo | ⚪ | Placeholder. **Stand by** (21/09). |
+| M3 | Social Media | ⚪ | Placeholder. **Stand by** (21/09). |
+| M5 | Investimentos | ⚪ | Placeholder. **Stand by** (21/09). |
+| M6 | Pró-labore | ⚪ | Atrás da flag `prolabore: false`. |
+| M7 | ClassPass | ⚪ | Flag `classpass`. Enum e categoria financeira já existem. |
+| — | Dashboard, Tarefas, Análises, Fechamento, Dívidas | ✅ | Todos entregues entre 07 e 08/2026. |
+
+---
+
+## 9. Dívidas técnicas
 
 | # | Item | Pri | Nota |
 |---|---|---|---|
-| T1 | **Sem nenhum teste automatizado** | 🟡 | Playwright está no `package.json` mas não há suíte nem script — foi usado para capturas de marketing. As regras críticas (vaga, crédito, RLS por papel) são validadas só à mão. |
-| T2 | **Sem lint** | 🟡 | Não existe script `lint` nem ESLint configurado. |
-| T3 | Histórico de migrations local ≠ remoto | 🟡 | Os arquivos em `supabase/migrations/` têm timestamps diferentes dos registrados no banco (ex.: local `20260719120000` vs remoto `20260719031136`). Funciona, mas confunde. |
-| T4 | Supabase CLI não linkado | 🟡 | Sem `supabase/config.toml`. Migrations vão pelo MCP. Linkar daria `db push`, `db diff` e deploy de function pelo terminal — **pré-requisito prático do W1**. |
-| T5 | Bundle único de 970 kB (271 kB gzip) | ⚪ | Os três portais vão no mesmo JS. Code-splitting por jornada resolveria; só importa quando a aluna abrir no 4G. |
-| T6 | Dados de teste misturados com reais | ⚪ | Os 9 planos e 13 clientes no banco são de teste — os preços **não** são os reais. Limpar antes de operar de verdade. |
+| T1 | **Sem suíte de testes** | 🟡 | Existe só `npm run test:smoke` (fuma o bundle real no CI). As regras críticas — vaga, crédito, RLS por papel — continuam validadas à mão. Playwright está instalado e sem suíte. |
+| T2 | **Sem lint** | 🟡 | Não há script `lint` nem ESLint. |
+| T3 | ~~Ledger de migrations divergente~~ | ✅ | Reconciliado em 13/08. |
+| T4 | ~~Supabase CLI não linkado~~ | ✅ | O CI faz `supabase link` + `db push` + `functions deploy` nos dois ambientes. Linkar localmente continua opcional. |
+| T5 | **Bundle único, agora 1,31 MB (356 kB gzip)** | 🟡 | Era 970 kB / 271 kB em julho. Os três portais no mesmo JS; quem paga é o aluno abrindo no 4G. Code-splitting por jornada resolve. |
+| T6 | ~~Dados de teste misturados com reais~~ | ✅ | Limpeza de 21/09 (§1.2). |
+| T7 | **DEV e PROD com configurações de negócio diferentes** | 🟡 | `faltas_para_suspensao` 3 no DEV × 2 na PROD; `valor_checkin_wellhub_centavos` R$15 × R$27. Homologar regra de falta no DEV dá resultado diferente do que produção fará. |
+| T8 | **CLAUDE.md §5.1 desatualizado** | 🟡 | Documenta `#/portal` e `#/prof` como rotas atuais (ver §1.1). |
 
 ---
 
-## 8. Decisões de produto
+## 10. Decisões de produto
 
-### Fechadas em 21/07/2026 (já implementadas)
+### Fechadas (21/07 a 21/09/2026)
 
 | Decisão | Como ficou |
 |---|---|
 | Duas aulas no mesmo dia | Permitido, consome dois créditos |
-| Tipo de plano | **Sempre por crédito** — "aulas por semana" foi abandonado |
-| Mensal × semestral | Mesma mensalidade; semestral = 6 ciclos cobrados mês a mês |
-| Crédito não usado | **Expira no fim do ciclo**, registrado como `expiracao` |
-| Inadimplência | Ciclo não pago **bloqueia novos agendamentos na hora** |
-| Cancelamento | 3h antes, com direito a remarcar |
-| Lista de espera | Avisa a 1ª por e-mail e segura a vaga 30 min |
-| Plano complemento Wellhub | É só um plano por crédito como os outros |
+| Tipo de plano | **Sempre por crédito** |
+| Mensal × semestral | Mesma mensalidade; semestral = 6 ciclos mês a mês |
+| Crédito não usado | **Expira no fim do ciclo** |
+| Inadimplência | Ciclo não pago bloqueia novos agendamentos na hora |
+| Lista de espera | Avisa o 1º por e-mail e segura a vaga 30 min |
+| **Prazo de cancelamento** | **4h** (21/09) — igual ao Wix, os dois têm que andar juntos |
+| **Preços dos planos** | Tabela real de set/2026 já em produção, 19 produtos |
+| **Gateway** | **Asaas** — vamos configurar (21/09) |
+| **WhatsApp** | Construir no ERP, e **iniciar agora** (21/09) |
+| **TotalPass** | Vira **canal próprio** no sistema (21/09) |
+| **Comunicados** | **Criar** (21/09) |
+| **Conteúdo, Social, Investimentos** | **Stand by** (21/09) |
 
 ### Ainda em aberto
 
-1. **Bonificações do semestral** — o que a aluna ganha por assinar 6 meses? Não definido.
-2. **Preços reais** dos planos, para substituir os dados de teste.
-3. **Asaas** — pesquisa comercial feita (ver §10); falta decidir e abrir a conta.
+1. **Bonificações do semestral** — o que o aluno ganha por assinar 6 meses.
+2. **Catálogo do Wix × catálogo do ERP** (X4): trimestral e pacotes de 4/6 aulas.
+3. **Data da virada do Wix** (X6).
+4. **A segunda sala já entra na grade** ou só quando abrir de fato (X3).
 
 ---
 
-## 9. Ordem sugerida (revisada 29/07/2026)
+## 11. Asaas — passo a passo
+
+Pesquisa comercial de 21/07 confirmada: conta **gratuita**, sem mensalidade,
+R$50 de crédito na abertura.
+
+| Forma | Taxa | Numa mensalidade de R$300 |
+|---|---|---|
+| PIX | R$ 1,99 fixo | R$ 1,99 — **0,7%** |
+| Boleto | R$ 1,99 fixo | R$ 1,99 — 0,7% |
+| Cartão (assinatura) | R$ 0,49 + 2,99% | R$ 9,46 — **3,2%** |
+
+**A conta que decide:** com 50 alunos a R$300, cartão custa ~R$473/mês em taxas
+e PIX ~R$100. O cartão cobra sozinho; o PIX exige o aluno pagar ativamente.
+Recomendação: oferecer os dois, com **PIX como padrão visível**.
+
+### 11.1 Fora do código (gestão)
+
+1. Abrir conta em `asaas.com` com o **CNPJ do MEI** — precisa de CPF do titular,
+   endereço, telefone e selfie com documento. Análise em até 2 dias úteis.
+2. Ligar as formas: **PIX** (chave do MEI) e **cartão recorrente**.
+3. **Não ligar** as notificações do próprio Asaas (R$0,99 por pacote de
+   e-mail/SMS, R$0,55 por WhatsApp) — o sistema já manda os e-mails dele.
+4. Gerar a **API key de sandbox** e, depois de homologar, a de produção.
+   Guardar as duas fora do repo (`supabase secrets set`).
+
+### 11.2 No sistema (código)
+
+5. Migration: `formas_pagamento` (cartão tokenizado — **nunca** o número) e
+   `cobrancas` (`provider`, `provider_ref`, status, valor, vencimento). A
+   arquitetura já é agnóstica de provedor.
+6. Edge Function `asaas-cobranca` (server-side, cria assinatura/cobrança) e
+   `asaas-webhook` (recebe o retorno). Segredo só na função.
+7. Ligar os eventos às RPCs que **já existem**:
+   `PAYMENT_CONFIRMED/RECEIVED` → `renovar_ciclo()`;
+   `PAYMENT_OVERDUE`/recusado → `marcar_inadimplente()`;
+   assinatura cancelada → encerra no fim do ciclo pago.
+8. `matricular()` passa a rodar **depois** da confirmação, não na hora do
+   clique (hoje os créditos liberam na hora e a cobrança é combinada fora).
+9. Telas: Checkout no portal + Pagamentos (histórico e cartões).
+10. E-mail de **cobrança recusada** (A7) passa a fazer sentido aqui.
+11. Semestral = a mesma assinatura mensal limitada a 6 cobranças.
+
+---
+
+## 12. WhatsApp — passo a passo
+
+Estudo completo em [06-WHATSAPP.md](06-WHATSAPP.md). Decisão de 22/07,
+reafirmada em 21/09: **construir no ERP** via Cloud API (caminho 3). Responder
+cliente é grátis na Meta; o que se paga em plataforma terceira é o software de
+caixa de entrada.
+
+### 12.1 Fora do código (gestão)
+
+1. **Número dedicado.** Um número que **não** esteja em uso no app WhatsApp
+   Business — migrar um número para a Cloud API tira ele do aplicativo. Chip
+   novo é o caminho menos traumático.
+2. Conta no **Meta Business Manager** + criar o **WABA** (WhatsApp Business
+   Account), verificar a empresa (CNPJ) e registrar o número.
+3. Gerar um **token permanente** por *system user* (o token de teste expira em
+   24h e não serve para produção).
+4. Cadastrar os **templates** de mensagem que partem de nós (lembrete de aula,
+   cobrança) — a Meta aprova cada um. Fora da janela de 24h, só template.
+
+### 12.2 No sistema (código)
+
+5. Migration `wa_conversas` + `wa_mensagens` (com `cliente_id`, para o histórico
+   cair na ficha 360°), RLS operacional (`is_operacional()`).
+6. Edge Function `whatsapp-webhook` (recebe, valida o `verify_token` e a
+   assinatura) + `whatsapp-enviar`.
+7. Caixa de entrada na tela: lista de conversas, quem está respondendo,
+   histórico do cliente ao lado.
+8. Só então ligar os lembretes da Agenda no canal WhatsApp.
+
+⚠️ O preço da Meta muda entre ago e out/2026 — reconferir antes de escalar.
+
+---
+
+## 13. Central de Comunicados — especificação
+
+Decidido em 21/09. Hoje não existe nada: as tabelas `comunicados` e
+`comunicados_leitura` nunca foram criadas.
+
+1. **Migration.** `comunicados` (título, corpo, público-alvo, publicado_em,
+   expira_em, autor) + `comunicados_leitura` (comunicado, cliente, lido_em).
+   RLS: escrita por `is_operacional()`, leitura pelo aluno só do que está
+   publicado e dentro da validade.
+2. **Público-alvo.** No mínimo: todos, só matriculados ativos, só inadimplentes,
+   só quem faz determinada modalidade. É o que evita mandar recado de mensalista
+   para aluno Wellhub.
+3. ⚠️ **Regra que vale lembrar:** comunicado para aluno Wellhub **não pode**
+   conter desconto, aula grátis ou incentivo de migração.
+4. **Telas.** Admin: criar/editar/publicar + quem já leu. Portal: aviso no topo
+   do painel e lista completa, marcando lido.
+5. **E-mail opcional** por comunicado — reaproveita `emails_fila` e a
+   `enviar-emails`, sem infraestrutura nova.
+
+---
+
+## 14. Ordem sugerida
 
 Não é obrigação — é a sequência que destrava mais coisa com menos esforço.
-A versão de 21/07 (domínio → e-mail → Dashboard) já foi cumprida por inteiro;
-esta é a atualização pós-reset do banco.
 
-1. **Recadastrar a grade real** (turmas, professoras com e-mail, salas,
-   modalidades, planos com preço real) — pré-requisito prático para tudo virar
-   a operar de verdade e para o módulo Análises parar de mostrar "dados
-   insuficientes".
-2. **S1** (confirmação de e-mail) → destrava **P1** → as professoras reais
-   conseguem criar acesso e o portal delas sai do papel.
-3. **W2** (cadastrar os secrets do Wellhub) → destrava **W5** → Wellhub vira
-   fonte de receita rastreada de verdade (W1/W3/W4 já prontos e testados).
-4. ~~**C1** → Inteligência de Clientes~~ — ✅ feito em 29/07 (ver M9).
-5. **A1** (validar Portal da Aluna em uso real) → só então **A2** (decidir o
-   gateway) e abrir a conta Asaas.
-6. **S3b** (migrar policies operacionais para `is_operacional()`) — só quando
-   for criar a primeira conta `social`.
-
-O raciocínio: os três primeiros são pequenos e destravam trabalho **já feito
-que está parado** — Wellhub pronto sobrando os secrets, professoras prontas
-sobrando o e-mail. Os dois últimos dependem de decisão comercial (gateway) ou
-de crescimento da equipe (conta social).
-
----
-
-## 11. Frentes levantadas em 22/07/2026
-
-| # | Frente | Pri | Estado / Nota |
-|---|---|---|---|
-| F1 | **Financeiro por período** (mês, trimestre, semestre, ano, faixa de/até) | — | ✅ **Feito em 22/07.** Seletor no topo do módulo; KPIs, listas (Entradas/Saídas) e gráficos agregam pelo intervalo. Saldo e MEI seguem sendo foto do "hoje"/ano-calendário. "Despesas pendentes" e o painel de recorrentes a pagar só aparecem em mês único (são ação do mês corrente). `src/modules/financeiro/periodo.ts`. |
-| C1 | ~~**Clientes → ficha 360°**~~ | ✅ | **Feito.** `ClienteDetalhe` já une CRM + tempo de casa/marcos de fidelidade (24/07) + plano/créditos (`vw_saldo_creditos`) + próximas aulas (`agendamentos`+`turmas`+`vw_professoras_nomes`) — comentário no código já diz "Ficha 360°". **Completado em 29/07:** seção **Pagamentos** (últimas 10 `entradas_financeiras` do cliente, **gestão-only** — dado financeiro, mesma trava `is_gestao()`) e badge de **acesso ao portal** (existe linha em `contas_aluna`?). Terminologia no masculino e abertura padrão na Lista já estavam feitos. Só resta, se um dia fizer sentido: histórico de matrículas encerradas (hoje só mostra ativa/inadimplente) e o vínculo com a catalogação da aluna Wellhub (W8, ainda não feito). |
-| CO1 | **WhatsApp Business API** — secretária + mais pessoas respondem o mesmo número | 🟡 | ✅ **Estudo feito em 22/07** ([docs/06-WHATSAPP.md](06-WHATSAPP.md)). Achado-chave: **responder cliente é grátis** na Meta; o custo é o *software de caixa de entrada*. 3 caminhos: (1) App Business + dispositivos vinculados — grátis, até 5 pessoas, sem atribuição/integração; (2) plataforma terceira — R$200–1.200/mês, multi-atendente pronto, sistema à parte; (3) construir no ERP via Cloud API — sem mensalidade, integração nativa (histórico do cliente, lembretes da Agenda), precisa dev + número dedicado. **Decisão (22/07):** construir no ERP (caminho 3). **Build pausado** a pedido — retomar quando houver conta Meta + número dedicado. Falta então: migration (wa_conversas/wa_mensagens), caixa de entrada na tela, Edge Functions webhook/send. Preço da Meta muda ago/out 2026. |
-| AG1 | **Agenda: salas, modalidades e grade estilo calendário** | — | ✅ **Feito em 22/07.** Tabelas `salas` e `modalidades` (seed: Sala 1/2 e as 15 modalidades), `turmas.sala_id`/`modalidade_id` (texto mantido p/ compat). Grade nova estilo calendário (eixo hora × dia, cartões coloridos por modalidade, sala visível). Form de turma com modalidade em dropdown (+ criar nova) e sala obrigatória; ações criar/editar/duplicar/excluir. Existentes foram para a Sala 1. |
-| PR1 | **Professoras: remuneração flexível** | — | ✅ **Feito em 22/07.** `professoras.modelo` (por_aluna/por_hora/fixo) + campos: `piso_uma_aluna`, `valor_dia_sem_alunas`, `valor_hora`, `valor_fixo_mes`, `valor_passagem_dia`, `percentual_passagem`. `vw_pagamento_professoras` recalcula pelo modelo (pisos, hora, fixo, passagem por dia trabalhado). UI: botão **Remuneração** por professora. Validado: 1 aluna → piso R$50 + passagem 70%. Workshop entra como ajuste manual no fechamento. PII do contrato **não** entrou no repo. |
-| PR2 | **Fechamento mensal de professoras (folha)** | — | ✅ **Feito em 22/07.** Módulo **Fechamento** (gestão-only, `#/fechamento`). Tabelas `fechamentos_professora` + `fechamento_ajustes`. Folha do mês por professora (aulas, horas, alunos, bruto, ajustes, final, status) + total; painel de detalhe com ajustes manuais (bônus/desconto/falta/substituição/reposição/passagem/workshop) que recalculam o final; **Aprovar** congela o snapshot; **Reabrir**; **Lançar no Financeiro** (evita duplicar). Aba **Histórico** com filtro professora/ano. ⚠️ pendências: pagamento auto no dia 15, e o "R$75/dia cheio de falta" é por-aula (aproximação). |
+1. **G1** (e-mail das professoras) — destrava o portal delas, que está pronto e parado.
+2. **X1 → X2 → X3** (API key, script de import, grade de 2 salas) — sem isso o
+   ERP fica vazio e o Wellhub (W7) não tem o que publicar.
+3. **W2 + W9** (secrets e Attendance Trigger) — um está falhando todo dia às
+   06:00, o outro é pré-requisito de certificação.
+4. **G2 + A1** (acesso dos alunos e validação real do portal).
+5. **A2/A3** (Asaas) e **X5** (TotalPass).
+6. **A8** (Comunicados) e o **WhatsApp** (§12).
+7. **S3b** — só quando for criar a primeira conta `social`.
+8. **T1/T2/T5** — quando o fluxo real estiver de pé e valer a pena congelar
+   comportamento em teste.
