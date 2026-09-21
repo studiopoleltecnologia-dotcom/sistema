@@ -193,6 +193,7 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | T6 | ~~Dados de teste misturados com reais~~ | ✅ | Limpeza de 21/09 (§1.2). |
 | T7 | **DEV e PROD com configurações de negócio diferentes** | 🟡 | `faltas_para_suspensao` 3 no DEV × 2 na PROD; `valor_checkin_wellhub_centavos` R$15 × R$27. Homologar regra de falta no DEV dá resultado diferente do que produção fará. |
 | T8 | **CLAUDE.md §5.1 desatualizado** | 🟡 | Documenta `#/portal` e `#/prof` como rotas atuais (ver §1.1). |
+| T9 | **O smoke test não cobre as rotas de produção** | 🟡 | `scripts/smoke.mjs` sobe `''`, `#/`, `#/portal` e `#/prof`. Os dois últimos só funcionam por compatibilidade; o que o aluno e a professora abrem de verdade é `/agendamentos/` e `/portalequipe/`, que têm `index.html` próprio no build. Uma quebra ali passa pelo CI sem ninguém ver. |
 
 ---
 
