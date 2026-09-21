@@ -102,6 +102,36 @@ export async function cancelarAssinatura(matriculaId: string, motivo?: string) {
   return data
 }
 
+/**
+ * Bonificar a aluna com créditos — cortesia ou reposição.
+ *
+ * O motivo é obrigatório no BANCO, não só aqui: ele vai para o extrato
+ * que a aluna enxerga, e "+2 créditos" sem explicação é o lançamento
+ * que ninguém consegue justificar depois.
+ *
+ * `validade` é opcional e, omitida, o banco usa o fim do ciclo. Só que
+ * ele **recusa** a omissão quando o ciclo já venceu — caso real (bônus
+ * para quem sumiu), em que o padrão nasceria morto. A tela manda a data
+ * sempre preenchida para que esse erro não chegue à equipe.
+ */
+export async function concederCreditos(a: {
+  matriculaId: string
+  quantidade: number
+  motivo: string
+  validade?: string
+  origem?: 'ajuste' | 'reposicao'
+}) {
+  const { data, error } = await requireSupabase().rpc('conceder_creditos', {
+    p_matricula: a.matriculaId,
+    p_quantidade: a.quantidade,
+    p_motivo: a.motivo,
+    ...(a.validade ? { p_validade: a.validade } : {}),
+    ...(a.origem ? { p_origem: a.origem } : {}),
+  })
+  if (error) throw error
+  return data
+}
+
 // ------------------------------------------------------------
 // Assentos de turma fixa
 // ------------------------------------------------------------

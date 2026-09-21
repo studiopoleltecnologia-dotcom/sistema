@@ -5,6 +5,7 @@ import { useProdutos } from '../../produtos/hooks/useProdutos'
 import {
   adicionarTurmaFixa,
   cancelarAssinatura,
+  concederCreditos,
   encerrarTurmaFixa,
   listarMatriculaTurmas,
   listarMatriculas,
@@ -155,4 +156,14 @@ export function useEncerrarTurmaFixa() {
       encerrarTurmaFixa(a.vinculoId, { imediato: a.imediato, motivo: a.motivo }),
     onSuccess: invalidar,
   })
+}
+
+/**
+ * Bônus de crédito. Invalida o mesmo bloco das outras ações porque o
+ * saldo aparece na tela de matrículas, na ficha do aluno e no portal
+ * dela — três lugares que não podem discordar depois do clique.
+ */
+export function useConcederCreditos() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({ mutationFn: concederCreditos, onSuccess: invalidar })
 }
