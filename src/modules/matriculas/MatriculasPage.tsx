@@ -10,6 +10,7 @@ import { useAbaUrl } from '../../lib/aba'
 import { fmtData } from '../../lib/datas'
 import { fmtCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
+import { BonusCreditos } from './components/BonusCreditos'
 import { MatriculaForm } from './components/MatriculaForm'
 import { TurmasVinculadas } from './components/TurmasVinculadas'
 import {
@@ -46,6 +47,7 @@ export function MatriculasPage() {
   const cancelar = useCancelarAssinatura()
 
   const [novo, setNovo] = useState(false)
+  const [bonus, setBonus] = useState<MatriculaCompleta | null>(null)
   // Na URL (?aba=em_aberto): o menu lateral aponta direto para cada recorte,
   // e o alerta de inadimplência do painel pode linkar 'Em aberto' de uma vez.
   const [filtro, setFiltro] = useAbaUrl(FILTROS, 'todas')
@@ -140,6 +142,7 @@ export function MatriculasPage() {
                 aoConfirmar: () => renovar.mutateAsync(m.saldo.matricula_id!),
               })
             }
+            onBonus={() => setBonus(m)}
             onInadimplir={() => inadimplir.mutate(m.saldo.matricula_id!)}
             onCancelar={() =>
               confirmar.pedir({
@@ -172,6 +175,7 @@ export function MatriculasPage() {
       </div>
 
       {novo && <MatriculaForm onFechar={() => setNovo(false)} />}
+      {bonus && <BonusCreditos matricula={bonus} onFechar={() => setBonus(null)} />}
       {confirmar.dialogo}
     </div>
   )
@@ -181,12 +185,14 @@ function CartaoMatricula({
   matricula: m,
   gestao,
   onRenovar,
+  onBonus,
   onInadimplir,
   onCancelar,
 }: {
   matricula: MatriculaCompleta
   gestao: boolean
   onRenovar: () => void
+  onBonus: () => void
   onInadimplir: () => void
   onCancelar: () => void
 }) {
@@ -284,6 +290,17 @@ function CartaoMatricula({
               renovar agora
             </button>
           )}
+          {/*
+            Vale também para turma fixa: é assim que a aluna de assento
+            fixo ganha uma aula extra fora da turma dela.
+          */}
+          <button
+            onClick={onBonus}
+            title="Cortesia ou reposição — entra no saldo dela com prazo e motivo"
+            className="rounded-md px-2.5 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50"
+          >
+            dar crédito
+          </button>
           {s.status === 'ativa' && (
             <button
               onClick={onInadimplir}

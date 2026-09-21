@@ -3054,6 +3054,16 @@ export type Database = {
         Args: { p_ciclo: number; p_matricula: string; p_vencimento: string }
         Returns: string
       }
+      conceder_creditos: {
+        Args: {
+          p_matricula: string
+          p_motivo: string
+          p_origem?: Database["public"]["Enums"]["motivo_credito"]
+          p_quantidade: number
+          p_validade?: string
+        }
+        Returns: string
+      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string

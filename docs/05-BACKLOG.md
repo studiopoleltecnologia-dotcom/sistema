@@ -170,7 +170,7 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | A8 | **Central de Comunicados** | 🟡 | 💻 | **Decidido em 21/09: criar.** Especificação em §12. |
 | A9 | PWA instalável + push | ⚪ | 💻 | V3. |
 | A10 | **Desconto configurável (a experimental é a 1ª regra)** | 🟡 | 💻 | **Não existe hoje.** Regra fechada com a gestão em 21/09: quem fez a experimental e fecha plano em **até 7 dias da AULA** abate **o valor de uma** experimental na 1ª mensalidade — vale também para quem comprou o pacote de 2. O modelo não expressa: `preco_contratado_centavos` é um valor só, usado em todos os ciclos. O mesmo campo serve para desconto manual (o cupom que o Wix já usa, X8). Desenho em §6.1. |
-| A11 | **Bonificar aluna com créditos / aula extra** | 🟡 | 💻 | **O modelo já existe** — `creditos_lotes.origem` aceita `ajuste`/`reposicao`, com validade e motivo, e o bônus já entra no saldo e no extrato. Falta só o caminho: uma RPC `conceder_creditos()` restrita à gestão (hoje **nenhuma** RPC cria lote — todo insert está dentro de `renovar_ciclo()`) e um botão na ficha da aluna, com motivo obrigatório. É a menor das duas. Desenho em §6.1. |
+| A11 | ~~Bonificar aluna com créditos / aula extra~~ | ✅ | 💻 | **Feito em 21/09** (`20260921180000`). RPC `conceder_creditos()` — lote + evento na mesma transação, motivo obrigatório (vai para o extrato da aluna), autor registrado, `EXECUTE` tirado de PUBLIC. Botão **dar crédito** no cartão de Matrículas, com Cortesia/Reposição, validade e motivo. Vale também para turma fixa: é assim que o assento fixo ganha aula extra. Restrito a `is_gestao()`, mesmo recorte das outras ações da tela — se a secretária precisar lançar reposição sozinha, é trocar por `is_operacional()`. |
 
 ### 6.1 Descontos e bonificações (A10 · A11)
 
@@ -232,23 +232,42 @@ matrícula de experimental — é automático e exato. O estágio do funil
 (`fez_experimental`) **não** serve sozinho: depende de alguém mover o funil
 à mão.
 
-#### A11 — Bonificar uma aluna com créditos ou aula extra
+#### A11 — Bonificar uma aluna com créditos ou aula extra ✅
 
-**O modelo de dados já existe e não precisa mudar.** `creditos_lotes` tem
-`origem` (`motivo_credito`, que já inclui `ajuste` e `reposicao`), `validade`
-e `detalhe`; `creditos_eventos` é o livro-razão append-only que a aluna vê no
-extrato. Um bônus é um lote novo com `origem = 'ajuste'`, validade escolhida
-e o motivo escrito — e ele **já aparece** no saldo e no extrato, porque
-`saldo_disponivel()` soma por lote válido.
+**Feito em 21/09** (`20260921180000_conceder_creditos.sql`). O modelo de dados
+**não mudou** — `creditos_lotes` já tinha `origem` (com `ajuste` e
+`reposicao`), `validade` e `detalhe`, e `saldo_disponivel()` soma por lote
+válido. O que faltava era o caminho: **nenhuma RPC criava lote**, todos os
+inserts estavam dentro de `renovar_ciclo()` e afins. Ou seja, só o sistema
+dava crédito, nunca uma pessoa.
 
-**O que falta é só o caminho:**
+Como ficou:
 
-1. `conceder_creditos(matricula, quantidade, validade, motivo, detalhe)` —
-   *security definer*, restrita a `is_gestao()`/`is_operacional()`, gravando
-   `criado_por`. Hoje **não existe RPC nenhuma** que crie lote: todos os
-   `insert` em `creditos_lotes` estão dentro de `renovar_ciclo()` e afins.
-2. Um botão na ficha da aluna (Matrículas), com motivo obrigatório — bônus
-   sem motivo escrito vira discussão três meses depois.
+- `conceder_creditos(matricula, quantidade, motivo, validade, origem)` — lote
+  + evento na **mesma transação** (lote sem evento fica com saldo zero,
+  invisível, e sem erro), **motivo obrigatório no banco** porque ele aparece
+  no extrato que a aluna vê, e `criado_por` gravado.
+- `EXECUTE` revogado de PUBLIC e concedido a `authenticated` — a lição do S10,
+  aplicada já na primeira versão em vez de virar achado do Advisor.
+- Guarda `is_gestao()`, o mesmo recorte das outras ações da tela de
+  Matrículas. **Se a secretária precisar lançar reposição sozinha, é trocar
+  por `is_operacional()`** — é decisão de produto, não de código.
+- Botão **dar crédito** no cartão de Matrículas: quantidade, tipo (Cortesia /
+  Reposição de aula), validade e motivo. Vale também para turma fixa — é
+  assim que a aluna de assento fixo ganha uma aula extra.
+
+⚠️ **A policy da tabela continua mais larga que a RPC.** `"socias gerenciam
+lotes"` aceita qualquer conta interna escrevendo direto por PostgREST — é a
+pendência S3b, anterior a isto. A função não é a última linha de defesa; ela
+garante que o caminho **novo** já nasça no recorte certo.
+
+**O que o teste em DEV pegou, e que a revisão de código não pegaria:** a
+validade padrão era o fim do ciclo — mas bonificar quem sumiu é justamente o
+caso em que o ciclo **já venceu**, e o lote nasceria morto: vencido antes de
+existir, invisível no saldo, sem erro nenhum. Agora, com o ciclo vencido, a
+função **pede** a data em vez de inventar um prazo (30 dias? até a próxima
+renovação? é política de negócio, não decisão de banco), e a tela chega com
+30 dias já preenchidos para a equipe não travar no balcão.
 
 ⚠️ **Nada disso pode virar `if` de caso especial.** O Wix já opera com cupom
 (`promo1`, `casinha100` — ver X8), a experimental é só a primeira regra, e
