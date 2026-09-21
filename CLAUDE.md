@@ -85,18 +85,36 @@ Camadas (detalhe em [docs/02-ARQUITETURA.md](docs/02-ARQUITETURA.md)):
 ### 5.1 Os três portais e os papéis de acesso
 
 Um único projeto Vite e um único Supabase servem **três jornadas separadas**,
-escolhidas pelo hash da URL em [src/App.tsx](src/App.tsx) (cada uma com router e
-porteiro próprios):
+escolhidas em [src/App.tsx](src/App.tsx) — `jornadaAtual()`, na ordem
+**hostname → caminho → hash** — cada uma com router e porteiro próprios:
 
-| Portal | Rota | Papel | Vínculo com `auth.users` | Função de RLS |
+| Portal | Endereço em produção | Papel | Vínculo com `auth.users` | Função de RLS |
 |---|---|---|---|---|
-| Interno (equipe) | `#/` | equipe | `socias` | `is_socia()` |
-| Aluna | `#/portal` | cliente | `contas_aluna` | `is_cliente()` / `cliente_atual()` |
-| Professora | `#/prof` | professora | `contas_professora` | `is_professora()` / `professora_atual()` |
+| Interno (equipe) | `sistema.studiopolel.com.br/` | equipe | `socias` | `is_socia()` |
+| Aluno | `aluno.studiopolel.com.br/` (qualquer caminho) | cliente | `contas_aluna` | `is_cliente()` / `cliente_atual()` |
+| Professora | `sistema.studiopolel.com.br/portalequipe/` | professora | `contas_professora` | `is_professora()` / `professora_atual()` |
 
-- `#/prof` e não `#/professoras`: o admin já usa `/professoras` para o módulo de
-  gestão. O teste de rota é por **segmento exato**, senão `#/professoras` cairia
-  no portal da professora.
+- **O portal do aluno tem domínio próprio** desde 21/09/2026. No host do aluno
+  **todo** caminho é o portal — o ERP não existe lá, nem digitando a URL. O
+  motivo é operacional, não estético: o aluno que esbarrava na tela da gestão
+  lia *"peça para a gestão liberar o seu e-mail"* e concluía que o acesso dele
+  tinha quebrado. Runbook de DNS/repo:
+  [docs/interno/dominio-portal-aluno.md](docs/interno/dominio-portal-aluno.md).
+- O GitHub Pages aceita **um** domínio customizado por repositório, então o
+  segundo domínio é um **segundo repo só de hospedagem** (`portal-aluno`),
+  publicado pelo próprio `deploy.yml` — mesmo bundle, mesmo commit, depois das
+  migrations. Não é um segundo build nem um segundo código.
+- `sistema.studiopolel.com.br/agendamentos/` **continua valendo** e não tem
+  prazo para sair: é o link que já está em favorito e circulando no WhatsApp.
+  Quem cair na tela da equipe por engano é levado para o portal certo
+  (`SemFuncaoInterna`, em [src/modules/auth/AuthGate.tsx](src/modules/auth/AuthGate.tsx)),
+  e conta com os **dois** papéis vê os dois caminhos em vez de ser adivinhada.
+- `/portalequipe` e não `/professoras`: o admin já usa `/professoras` para o
+  módulo de gestão. O teste de rota é por **segmento exato**, senão
+  `#/professoras` cairia no portal da professora.
+- Os hashes `#/portal` e `#/prof` são **legado** — valiam quando o site morava
+  em `github.io/sistema/`. Continuam reconhecidos só para não quebrar favorito
+  antigo; nada novo deve apontar para eles.
 - **Aluna e professora podem ser a mesma conta** desde 21/09/2026
   (`20260921150000` removeu `validar_papel_exclusivo`). A professora tem
   cortesia de aula e precisa agendar como qualquer aluno; exigir um segundo
