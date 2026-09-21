@@ -76,19 +76,39 @@ const linhas = pedidos.map((p) => {
   const plano = (p.planName || '').trim()
   const tel = (i.phones?.items?.[0]?.phone || '').replace(/\D/g, '')
   const [destino, formato] = DESTINO[plano] || ['— sem destino —', 'decidir']
+  const preco = p.pricing?.prices?.[0]?.price
+  const assinatura = p.pricing?.subscription
   return {
     nome: [i.name?.first, i.name?.last].filter(Boolean).join(' ').trim() || '(sem nome no Wix)',
     email: i.emails?.items?.[0]?.email || '',
     tel,
     plano,
     canal: canal(plano),
-    preco: Number(p.planPrice || 0),
+    // `planPrice` é o preço DE TABELA do plano; `prices[0].price.total` é o
+    // que a pessoa realmente paga no ciclo. Os dois divergem quando houve
+    // cupom — e é o valor real que vira `preco_contratado_centavos` na
+    // migração, senão a aluna recebe uma cobrança maior do que a do Wix.
+    tabela: Number(p.planPrice || 0),
+    preco: Number(preco?.total ?? p.planPrice ?? 0),
+    cupom: preco?.coupon ? `${preco.coupon.code} (−${preco.discount})` : '',
     pagamento: p.lastPaymentStatus || '',
     cobranca: p.type === 'ONLINE' ? 'automática' : p.type === 'OFFLINE' ? 'manual' : '—',
-    recorrente: !!p.pricing?.subscription,
+    recorrente: !!assinatura,
     ciclo: p.currentCycle?.index ?? '',
+    // 0 = assinatura sem fim (mensal que renova para sempre). Num plano de
+    // compromisso (trimestral/semestral) é quantas mensalidades foram
+    // contratadas — o semestral é a MESMA mensalidade cobrada 6 vezes,
+    // não um pagamento único (CLAUDE.md §9.4).
+    ciclosTotal: assinatura?.cycleCount ?? null,
     inicio: (p.startDate || '').slice(0, 10),
-    fim: (p.currentCycle?.endedDate || p.endDate || '').slice(0, 10),
+    // ⚠️ Duas datas DIFERENTES, e misturá-las numa coluna só já confundiu:
+    //   proxima = fim do ciclo corrente = a PRÓXIMA COBRANÇA. O Wix não
+    //             manda `endedDate` no ÚLTIMO ciclo, então ali fica vazio,
+    //             que é a verdade: não há próxima cobrança.
+    //   fim     = fim do COMPROMISSO (`endDate`). Não existe em assinatura
+    //             sem fim, e é esta a data até a qual o preço antigo vale.
+    proxima: (p.currentCycle?.endedDate || '').slice(0, 10),
+    fim: (p.endDate || '').slice(0, 10),
     destino,
     formato,
   }
@@ -108,16 +128,17 @@ const zap = (l) => (l.tel ? `<a href="https://wa.me/55${l.tel}">${l.tel}</a>` : 
 const tabela = (arr, titulo) => `
 <h3>${esc(titulo)} <span class="n">${arr.length}</span></h3>
 <table>
-  <thead><tr><th>Aluno</th><th>Contato</th><th>Plano no Wix</th><th>Paga</th><th>Cobrança</th><th>Ciclo</th><th>Vence</th><th>Vira no sistema</th></tr></thead>
+  <thead><tr><th>Aluno</th><th>Contato</th><th>Plano no Wix</th><th>Paga</th><th>Cobrança</th><th>Ciclo</th><th>Próxima cobrança</th><th>Fim do compromisso</th><th>Vira no sistema</th></tr></thead>
   <tbody>
   ${arr.map((l) => `<tr${l.pagamento === 'UNPAID' ? ' class="alerta"' : ''}>
     <td><strong>${esc(l.nome)}</strong><br><span class="v">${esc(l.email)}</span></td>
     <td>${zap(l)}</td>
     <td>${esc(l.plano)}</td>
-    <td>${dinheiro(l.preco)}${l.pagamento === 'UNPAID' ? '<br><span class="tag">em aberto</span>' : ''}</td>
+    <td>${dinheiro(l.preco)}${l.cupom ? `<br><span class="v">cupom ${esc(l.cupom)} · tabela ${dinheiro(l.tabela)}</span>` : ''}${l.pagamento === 'UNPAID' ? '<br><span class="tag">em aberto</span>' : ''}</td>
     <td>${l.cobranca}</td>
-    <td>${l.ciclo || '—'}</td>
-    <td>${br(l.fim)}</td>
+    <td>${l.ciclo ? `${l.ciclo}${l.ciclosTotal ? `/${l.ciclosTotal}` : ''}` : '—'}</td>
+    <td>${br(l.proxima)}</td>
+    <td>${l.fim ? br(l.fim) : '<span class="v">sem fim</span>'}</td>
     <td>${esc(l.destino)}<br><span class="v">${esc(l.formato)}</span></td>
   </tr>`).join('')}
   </tbody>
@@ -198,13 +219,17 @@ const COLUNAS = [
   ['Plano no Wix', (l) => l.plano],
   ['Vira no sistema', (l) => l.destino],
   ['Formato', (l) => l.formato],
-  ['Valor', (l) => (l.preco ? String(l.preco) : '0')],
+  ['Valor que paga', (l) => (l.preco ? String(l.preco) : '0')],
+  ['Valor de tabela', (l) => (l.tabela ? String(l.tabela) : '0')],
+  ['Cupom', (l) => l.cupom],
   ['Pagamento', (l) => ({ PAID: 'pago', UNPAID: 'em aberto', NOT_APPLICABLE: '—' }[l.pagamento] || l.pagamento)],
   ['Cobrança', (l) => l.cobranca],
   ['Recorrente', (l) => (l.recorrente ? 'sim' : 'não')],
-  ['Ciclo', (l) => String(l.ciclo ?? '')],
-  ['Início', (l) => br(l.inicio)],
-  ['Vence', (l) => br(l.fim)],
+  ['Ciclo', (l) => (l.ciclo ? `${l.ciclo}${l.ciclosTotal ? '/' + l.ciclosTotal : ''}` : '')],
+  ['Ciclos contratados', (l) => (l.ciclosTotal === 0 ? 'sem fim' : l.ciclosTotal ? String(l.ciclosTotal) : '')],
+  ['Início', (l) => (l.inicio ? br(l.inicio) : '')],
+  ['Próxima cobrança', (l) => (l.proxima ? br(l.proxima) : '')],
+  ['Fim do compromisso', (l) => (l.fim ? br(l.fim) : '')],
 ]
 const celula = (v) => {
   const s = String(v ?? '')

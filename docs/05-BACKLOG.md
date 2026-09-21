@@ -88,6 +88,7 @@ antes** (fora do repo, que é público).
 | G3 | **Cutover do Wix** | 💻📋 | A operação continua lá. Capítulo próprio em §3. |
 | G4 | ~~Prazo de cancelamento divergente~~ | ✅ | **Feito em 21/09.** Produção estava em 3h e o Wix em 240 min. Agora os dois em **4h**, valor confirmado pela gestão. DEV já estava em 4h. |
 | G5 | **Secrets do Wellhub em produção** | ⚙️ | Em andamento. Detalhe em §4 (W2) — hoje falha todo dia às 06:00. |
+| G6 | **Ativar o domínio `aluno.studiopolel.com.br`** | ⚙️ | **Código já em produção (21/09); falta só configuração no navegador**, e a gestão pediu para deixar para depois. São 7 passos: repo `portal-aluno`, token, secret `PAGES_PORTAL_ALUNO_TOKEN` no ambiente Production, rodar o deploy, ligar o Pages, CNAME no Registro.br e Redirect URL no Supabase Auth. Passo a passo com os valores exatos em [interno/dominio-portal-aluno.md](interno/dominio-portal-aluno.md). Enquanto não for feito, o deploy pula o passo com aviso e tudo segue em `/agendamentos/`. O passo mais fácil de esquecer é o do Supabase: sem ele o link de "esqueci minha senha" devolve o aluno para o domínio da gestão. |
 
 ---
 
@@ -109,6 +110,8 @@ partir dele, num caminho só, até a virada.
 | X5 | **TotalPass como canal próprio** | 🟡 | 💻 | **Decidido em 21/09.** Há planos TotalPass ativos no Wix e o ERP só conhece `wellhub`/`classpass`. Migration nova no enum de canal/origem + categoria financeira + receita "a reconciliar", no mesmo molde do Wellhub. |
 | X6 | **Plano da virada** | 🟡 | 🔀 | Data do corte, o que fazer com reservas já feitas no Wix para depois da data, e o aviso aos alunos. Enquanto os dois coexistirem, **mudança de horário tem que ser feita nos dois lugares**. |
 | X7 | Desligar o Wix Bookings e redirecionar os links | ⚪ | ⚙️ | Só depois de X6 validado. |
+| X8 | **Importar o preço REAL, não o de tabela** | 🔴 | 💻 | Descoberto em 21/09 ao responder a gestão. O Wix tem **cupom por pedido**: `planPrice` é o preço de tabela e `pricing.prices[0].price.total` é o que a pessoa paga. Hoje **4 pedidos ativos divergem** — um Trimestral 1x pagando **R$128** com o cupom `promo1` (tabela R$160), dois `Pacotes - 4 Aulas` zerados pelo `casinha100` e uma Aula Avulsa zerada. `matriculas.preco_contratado_centavos` tem que receber o valor **pago**; herdar o de tabela cobraria a mais de quem tem desconto. O relatório já foi corrigido (colunas **Valor que paga** / **Valor de tabela** / **Cupom**); falta o `importar-wix-alunos.mjs`. |
+| X9 | **Preço do compromisso vale até o fim do compromisso** | 🔴 | 📋💻 | Quem está em plano **Trimestral/Semestral** contratou a mensalidade N vezes — o preço antigo vale até o último ciclo, mesmo que o reajuste entre no meio. O modelo já suporta (`preco_contratado_centavos` é congelado e `renovar_ciclo()` nunca relê `produtos.preco_centavos`); o que falta é **importar com a data certa**. Hoje são 5 pessoas: 2 Semestrais 1x (R$155, ciclo 6/6, terminam 09/10 e 11/10), 1 Semestral 2x (R$280, ciclo 5/6, termina 06/11), 2 Trimestrais 1x (uma no ciclo 1/3 até 28/11, outra no 3/3 até 09/10 pagando R$128). **Três delas acabam em outubro** — decidir antes se renovam no preço novo. |
 
 ---
 
@@ -166,6 +169,96 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | A7 | **E-mails faltantes** | 🟡 | 💻 | Em andamento. Prontos: `vaga_liberada`, `confirmacao_agendamento`, `lembrete_aula`, `vencimento`. Faltam **boas-vindas** e **cobrança recusada** (este só faz sentido depois de A3). |
 | A8 | **Central de Comunicados** | 🟡 | 💻 | **Decidido em 21/09: criar.** Especificação em §12. |
 | A9 | PWA instalável + push | ⚪ | 💻 | V3. |
+| A10 | **Desconto configurável (a experimental é a 1ª regra)** | 🟡 | 💻 | **Não existe hoje.** Regra fechada com a gestão em 21/09: quem fez a experimental e fecha plano em **até 7 dias da AULA** abate **o valor de uma** experimental na 1ª mensalidade — vale também para quem comprou o pacote de 2. O modelo não expressa: `preco_contratado_centavos` é um valor só, usado em todos os ciclos. O mesmo campo serve para desconto manual (o cupom que o Wix já usa, X8). Desenho em §6.1. |
+| A11 | **Bonificar aluna com créditos / aula extra** | 🟡 | 💻 | **O modelo já existe** — `creditos_lotes.origem` aceita `ajuste`/`reposicao`, com validade e motivo, e o bônus já entra no saldo e no extrato. Falta só o caminho: uma RPC `conceder_creditos()` restrita à gestão (hoje **nenhuma** RPC cria lote — todo insert está dentro de `renovar_ciclo()`) e um botão na ficha da aluna, com motivo obrigatório. É a menor das duas. Desenho em §6.1. |
+
+### 6.1 Descontos e bonificações (A10 · A11)
+
+Duas necessidades que a gestão levantou em 21/09 e que o sistema **não
+atende hoje**: abater o valor da experimental na 1ª mensalidade, e bonificar
+uma aluna com créditos ou aula extra. São a mesma família — dar alguma coisa
+a alguém fora da tabela — mas caem em lugares diferentes do modelo.
+
+#### A10 — Desconto da experimental na 1ª mensalidade
+
+**Regra, já decidida pela gestão (21/09):**
+
+| Ponto | Decisão |
+|---|---|
+| Janela | **7 dias** |
+| Contados a partir de | **a aula feita**, não a compra. A pessoa compra na segunda e treina no sábado; o gatilho é ter experimentado. |
+| Vale para | **"Aula experimental"** e **"2 aulas experimentais"** |
+| Quanto abate | sempre o valor de **UMA** experimental — quem comprou o pacote de duas não abate os dois |
+| Onde abate | só na **1ª** mensalidade (num semestral, na 1ª das 6) |
+
+**Por que precisa de banco.** `matriculas.preco_contratado_centavos` é **um**
+valor, congelado na contratação, e `gerar_cobranca_prevista()` usa o mesmo em
+**todos** os ciclos. Não existe onde escrever "o primeiro ciclo custa menos".
+Baixar o preço contratado resolveria o mês 1 e daria o desconto **para
+sempre** — o oposto do combinado.
+
+**Desenho:**
+
+1. **`regras_desconto`** — configurável pela gestão, no espírito do §9.4 do
+   CLAUDE.md ("regras manipuláveis pelas administradoras, não fixas em
+   código"). Uma linha por produto de origem:
+
+   | coluna | para a regra da experimental |
+   |---|---|
+   | `produto_origem_id` | *Aula experimental* — e uma 2ª linha para *2 aulas experimentais* |
+   | `produto_referencia_id` | *Aula experimental* nas **duas** linhas — é ele que define o valor abatido |
+   | `produto_destino_id` | nulo = qualquer plano |
+   | `janela_dias` | 7 |
+   | `contar_de` | `aula_feita` \| `compra` |
+   | `ativa` | sim |
+
+   Duas linhas em vez de uma com lista de origens: cada promoção fica
+   editável sozinha, sem tabela-filha e sem migration para mudar o valor.
+
+2. **`matriculas.desconto_primeiro_ciclo_centavos`** (+ qual compra o
+   originou, para auditoria). `matricular()` resolve a regra na contratação e
+   **congela** o valor — mesma filosofia do preço contratado: promoção que
+   mudar depois não mexe em matrícula já feita, e a fatura consegue dizer
+   *por que* saiu mais barata. O mesmo campo serve para **desconto manual**,
+   digitado pela equipe num caso fora de regra (é o equivalente do cupom que
+   o Wix já usa — ver X8).
+
+3. **`gerar_cobranca_prevista()`** abate quando `p_ciclo = 1`, com piso em
+   zero.
+
+**O ponto técnico que falta resolver:** "aula feita" precisa de uma fonte.
+A confiável é a `presencas` do agendamento pago pelo crédito daquela
+matrícula de experimental — é automático e exato. O estágio do funil
+(`fez_experimental`) **não** serve sozinho: depende de alguém mover o funil
+à mão.
+
+#### A11 — Bonificar uma aluna com créditos ou aula extra
+
+**O modelo de dados já existe e não precisa mudar.** `creditos_lotes` tem
+`origem` (`motivo_credito`, que já inclui `ajuste` e `reposicao`), `validade`
+e `detalhe`; `creditos_eventos` é o livro-razão append-only que a aluna vê no
+extrato. Um bônus é um lote novo com `origem = 'ajuste'`, validade escolhida
+e o motivo escrito — e ele **já aparece** no saldo e no extrato, porque
+`saldo_disponivel()` soma por lote válido.
+
+**O que falta é só o caminho:**
+
+1. `conceder_creditos(matricula, quantidade, validade, motivo, detalhe)` —
+   *security definer*, restrita a `is_gestao()`/`is_operacional()`, gravando
+   `criado_por`. Hoje **não existe RPC nenhuma** que crie lote: todos os
+   `insert` em `creditos_lotes` estão dentro de `renovar_ciclo()` e afins.
+2. Um botão na ficha da aluna (Matrículas), com motivo obrigatório — bônus
+   sem motivo escrito vira discussão três meses depois.
+
+⚠️ **Nada disso pode virar `if` de caso especial.** O Wix já opera com cupom
+(`promo1`, `casinha100` — ver X8), a experimental é só a primeira regra, e
+bonificação avulsa acontece o tempo todo. Construir como mecanismo desde o
+início custa o mesmo e evita reescrever na terceira promoção.
+
+⏱️ **Sequência:** nada disso é usável antes de existir aluno no sistema
+(G2/§3). A11 é pequena (uma RPC + um botão) e independente; A10 mexe em
+cobrança e vale entrar junto com o gateway (§11), que é quem transforma
+`gerar_cobranca_prevista()` em dinheiro de verdade.
 
 ---
 
@@ -204,7 +297,7 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | T5 | **Bundle único, agora 1,31 MB (356 kB gzip)** | 🟡 | Era 970 kB / 271 kB em julho. Os três portais no mesmo JS; quem paga é o aluno abrindo no 4G. Code-splitting por jornada resolve. |
 | T6 | ~~Dados de teste misturados com reais~~ | ✅ | Limpeza de 21/09 (§1.2). |
 | T7 | **DEV e PROD com configurações de negócio diferentes** | 🟡 | `faltas_para_suspensao` 3 no DEV × 2 na PROD; `valor_checkin_wellhub_centavos` R$15 × R$27. Homologar regra de falta no DEV dá resultado diferente do que produção fará. |
-| T8 | **CLAUDE.md §5.1 desatualizado** | 🟡 | Documenta `#/portal` e `#/prof` como rotas atuais (ver §1.1). |
+| T8 | ~~CLAUDE.md §5.1 desatualizado~~ | ✅ | **Corrigido em 21/09.** A §5.1 agora descreve a ordem real (hostname → caminho → hash), o domínio do aluno e o motivo de cada endereço. |
 | T9 | **O smoke test não cobre as rotas de produção** | 🟡 | `scripts/smoke.mjs` sobe `''`, `#/`, `#/portal` e `#/prof`. Os dois últimos só funcionam por compatibilidade; o que o aluno e a professora abrem de verdade é `/agendamentos/` e `/portalequipe/`, que têm `index.html` próprio no build. Uma quebra ali passa pelo CI sem ninguém ver. |
 
 ---
