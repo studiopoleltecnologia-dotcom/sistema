@@ -35,21 +35,33 @@ Legenda de natureza — quem resolve muda tudo:
 `main` estão iguais, não há PR aberto, o build passa limpo e os 7 crons rodam.
 O que falta não é software: é a operação real entrar nele.
 
-### 1.1 As três URLs de produção
+### 1.1 As URLs de produção
 
-A jornada é decidida pelo **caminho**, não mais pelo hash — cada portal tem
-`index.html` próprio no build (`deploy.yml`), porque o GitHub Pages não faz
-rewrite de SPA. O hash antigo (`#/portal`, `#/prof`) só continua reconhecido
-para não quebrar favorito salvo; `/portal` hoje dá **404**.
+A jornada é decidida em `jornadaAtual()` (`src/App.tsx`), nesta ordem:
+**hostname → caminho → hash**. Cada caminho tem `index.html` próprio no build
+(`deploy.yml`), porque o GitHub Pages não faz rewrite de SPA. O hash antigo
+(`#/portal`, `#/prof`) só continua reconhecido para não quebrar favorito
+salvo; `/portal` hoje dá **404**.
 
 | Portal | URL |
 |---|---|
 | Interno (equipe) | `sistema.studiopolel.com.br/` |
-| Aluno | `sistema.studiopolel.com.br/agendamentos/` |
+| Aluno | `aluno.studiopolel.com.br/` — **qualquer caminho** |
+| Aluno (endereço antigo, segue valendo) | `sistema.studiopolel.com.br/agendamentos/` |
 | Professora | `sistema.studiopolel.com.br/portalequipe/` |
 
-⚠️ O CLAUDE.md §5.1 ainda descreve os hashes como se fossem as rotas atuais.
-A verdade está em `jornadaAtual()`, em `src/App.tsx`.
+O aluno ganhou **domínio próprio** em 21/09: no host dele o ERP não existe,
+nem digitando a URL. Quem chegar na tela da equipe com conta de aluno ou
+professora é levado para o portal certo em vez de ver "peça para a gestão
+liberar o seu e-mail". O endereço antigo não tem prazo para sair — é o que
+está salvo no celular das alunas.
+
+⚠️ **Pendente de configuração** (código pronto, PR mergeada): criar o repo de
+hospedagem, o token, o registro de DNS no Registro.br e liberar o endereço no
+Supabase Auth. Passo a passo em
+[docs/interno/dominio-portal-aluno.md](interno/dominio-portal-aluno.md).
+Enquanto não for feito, o deploy publica só o site da gestão, com aviso no
+log, e tudo segue funcionando no endereço antigo.
 
 ### 1.2 Dados em produção (depois da limpeza de 21/09)
 

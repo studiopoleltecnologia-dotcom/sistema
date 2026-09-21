@@ -81,6 +81,51 @@ jobs:
         with:
           path: dist
 
+      # ---------------------------------------------------------------
+      # Segundo endereço: aluno.studiopolel.com.br (portal do aluno).
+      #
+      # O GitHub Pages aceita UM domínio customizado por repositório (é o
+      # que o arquivo `public/CNAME` guarda, hoje sistema.studiopolel.com.br).
+      # Um segundo domínio exige, então, um segundo repositório — que não
+      # tem código nenhum: é só hospedagem do MESMO bundle, do MESMO commit.
+      #
+      # Publicar daqui, e não por um pipeline próprio do outro repo, é o
+      # ponto: assim o portal do aluno sobe DEPOIS do job `supabase-prod`,
+      # com a mesma garantia de ordem que a produção já tem. Um deploy
+      # independente poderia servir um front que espera um schema que
+      # ainda não foi aplicado.
+      #
+      # No domínio do aluno o ERP não existe: `jornadaAtual()` (src/App.tsx)
+      # decide pelo hostname, e o 404.html devolve o portal para qualquer
+      # caminho digitado errado.
+      #
+      # Sem o token configurado o passo é PULADO, não falha: enquanto o DNS
+      # não estiver de pé o domínio novo é opcional, e o deploy da produção
+      # não pode ficar refém dele.
+      - name: Publicar o portal do aluno no domínio próprio
+        env:
+          TOKEN: ${{ secrets.PAGES_PORTAL_ALUNO_TOKEN }}
+          REPO_ALUNO: studiopoleltecnologia-dotcom/portal-aluno
+          DOMINIO_ALUNO: aluno.studiopolel.com.br
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::PAGES_PORTAL_ALUNO_TOKEN ausente — $DOMINIO_ALUNO não foi publicado (o site da gestão subiu normalmente)."
+            exit 0
+          fi
+          rm -rf portal-aluno
+          cp -r dist portal-aluno
+          echo "$DOMINIO_ALUNO" > portal-aluno/CNAME
+          cp portal-aluno/index.html portal-aluno/404.html
+          touch portal-aluno/.nojekyll
+          cd portal-aluno
+          git init -q
+          git config user.email "deploy@studiopolel.com.br"
+          git config user.name "Studio Pole L (deploy)"
+          git add -A
+          git commit -q -m "Deploy de ${GITHUB_SHA:0:7}"
+          git push -q --force "https://x-access-token:$TOKEN@github.com/$REPO_ALUNO.git" HEAD:gh-pages
+          echo "::notice::Portal do aluno publicado em https://$DOMINIO_ALUNO"
+
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main'
