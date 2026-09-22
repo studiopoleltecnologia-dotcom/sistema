@@ -1,23 +1,34 @@
 import { fmtData } from '../../../lib/datas'
 import { useMinhaFuncao } from '../../../lib/funcao'
 import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
-import { useAulasSemPresenca, useRevogarSuspensao, useSuspensoes } from '../hooks/useAgenda'
+import {
+  useAulasSemPresenca,
+  useConfigAgendamento,
+  useRevogarSuspensao,
+  useSuspensoes,
+} from '../hooks/useAgenda'
 
 /**
- * Duas listas que existem pelo mesmo motivo: a regra das 3 faltas
- * (regulamento 4.7) só é justa se a equipe conseguir ver o que ela está
+ * Duas listas que existem pelo mesmo motivo: a regra das faltas
+ * (regulamento 4.16) só é justa se a equipe conseguir ver o que ela está
  * fazendo e desfazer quando errar.
  *
  * A segunda lista é a contrapartida de uma decisão da etapa 5: falta NÃO
  * é presumida. Aula passada que ninguém marcou não vira falta automática
  * — o que protege a aluna do esquecimento da professora, mas cria um
  * buraco. Sem esta lista o buraco seria invisível.
+ *
+ * Os números da regra vêm de `config_agendamento`, não do texto. Estavam
+ * escritos à mão ("três faltas… 15 dias") enquanto a produção rodava com
+ * 2 e 20 — os valores do regulamento de outubro. A tela contradizia o
+ * banco, que é a pior forma de errar: quem lê acredita.
  */
 export function FaltasView() {
   const { data: funcao } = useMinhaFuncao()
   const ehGestao = funcao === 'gestao'
   const { data: suspensoes, isLoading } = useSuspensoes()
   const { data: semPresenca } = useAulasSemPresenca()
+  const { data: config } = useConfigAgendamento()
   const revogar = useRevogarSuspensao()
   const confirmar = useConfirmar()
 
@@ -36,8 +47,11 @@ export function FaltasView() {
           Suspensões por falta
         </h2>
         <p className="mb-3 text-xs text-neutral-400">
-          Três faltas sem cancelamento no mesmo ciclo pausam o agendamento antecipado por 15
-          dias. A aluna continua treinando — reservando no mesmo dia ou pela lista de espera.
+          {config
+            ? `${config.faltas_para_suspensao} faltas sem cancelamento no mesmo ciclo pausam o agendamento antecipado por ${config.dias_suspensao_faltas} dias.`
+            : 'Faltas sem cancelamento no mesmo ciclo pausam o agendamento antecipado.'}{' '}
+          O aluno continua treinando — reservando no mesmo dia ou pela lista de espera. Não
+          vale para as aulas de Mensalidade por Turma Fixa, cuja vaga já está contratada.
         </p>
 
         {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
