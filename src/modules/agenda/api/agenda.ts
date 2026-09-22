@@ -480,7 +480,7 @@ export async function resolverCheckinPendente(args: {
 }
 
 /**
- * Suspensões por falta (regulamento 4.7). Traz também as revogadas e as
+ * Suspensões por falta (regulamento 4.16). Traz também as revogadas e as
  * vencidas: o histórico é o que permite a equipe responder "por que ela
  * ficou suspensa em agosto".
  */
@@ -506,7 +506,7 @@ export async function revogarSuspensao(args: { id: string; motivo?: string }) {
 /**
  * Aulas que já aconteceram e ninguém marcou presença nem falta.
  * Existe porque falta NÃO é presumida (etapa 5): sem esta lista, a
- * marcação esquecida sumiria e a regra das 3 faltas furaria calada.
+ * marcação esquecida sumiria e a regra das faltas furaria calada.
  */
 export async function listarAulasSemPresenca() {
   const { data, error } = await requireSupabase()

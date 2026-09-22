@@ -203,7 +203,7 @@ function ConfigAgendamentoForm() {
 
         <div className="border-t border-neutral-100 pt-4">
           <p className="mb-3 text-xs font-medium text-neutral-500">
-            Faltas sem cancelamento (regulamento 4.7)
+            Faltas sem cancelamento (regulamento 4.16)
           </p>
           <div className="flex flex-col gap-4">
             <div>
