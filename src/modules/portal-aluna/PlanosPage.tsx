@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Info } from 'lucide-react'
 import { fmtData } from '../../lib/datas'
 import { useRequisitos } from '../produtos/hooks/useProdutos'
@@ -7,7 +7,7 @@ import { usePortalClienteId } from './PortalClienteContext'
 import {
   useConfigAgendamento,
   useContratarPlano,
-  useMeuSaldo,
+  useMeusPlanos,
   usePlanos,
 } from './hooks/usePortalAluna'
 import {
@@ -40,7 +40,8 @@ import {
   RegrasTurmaFixa,
   TituloPlano,
 } from './components/planos/Detalhes'
-import { Folha } from './components/planos/Folha'
+import { Cabecalho } from './components/Basicos'
+import { Folha } from './components/Folha'
 
 type FolhaAberta =
   | { tipo: 'comprar'; produtoId: string }
@@ -77,7 +78,7 @@ export function PlanosPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const { data: produtos, isLoading } = usePlanos()
-  const { data: saldos } = useMeuSaldo()
+  const { data: meusPlanos } = useMeusPlanos()
   const { data: config } = useConfigAgendamento()
   const { data: requisitos } = useRequisitos()
   const contratar = useContratarPlano()
@@ -177,7 +178,7 @@ export function PlanosPage() {
   const horasCancelamento = (p: Produto | undefined) =>
     p?.horas_cancelamento ?? config?.horas_cancelamento ?? null
 
-  const planoAtivo = (saldos ?? []).find((s) => (s.saldo ?? 0) > 0)
+  const planoAtivo = (meusPlanos ?? []).find((s) => s.saldo > 0 && s.status === 'ativa')
 
   if (contratado) {
     return (
@@ -195,32 +196,23 @@ export function PlanosPage() {
       : undefined
 
   return (
-    <div>
-      <h1 className="mb-5 text-xl font-semibold text-neutral-900">Planos</h1>
+    <div className="lg:max-w-4xl">
+      <Cabecalho titulo="Planos" subtitulo="Escolha como você quer treinar." />
 
       {planoAtivo && (
-        <div className="mb-6 rounded-xl border border-brand-100 bg-brand-50 p-3.5 text-sm text-brand-700">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-100 bg-brand-50 p-3.5 text-sm text-brand-700">
           {/* A data que importa para ela é a que o CRÉDITO vence, não a
               do ciclo — são diferentes quando o produto tem validade
-              própria. Até agora esta caixa nem aparecia: o saldo vinha
-              sempre 0 porque faltava policy de leitura no razão. */}
-          Você tem <strong>{planoAtivo.saldo}</strong> aula{planoAtivo.saldo === 1 ? '' : 's'} para
-          usar
-          {planoAtivo.proxima_validade
-            ? `, até ${fmtData(planoAtivo.proxima_validade)}`
-            : `, até ${fmtData(planoAtivo.data_fim)}`}
-          .
-          {planoAtivo.cancelamento_efetivo_em ? (
-            <span className="mt-1 block text-xs">
-              Sua assinatura foi cancelada e não será cobrada de novo. Você continua com acesso até{' '}
-              {fmtData(planoAtivo.cancelamento_efetivo_em)}.
-            </span>
-          ) : planoAtivo.renova_automaticamente ? (
-            <span className="mt-1 block text-xs">
-              Renova sozinho em {fmtData(planoAtivo.data_fim)}, com nova cobrança. Para parar, fale
-              com o estúdio.
-            </span>
-          ) : null}
+              própria. Renovação, cancelamento e regras moram em "Meu
+              plano"; aqui é só o lembrete de que ela já tem aulas. */}
+          <span>
+            Você tem <strong>{planoAtivo.saldo}</strong> {planoAtivo.saldo === 1 ? 'crédito' : 'créditos'} para
+            usar
+            {planoAtivo.proxima_validade ? `, até ${fmtData(planoAtivo.proxima_validade)}` : ''}.
+          </span>
+          <Link to="../meu-plano" className="text-xs font-semibold underline underline-offset-2">
+            Ver meu plano
+          </Link>
         </div>
       )}
 
@@ -268,7 +260,7 @@ export function PlanosPage() {
             </>
           )}
 
-          <div className="flex flex-col gap-2.5">
+          <div className="grid gap-2.5 lg:grid-cols-2">
             {visiveis.map((p) => (
               <CartaoPlano
                 key={p.id}

@@ -4,6 +4,7 @@ import type {
   CategoriaModalidade,
   CategoriaModalidadeInsert,
   CategoriaModalidadeUpdate,
+  MotivoCancelamentoAula,
   TurmaInsert,
   TurmaUpdate,
 } from '../types'
@@ -405,6 +406,9 @@ export async function atualizarConfigAgendamento(patch: {
   horas_cancelamento?: number
   valor_checkin_wellhub_centavos?: number
   dias_antecedencia_cobranca?: number
+  dias_antecedencia_cancelamento_plano?: number
+  dias_aviso_fim_compromisso?: number
+  dias_validade_credito_aula_cancelada?: number
   faltas_para_suspensao?: number
   dias_suspensao_faltas?: number
   minutos_tolerancia_atraso?: number
@@ -512,4 +516,56 @@ export async function listarAulasSemPresenca() {
     .limit(100)
   if (error) throw error
   return data
+}
+
+// ------------------------------------------------------------
+// Aulas canceladas pelo estúdio
+// ------------------------------------------------------------
+
+/** Cancelamentos a partir de uma data (vigentes e reabertos). */
+export async function listarAulasCanceladas(desde: string) {
+  const { data, error } = await requireSupabase()
+    .from('aulas_canceladas')
+    .select('*')
+    .gte('data', desde)
+    .order('data')
+  if (error) throw error
+  return data
+}
+
+/** Quem cada aula atinge — antes de a equipe confirmar. */
+export async function previaCancelamento(turmas: string[], data: string) {
+  const { data: linhas, error } = await requireSupabase().rpc('previa_cancelamento_aulas', {
+    p_turmas: turmas,
+    p_data: data,
+  })
+  if (error) throw error
+  return linhas
+}
+
+/**
+ * Cancela as aulas, devolve os créditos, dá reposição a quem tem turma
+ * fixa e avisa os alunos por e-mail — tudo no banco, numa transação.
+ */
+export async function cancelarAulas(args: {
+  turmas: string[]
+  data: string
+  motivo: MotivoCancelamentoAula
+  mensagem: string
+  reporTurmaFixa: boolean
+}) {
+  const { data, error } = await requireSupabase().rpc('cancelar_aulas', {
+    p_turmas: args.turmas,
+    p_data: args.data,
+    p_motivo: args.motivo,
+    ...(args.mensagem.trim() ? { p_mensagem: args.mensagem.trim() } : {}),
+    p_repor_turma_fixa: args.reporTurmaFixa,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function reabrirAula(cancelamentoId: string) {
+  const { error } = await requireSupabase().rpc('reabrir_aula', { p_cancelamento: cancelamentoId })
+  if (error) throw error
 }

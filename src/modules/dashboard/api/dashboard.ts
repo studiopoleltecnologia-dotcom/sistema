@@ -44,6 +44,16 @@ export async function contarInadimplentes(): Promise<number> {
   return count ?? 0
 }
 
+/** Pedidos de cancelamento do portal esperando a gestão (regulamento 7.1). */
+export async function contarCancelamentosPendentes(): Promise<number> {
+  const { count, error } = await requireSupabase()
+    .from('solicitacoes_cancelamento')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pendente')
+  if (error) throw error
+  return count ?? 0
+}
+
 export type AulaDoDia = {
   turma_id: string
   horario: string
@@ -54,6 +64,8 @@ export type AulaDoDia = {
   agendados: number
   /** Só o que `corDaTurma` precisa — a cor do cartão vem daqui. */
   categoria: CategoriaModalidade | null
+  /** Cancelada pelo estúdio hoje: o painel não pode mostrá-la como aula normal. */
+  cancelada: boolean
 }
 
 /**
@@ -73,15 +85,22 @@ export async function aulasDeHoje(): Promise<AulaDoDia[]> {
   const data = hojeISO()
   const dow = new Date(data + 'T00:00:00').getDay()
 
-  const [turmas, agendaRes] = await Promise.all([
+  const [turmas, agendaRes, canceladasRes] = await Promise.all([
     listarTurmas(),
     requireSupabase()
       .from('agendamentos')
       .select('turma_id')
       .eq('status', 'agendado')
       .eq('data', data),
+    requireSupabase()
+      .from('aulas_canceladas')
+      .select('turma_id')
+      .eq('data', data)
+      .is('reaberta_em', null),
   ])
   if (agendaRes.error) throw agendaRes.error
+  if (canceladasRes.error) throw canceladasRes.error
+  const canceladas = new Set((canceladasRes.data ?? []).map((c) => c.turma_id))
 
   const conta = new Map<string, number>()
   for (const a of agendaRes.data ?? []) {
@@ -99,6 +118,7 @@ export async function aulasDeHoje(): Promise<AulaDoDia[]> {
       capacidade: t.capacidade,
       agendados: conta.get(t.id) ?? 0,
       categoria: t.categoria,
+      cancelada: canceladas.has(t.id),
     }))
 }
 

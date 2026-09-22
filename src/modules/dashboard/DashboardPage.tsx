@@ -27,6 +27,7 @@ import { FolhaResumo } from './components/FolhaResumo'
 import {
   useAniversariantes,
   useAulasDeHoje,
+  useCancelamentosPendentes,
   useFollowupsPendentes,
   useFolhaPrevista,
   useFunil,
@@ -66,6 +67,7 @@ export function DashboardPage() {
   const funil = useFunil()
   const followups = useFollowupsPendentes()
   const inadimplentes = useInadimplentes()
+  const cancelamentos = useCancelamentosPendentes()
   const aulas = useAulasDeHoje()
   const aniversariantes = useAniversariantes()
   const folha = useFolhaPrevista(gestao)
@@ -108,6 +110,16 @@ export function DashboardPage() {
       icon: AlertTriangle,
       texto: `${inadimplentes.data} matrícula(s) com pagamento em aberto`,
       tom: 'danger',
+    })
+  }
+  // Pedido do portal tem prazo (regulamento 7.1): quem confirma é a gestão,
+  // e o aluno espera a confirmação por escrito.
+  if (gestao && (cancelamentos.data ?? 0) > 0) {
+    alertas.push({
+      to: '/matriculas?aba=cancelamentos',
+      icon: AlertTriangle,
+      texto: `${cancelamentos.data} pedido(s) de cancelamento de plano para confirmar`,
+      tom: 'warning',
     })
   }
   if (gestao && nivelMei !== 'ok') {

@@ -32,6 +32,10 @@ import {
   listarSuspensoes,
   resolverCheckinPendente,
   revogarSuspensao,
+  listarAulasCanceladas,
+  previaCancelamento,
+  cancelarAulas,
+  reabrirAula,
 } from '../api/agenda'
 
 export function useTurmas() {
@@ -268,4 +272,52 @@ export function useRevogarSuspensao() {
 
 export function useAulasSemPresenca() {
   return useQuery({ queryKey: ['aulas-sem-presenca'], queryFn: listarAulasSemPresenca })
+}
+
+/** Aulas canceladas pelo estúdio a partir de `desde` (inclui as reabertas). */
+export function useAulasCanceladas(desde: string) {
+  return useQuery({
+    queryKey: ['aulas-canceladas', desde],
+    queryFn: () => listarAulasCanceladas(desde),
+  })
+}
+
+export function usePreviaCancelamento(turmas: string[], data: string) {
+  return useQuery({
+    queryKey: ['previa-cancelamento', data, [...turmas].sort().join(',')],
+    queryFn: () => previaCancelamento(turmas, data),
+    enabled: turmas.length > 0 && Boolean(data),
+  })
+}
+
+/**
+ * Cancelar uma aula mexe em agendamentos, créditos, fila, ocupação e no
+ * painel do dia — invalida tudo que mostra essas coisas.
+ */
+function useInvalidarCancelamentos() {
+  const qc = useQueryClient()
+  return () => {
+    for (const chave of [
+      'aulas-canceladas',
+      'previa-cancelamento',
+      'agenda-dia',
+      'ocupacao-turmas',
+      'ocupacao-periodo',
+      'dash-aulas-hoje',
+      'saldo-creditos',
+      'matriculas-saldos',
+    ]) {
+      qc.invalidateQueries({ queryKey: [chave] })
+    }
+  }
+}
+
+export function useCancelarAulas() {
+  const invalidar = useInvalidarCancelamentos()
+  return useMutation({ mutationFn: cancelarAulas, onSuccess: invalidar })
+}
+
+export function useReabrirAula() {
+  const invalidar = useInvalidarCancelamentos()
+  return useMutation({ mutationFn: reabrirAula, onSuccess: invalidar })
 }

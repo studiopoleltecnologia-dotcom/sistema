@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   buscarAluna,
   listarAlunasDaAula,
+  listarAulasCanceladas,
   listarMeusPagamentos,
   listarMinhasTurmas,
   obterContaProfessora,
@@ -19,6 +20,13 @@ export function useMinhaProfessora() {
 
 export function useMinhasTurmas() {
   return useQuery({ queryKey: ['prof-turmas'], queryFn: listarMinhasTurmas })
+}
+
+export function useAulasCanceladas(de: string, ate: string) {
+  return useQuery({
+    queryKey: ['prof-canceladas', de, ate],
+    queryFn: () => listarAulasCanceladas(de, ate),
+  })
 }
 
 export function useAlunasDaAula(turmaId: string, data: string) {

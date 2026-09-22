@@ -128,8 +128,8 @@ export function mensagemErroContratacao(e: unknown): string {
   const limite = texto.match(/limite de (\d+) contrata/)
   if (limite) {
     return Number(limite[1]) === 1
-      ? 'Este produto é limitado a uma compra por pessoa, e você já contratou.'
-      : `Este produto é limitado a ${limite[1]} compras por pessoa, e você já atingiu o limite.`
+      ? 'Este item é limitado a uma compra por pessoa, e você já contratou.'
+      : `Este item é limitado a ${limite[1]} compras por pessoa, e você já atingiu o limite.`
   }
   return 'Não foi possível contratar. Tente novamente.'
 }

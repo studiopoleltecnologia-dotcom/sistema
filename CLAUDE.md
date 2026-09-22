@@ -390,6 +390,60 @@ produto antes — a proposta é tolerância *assimétrica*, não um knob genéri
 - A **Booking API** da Wellhub (12.3) é o fim estrutural disso — com reserva, a
   turma vem no payload e a ambiguidade deixa de existir.
 
+### 9.8 Cancelamento de plano pelo portal (21/09/2026)
+
+Regulamento v3, item 7.1: pedido com **≥ 5 dias** de antecedência da
+renovação impede aquela renovação; depois disso, vale para a seguinte. O
+pedido é "confirmado por escrito por nós". Implementado em
+`20260921200000_portal_meu_plano_cancelamento.sql`:
+
+- **O aluno pede, a gestão encerra.** `solicitar_cancelamento_plano()` só
+  registra (`solicitacoes_cancelamento`) e avisa por e-mail;
+  `confirmar_cancelamento_plano()` (`is_gestao()`) é que mexe na matrícula.
+  `cancelar_assinatura()` **não aceita mais o aluno** — antes aceitava e
+  cancelava sem ninguém ver.
+- **Uma conta de prazo só:** `regras_cancelamento_plano()`. A tela lê via
+  `meus_planos()`, a solicitação grava o resultado como retrato. Não
+  recalcular prazo no front.
+- O "5" é `config_agendamento.dias_antecedencia_cancelamento_plano`. A data
+  de referência é a de **São Paulo** (`now() at time zone …`), não
+  `current_date` — o banco roda em UTC.
+- Pedido dentro do prazo e ainda pendente **segura** cobrança e renovação em
+  `processar_assinaturas()`. Confirmado fora do prazo, a matrícula fica com
+  `cancelada_em` + `renova_automaticamente = true` + `cancelamento_efetivo_em`
+  além do ciclo: `renovar_ciclo()` aceita essa **única** renovação.
+- Desvios do motor de créditos achados no caminho: acúmulo do semestral e
+  ciclo de 31 dias seguem abertos (backlog A15, A17).
+- **Virada do semestral (7.7, A16 corrigido):** `ciclo_atual` **nunca volta
+  a 1** — a cobrança é única por (matrícula, ciclo), e voltar a 1 fazia o
+  mensal sucessor renovar de graça. O ciclo do compromisso é
+  `ciclo_atual - ciclo_inicio_contrato + 1`; use sempre essa conta ao
+  comparar com `ciclos_compromisso`. A cobrança da virada sai pelo preço do
+  sucessor (`cobrar_ciclo`). O aluno recebe e-mail
+  `dias_aviso_fim_compromisso` dias antes e na virada.
+
+### 9.9 Aula cancelada pelo estúdio (22/09/2026)
+
+`20260921210000_aula_cancelada_pelo_estudio.sql`. Motivos:
+imprevisto da professora, no estúdio ou na cidade, feriado, mínimo de
+alunos não atingido, outro (exige recado).
+
+- **Um caminho só:** `cancelar_aulas(turmas[], data, motivo, recado,
+  repor_turma_fixa)` — `is_operacional()`, a secretária também cancela.
+  Não cancelar agendamento por agendamento: cada um passaria pela regra dos
+  4h do aluno e quem agendou em cima da hora perderia o crédito.
+- **Ordem importa:** a fila é encerrada ANTES dos agendamentos, porque
+  cancelar agendamento dispara `chamar_fila_ao_cancelar` — a primeira da
+  fila receberia "vagou!" de uma aula que não vai acontecer.
+- Crédito devolvido sempre; turma fixa ganha 1 crédito de reposição
+  (2.3.10) com `creditos_lotes.aula_cancelada_id`, que **não conta** no
+  limite `max_reposicoes_por_matricula` (`validar_reposicao`).
+- Gatilho `recusar_aula_cancelada` em `agendamentos` e `lista_espera`: o
+  banco recusa, não só a tela esconde. `reabrir_aula()` reabre a vaga mas
+  não restaura agendamentos nem recolhe reposições.
+- Reserva feita pelo app (Wellhub/ClassPass) é cancelada aqui, mas **não**
+  no app — a tela avisa a equipe (backlog A20).
+
 ---
 
 ## 10. Skills do projeto (a criar conforme padrões surgem)

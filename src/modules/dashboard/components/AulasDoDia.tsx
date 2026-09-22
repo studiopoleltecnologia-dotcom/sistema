@@ -62,6 +62,25 @@ function LinhaAula({ aula }: { aula: AulaDoDia }) {
   const cor = corDaTurma(aula)
   const faixa = faixaOcupacao(aula.agendados, aula.capacidade)
 
+  if (aula.cancelada) {
+    return (
+      <li
+        className="flex min-w-0 items-center gap-2 rounded-md border-l-[3px] border-neutral-300 bg-neutral-50/70 py-1.5 pl-2 pr-1.5 opacity-60"
+        title="Cancelada pelo estúdio — ver Grade de horários → Aulas canceladas"
+      >
+        <span className="w-9 shrink-0 text-[11px] font-bold tabular-nums text-neutral-400">
+          {fmtHora(aula.horario)}
+        </span>
+        <p className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-500 line-through">
+          {aula.modalidade}
+        </p>
+        <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-neutral-600">
+          cancelada
+        </span>
+      </li>
+    )
+  }
+
   return (
     <li
       className="flex min-w-0 items-center gap-2 rounded-md border-l-[3px] bg-neutral-50/70 py-1.5 pl-2 pr-1.5"

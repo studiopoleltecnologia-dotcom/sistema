@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMinhasTurmas } from './hooks/usePortalProfessora'
+import { ROTULO_MOTIVO_AULA } from '../agenda/types'
+import { useAulasCanceladas, useMinhasTurmas } from './hooks/usePortalProfessora'
 import { useProfessoraAtual } from './ProfessoraContext'
 import {
   diaSemanaDe,
@@ -20,6 +21,10 @@ export function AulasPage() {
   const professora = useProfessoraAtual()
   const turmas = useMinhasTurmas()
   const [dia, setDia] = useState(hojeISO)
+  const dias = proximosDias()
+  const canceladas = useAulasCanceladas(dias[0], dias[dias.length - 1])
+  const canceladaDe = (turmaId: string) =>
+    (canceladas.data ?? []).find((c) => c.turma_id === turmaId && c.data === dia)
 
   const doDia = (turmas.data ?? [])
     .filter((t) => t.dia_semana === diaSemanaDe(dia))
@@ -31,7 +36,7 @@ export function AulasPage() {
       <p className="mb-5 text-sm text-neutral-500">Suas aulas e a chamada de cada uma.</p>
 
       <div className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1">
-        {proximosDias().map((d) => (
+        {dias.map((d) => (
           <button
             key={d}
             onClick={() => setDia(d)}
@@ -59,7 +64,27 @@ export function AulasPage() {
       )}
 
       <div className="space-y-3">
-        {doDia.map((t) => (
+        {doDia.map((t) => {
+          // Aula cancelada pelo estúdio não tem chamada: os alunos já foram
+          // avisados e os créditos devolvidos.
+          const cancelada = canceladaDe(t.id)
+          if (cancelada) {
+            return (
+              <div key={t.id} className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 opacity-80">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-base font-medium text-neutral-500 line-through">{fmtHora(t.horario)}</span>
+                  <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-neutral-600">
+                    cancelada
+                  </span>
+                </div>
+                <div className="mt-0.5 text-sm text-neutral-500">{t.modalidade}</div>
+                <div className="mt-2 text-xs text-neutral-400">
+                  {ROTULO_MOTIVO_AULA[cancelada.motivo]} · os alunos foram avisados
+                </div>
+              </div>
+            )
+          }
+          return (
           <Link
             key={t.id}
             to={`aula/${t.id}/${dia}`}
@@ -74,7 +99,8 @@ export function AulasPage() {
               Até {t.capacidade} alunos · toque para fazer a chamada
             </div>
           </Link>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
