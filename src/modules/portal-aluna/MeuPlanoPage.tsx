@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarCheck, Coins, FileText, Sparkles } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
+import { diaDaRenovacao } from '../../lib/ciclo'
 import { Button } from '../../components/ui/Button'
 import { cn } from '../../components/ui/cn'
 import { mensagemDoBanco } from './aulas'
@@ -199,8 +200,8 @@ function PlanoDetalhado({
             <Dado rotulo="Ciclo">
               {p.ciclos_compromisso > 1 && p.ciclo_atual <= p.ciclos_compromisso
                 ? `${p.ciclo_atual}º de ${p.ciclos_compromisso}`
-                : `${p.ciclo_atual}º`}{' '}
-              · {p.periodicidade_dias} dias
+                : `${p.ciclo_atual}º`}
+              {!p.periodicidade_meses && ` · ${p.periodicidade_dias} dias`}
             </Dado>
             <Dado rotulo="Contratado em">{fmtDataCompleta(p.data_contratacao)}</Dado>
             <Dado rotulo="Ciclo atual">
@@ -208,7 +209,13 @@ function PlanoDetalhado({
             </Dado>
             {p.fim_compromisso && <Dado rotulo="Compromisso até">{fmtDataCompleta(p.fim_compromisso)}</Dado>}
             <Dado rotulo="Valor">{precoDoPlano(p)}</Dado>
-            <Dado rotulo="Renovação automática">{p.renova_automaticamente && !p.cancelada_em ? 'Sim' : 'Não'}</Dado>
+            <Dado rotulo="Renovação automática">
+              {p.renova_automaticamente && !p.cancelada_em
+                ? p.periodicidade_meses
+                  ? `Sim, todo mês ${diaDaRenovacao(p.dia_renovacao)}`
+                  : 'Sim'
+                : 'Não'}
+            </Dado>
             {/* Ainda não há cobrança pelo sistema (backlog A3): o pagamento é
                 combinado na recepção. Dizer isso é melhor que inventar um
                 "cartão final 1234" que não existe. */}
@@ -268,6 +275,17 @@ function MeusCreditos({ plano: p, lotes }: { plano: MeuPlano; lotes: LoteCredito
   const vencemJuntos = proximo
     ? lotes.filter((l) => l.validade === proximo.validade).reduce((s, l) => s + (l.saldo ?? 0), 0)
     : 0
+  // Semestral (3.4): o que vence no fim do ciclo passa para o próximo, até
+  // o limite — "vencem em" seria falso. Não vale no último ciclo do
+  // compromisso (3.6) nem com cancelamento no caminho: aí o saldo expira.
+  const passaAdiante =
+    p.acumula_creditos &&
+    p.renova_automaticamente &&
+    !p.cancelada_em &&
+    p.solicitacao_status !== 'pendente' &&
+    p.ciclo_atual < p.ciclos_compromisso &&
+    proximo?.validade === p.data_fim
+  const limiteAcumulo = p.teto_acumulo_ciclos * p.creditos_por_ciclo
 
   return (
     <Cartao>
@@ -296,7 +314,14 @@ function MeusCreditos({ plano: p, lotes }: { plano: MeuPlano; lotes: LoteCredito
         <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, (usados / total) * 100)}%` }} />
       </div>
 
-      {proximo?.validade && (
+      {proximo?.validade && passaAdiante && (
+        <p className="mt-3 text-sm text-neutral-600">
+          O ciclo termina em <strong className="text-neutral-900">{fmtDataCompleta(p.data_fim)}</strong>: o que
+          sobrar, até {limiteAcumulo} {limiteAcumulo === 1 ? 'crédito' : 'créditos'}, passa para o próximo. Os
+          mais antigos são usados primeiro.
+        </p>
+      )}
+      {proximo?.validade && !passaAdiante && (
         <p className="mt-3 text-sm text-neutral-600">
           {vencemJuntos === 1 ? '1 crédito vence' : `${vencemJuntos} créditos vencem`} em{' '}
           <strong className="text-neutral-900">{fmtDataCompleta(proximo.validade)}</strong>. Os mais antigos são

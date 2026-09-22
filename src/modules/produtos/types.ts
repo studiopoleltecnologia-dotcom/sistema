@@ -1,3 +1,4 @@
+import { cadaCiclo, sufixoCiclo } from '../../lib/ciclo'
 import type { Enums, Tables, TablesInsert, TablesUpdate } from '../../lib/database.types'
 
 export type Produto = Tables<'produtos'>
@@ -150,7 +151,7 @@ export function precoResumido(p: Produto): string {
     minimumFractionDigits: p.preco_centavos % 100 === 0 ? 0 : 2,
   })
   if (!p.renova_automaticamente) return valor
-  return p.periodicidade_dias === 30 ? `${valor}/mês` : `${valor}/${p.periodicidade_dias}d`
+  return `${valor}${sufixoCiclo(p)}`
 }
 
 /**
@@ -272,8 +273,7 @@ export function regrasDoProduto(p: Produto): { rotulo: string; valor: string }[]
 export function descreverCobranca(p: Produto): string {
   if (p.preco_centavos === 0) return 'Cortesia — sem cobrança'
   if (!p.renova_automaticamente) return 'Pagamento único'
-  const cada =
-    p.periodicidade_dias === 30 ? 'a cada 30 dias' : `a cada ${p.periodicidade_dias} dias`
+  const cada = cadaCiclo(p)
   if (p.ciclos_compromisso > 1) {
     return `Cobrança automática ${cada}, com permanência mínima de ${p.ciclos_compromisso} ciclos`
   }
@@ -300,7 +300,7 @@ export function descreverEntrega(p: Produto): string {
  */
 export function custoPorAula(p: Produto): number | null {
   if (p.turmas_fixas > 0) {
-    // 1 aula por semana por turma, ~4,3 semanas no ciclo de 30 dias.
+    // 1 aula por semana por turma, ~4,3 semanas no ciclo de um mês.
     const aulas = p.turmas_fixas * 4.3
     return Math.round(p.preco_centavos / aulas)
   }
