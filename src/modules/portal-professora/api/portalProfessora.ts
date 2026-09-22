@@ -36,6 +36,18 @@ export async function listarMinhasTurmas() {
   return data
 }
 
+/** Aulas canceladas pelo estúdio no período (sem as reabertas). */
+export async function listarAulasCanceladas(de: string, ate: string) {
+  const { data, error } = await requireSupabase()
+    .from('aulas_canceladas')
+    .select('*')
+    .is('reaberta_em', null)
+    .gte('data', de)
+    .lte('data', ate)
+  if (error) throw error
+  return data
+}
+
 /** Lista de chamada: só nome da aluna, sem telefone nem CRM (view definer). */
 export async function listarAlunasDaAula(turmaId: string, data: string) {
   const res = await requireSupabase()

@@ -5,6 +5,7 @@ import { Tabs } from '../../components/ui/Tabs'
 import { useAbaUrl } from '../../lib/aba'
 import { fmtCentavos, parseCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
+import { AulasCanceladasView } from './components/AulasCanceladasView'
 import { GradeHorarios } from './components/GradeHorarios'
 import { OcupacaoView } from './components/OcupacaoView'
 import { PendenciasView } from './components/PendenciasView'
@@ -17,7 +18,7 @@ import {
 } from './hooks/useAgenda'
 
 /** Todas as abas possíveis; quais aparecem é decidido em tempo de execução. */
-const ABAS = ['grade', 'ocupacao', 'pendencias', 'faltas', 'config'] as const
+const ABAS = ['grade', 'ocupacao', 'canceladas', 'pendencias', 'faltas', 'config'] as const
 
 export function AgendaPage() {
   // Abre na grade: a pergunta mais frequente é "como está a semana", e o dia
@@ -46,6 +47,9 @@ export function AgendaPage() {
   const abas = [
     { value: 'grade' as const, label: 'Grade' },
     { value: 'ocupacao' as const, label: 'Ocupação' },
+    // Permanente, ao contrário de Pendências/Faltas: cancelar uma aula é
+    // tarefa que a equipe precisa achar num dia normal, não um alerta.
+    { value: 'canceladas' as const, label: 'Aulas canceladas' },
     ...(nPendencias > 0 ? [{ value: 'pendencias' as const, label: `Pendências (${nPendencias})` }] : []),
     ...(nSuspensos > 0 ? [{ value: 'faltas' as const, label: `Faltas (${nSuspensos})` }] : []),
     ...(ehGestao ? [{ value: 'config' as const, label: 'Config' }] : []),
@@ -73,6 +77,7 @@ export function AgendaPage() {
 
       {atual === 'grade' && <GradeHorarios />}
       {atual === 'ocupacao' && <OcupacaoView />}
+      {atual === 'canceladas' && <AulasCanceladasView />}
       {atual === 'pendencias' && <PendenciasView />}
       {atual === 'faltas' && <FaltasView />}
       {atual === 'config' && ehGestao && <ConfigAgendamentoForm />}
@@ -86,6 +91,9 @@ function ConfigAgendamentoForm() {
   const [horas, setHoras] = useState<string | null>(null)
   const [valorWellhub, setValorWellhub] = useState<string | null>(null)
   const [cobranca, setCobranca] = useState<string | null>(null)
+  const [avisoCancelamento, setAvisoCancelamento] = useState<string | null>(null)
+  const [avisoFimSemestral, setAvisoFimSemestral] = useState<string | null>(null)
+  const [validadeReposicao, setValidadeReposicao] = useState<string | null>(null)
   const [faltas, setFaltas] = useState<string | null>(null)
   const [diasSusp, setDiasSusp] = useState<string | null>(null)
   const [tolerancia, setTolerancia] = useState<string | null>(null)
@@ -101,6 +109,15 @@ function ConfigAgendamentoForm() {
       horas_cancelamento: num(horas, config.horas_cancelamento),
       valor_checkin_wellhub_centavos: valorCent ?? config.valor_checkin_wellhub_centavos,
       dias_antecedencia_cobranca: num(cobranca, config.dias_antecedencia_cobranca),
+      dias_antecedencia_cancelamento_plano: num(
+        avisoCancelamento,
+        config.dias_antecedencia_cancelamento_plano,
+      ),
+      dias_aviso_fim_compromisso: num(avisoFimSemestral, config.dias_aviso_fim_compromisso),
+      dias_validade_credito_aula_cancelada: num(
+        validadeReposicao,
+        config.dias_validade_credito_aula_cancelada,
+      ),
       faltas_para_suspensao: num(faltas, config.faltas_para_suspensao),
       dias_suspensao_faltas: num(diasSusp, config.dias_suspensao_faltas),
       minutos_tolerancia_atraso: num(tolerancia, config.minutos_tolerancia_atraso),
@@ -142,6 +159,44 @@ function ConfigAgendamentoForm() {
           <input
             value={cobranca ?? String(config.dias_antecedencia_cobranca)}
             onChange={(e) => setCobranca(e.target.value)}
+            className={input}
+          />
+        </div>
+        <div>
+          {/* O portal calcula a partir daqui a data que o aluno vê em "Meu
+              plano" ("solicite até DD/MM") e o banco grava a mesma conta no
+              pedido — mudar aqui muda os dois juntos. */}
+          <label className={campo}>
+            Cancelamento de plano: dias de antecedência da renovação para o pedido impedir aquela
+            renovação (regulamento 7.1)
+          </label>
+          <input
+            value={avisoCancelamento ?? String(config.dias_antecedencia_cancelamento_plano)}
+            onChange={(e) => setAvisoCancelamento(e.target.value)}
+            className={input}
+          />
+        </div>
+        <div>
+          {/* Precisa ser maior que o prazo de cancelamento acima, senão o
+              aviso chega quando o aluno já não pode mais impedir a virada. */}
+          <label className={campo}>
+            Fim do semestral: quantos dias antes o aluno recebe o aviso de que o plano vai virar
+            mensal (regulamento 7.7)
+          </label>
+          <input
+            value={avisoFimSemestral ?? String(config.dias_aviso_fim_compromisso)}
+            onChange={(e) => setAvisoFimSemestral(e.target.value)}
+            className={input}
+          />
+        </div>
+        <div>
+          <label className={campo}>
+            Aula cancelada pelo estúdio: por quantos dias vale o crédito de reposição da turma fixa
+            (regulamento 2.3.10 — nunca vence antes do fim do ciclo do aluno)
+          </label>
+          <input
+            value={validadeReposicao ?? String(config.dias_validade_credito_aula_cancelada)}
+            onChange={(e) => setValidadeReposicao(e.target.value)}
             className={input}
           />
         </div>

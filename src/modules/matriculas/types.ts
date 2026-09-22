@@ -5,6 +5,10 @@ import type { Produto } from '../produtos/types'
 export type SaldoMatricula = Tables<'vw_saldo_creditos'>
 /** Um assento de turma fixa, com a turma já resolvida. */
 export type MatriculaTurma = Tables<'vw_matricula_turmas'>
+/** Pedido de cancelamento vindo do portal, com o contato do aluno. */
+export type SolicitacaoCancelamento = Tables<'solicitacoes_cancelamento'> & {
+  clientes: { nome: string; telefone: string | null; email: string | null } | null
+}
 
 export type StatusMatricula = 'ativa' | 'pausada' | 'cancelada' | 'inadimplente'
 

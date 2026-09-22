@@ -161,6 +161,68 @@ export type Database = {
           },
         ]
       }
+      aulas_canceladas: {
+        Row: {
+          agendamentos_app: number
+          agendamentos_cancelados: number
+          cancelada_em: string
+          cancelada_por: string | null
+          creditos_devolvidos: number
+          data: string
+          fila_encerrada: number
+          id: string
+          mensagem: string | null
+          motivo: Database["public"]["Enums"]["motivo_cancelamento_aula"]
+          reaberta_em: string | null
+          reaberta_por: string | null
+          repor_turma_fixa: boolean
+          reposicoes_concedidas: number
+          turma_id: string
+        }
+        Insert: {
+          agendamentos_app?: number
+          agendamentos_cancelados?: number
+          cancelada_em?: string
+          cancelada_por?: string | null
+          creditos_devolvidos?: number
+          data: string
+          fila_encerrada?: number
+          id?: string
+          mensagem?: string | null
+          motivo: Database["public"]["Enums"]["motivo_cancelamento_aula"]
+          reaberta_em?: string | null
+          reaberta_por?: string | null
+          repor_turma_fixa?: boolean
+          reposicoes_concedidas?: number
+          turma_id: string
+        }
+        Update: {
+          agendamentos_app?: number
+          agendamentos_cancelados?: number
+          cancelada_em?: string
+          cancelada_por?: string | null
+          creditos_devolvidos?: number
+          data?: string
+          fila_encerrada?: number
+          id?: string
+          mensagem?: string | null
+          motivo?: Database["public"]["Enums"]["motivo_cancelamento_aula"]
+          reaberta_em?: string | null
+          reaberta_por?: string | null
+          repor_turma_fixa?: boolean
+          reposicoes_concedidas?: number
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aulas_canceladas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias_modalidade: {
         Row: {
           ativa: boolean
@@ -452,8 +514,11 @@ export type Database = {
       config_agendamento: {
         Row: {
           atualizada_em: string
+          dias_antecedencia_cancelamento_plano: number
           dias_antecedencia_cobranca: number
+          dias_aviso_fim_compromisso: number
           dias_suspensao_faltas: number
+          dias_validade_credito_aula_cancelada: number
           faltas_para_suspensao: number
           horas_cancelamento: number
           id: boolean
@@ -464,8 +529,11 @@ export type Database = {
         }
         Insert: {
           atualizada_em?: string
+          dias_antecedencia_cancelamento_plano?: number
           dias_antecedencia_cobranca?: number
+          dias_aviso_fim_compromisso?: number
           dias_suspensao_faltas?: number
+          dias_validade_credito_aula_cancelada?: number
           faltas_para_suspensao?: number
           horas_cancelamento?: number
           id?: boolean
@@ -476,8 +544,11 @@ export type Database = {
         }
         Update: {
           atualizada_em?: string
+          dias_antecedencia_cancelamento_plano?: number
           dias_antecedencia_cobranca?: number
+          dias_aviso_fim_compromisso?: number
           dias_suspensao_faltas?: number
+          dias_validade_credito_aula_cancelada?: number
           faltas_para_suspensao?: number
           horas_cancelamento?: number
           id?: boolean
@@ -698,6 +769,7 @@ export type Database = {
       }
       creditos_lotes: {
         Row: {
+          aula_cancelada_id: string | null
           ciclo: number
           concedido_em: string
           criado_em: string
@@ -709,6 +781,7 @@ export type Database = {
           validade: string
         }
         Insert: {
+          aula_cancelada_id?: string | null
           ciclo: number
           concedido_em?: string
           criado_em?: string
@@ -720,6 +793,7 @@ export type Database = {
           validade: string
         }
         Update: {
+          aula_cancelada_id?: string | null
           ciclo?: number
           concedido_em?: string
           criado_em?: string
@@ -731,6 +805,13 @@ export type Database = {
           validade?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "creditos_lotes_aula_cancelada_id_fkey"
+            columns: ["aula_cancelada_id"]
+            isOneToOne: false
+            referencedRelation: "aulas_canceladas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "creditos_lotes_matricula_id_fkey"
             columns: ["matricula_id"]
@@ -1444,6 +1525,7 @@ export type Database = {
           cancelada_em: string | null
           cancelamento_efetivo_em: string | null
           ciclo_atual: number
+          ciclo_inicio_contrato: number
           ciclos_compromisso: number
           cliente_id: string
           creditos_total: number
@@ -1462,6 +1544,7 @@ export type Database = {
           cancelada_em?: string | null
           cancelamento_efetivo_em?: string | null
           ciclo_atual?: number
+          ciclo_inicio_contrato?: number
           ciclos_compromisso?: number
           cliente_id: string
           creditos_total: number
@@ -1480,6 +1563,7 @@ export type Database = {
           cancelada_em?: string | null
           cancelamento_efetivo_em?: string | null
           ciclo_atual?: number
+          ciclo_inicio_contrato?: number
           ciclos_compromisso?: number
           cliente_id?: string
           creditos_total?: number
@@ -2127,6 +2211,100 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacoes_cancelamento: {
+        Row: {
+          ciclo_atual: number
+          ciclos_compromisso: number
+          cliente_id: string
+          data_contratacao: string
+          dentro_prazo: boolean
+          devolucao_desconto_centavos: number | null
+          dias_antecedencia: number
+          id: string
+          matricula_id: string
+          motivo: string | null
+          observacao_equipe: string | null
+          plano_nome: string
+          prazo_limite: string
+          produto_id: string
+          proxima_renovacao: string
+          resolvida_em: string | null
+          resolvida_por: string | null
+          solicitada_em: string
+          solicitada_por: string | null
+          status: Database["public"]["Enums"]["status_solicitacao_cancelamento"]
+          vigente_ate: string
+        }
+        Insert: {
+          ciclo_atual: number
+          ciclos_compromisso: number
+          cliente_id: string
+          data_contratacao: string
+          dentro_prazo: boolean
+          devolucao_desconto_centavos?: number | null
+          dias_antecedencia: number
+          id?: string
+          matricula_id: string
+          motivo?: string | null
+          observacao_equipe?: string | null
+          plano_nome: string
+          prazo_limite: string
+          produto_id: string
+          proxima_renovacao: string
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          solicitada_em?: string
+          solicitada_por?: string | null
+          status?: Database["public"]["Enums"]["status_solicitacao_cancelamento"]
+          vigente_ate: string
+        }
+        Update: {
+          ciclo_atual?: number
+          ciclos_compromisso?: number
+          cliente_id?: string
+          data_contratacao?: string
+          dentro_prazo?: boolean
+          devolucao_desconto_centavos?: number | null
+          dias_antecedencia?: number
+          id?: string
+          matricula_id?: string
+          motivo?: string | null
+          observacao_equipe?: string | null
+          plano_nome?: string
+          prazo_limite?: string
+          produto_id?: string
+          proxima_renovacao?: string
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          solicitada_em?: string
+          solicitada_por?: string | null
+          status?: Database["public"]["Enums"]["status_solicitacao_cancelamento"]
+          vigente_ate?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_cancelamento_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_cancelamento_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_cancelamento_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suspensoes_agendamento: {
         Row: {
           cliente_id: string
@@ -2757,7 +2935,9 @@ export type Database = {
           duracao_minutos: number | null
           horario: string | null
           modalidade: string | null
+          modalidade_id: string | null
           professora_nome: string | null
+          sala_nome: string | null
           turma_id: string | null
         }
         Relationships: []
@@ -3045,6 +3225,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      cancelar_aulas: {
+        Args: {
+          p_data: string
+          p_mensagem?: string
+          p_motivo: Database["public"]["Enums"]["motivo_cancelamento_aula"]
+          p_repor_turma_fixa?: boolean
+          p_turmas: string[]
+        }
+        Returns: number
+      }
       cancelar_assinatura: {
         Args: { p_matricula: string; p_motivo?: string }
         Returns: string
@@ -3052,6 +3242,20 @@ export type Database = {
       cliente_atual: { Args: never; Returns: string }
       cobrar_ciclo: {
         Args: { p_ciclo: number; p_matricula: string; p_vencimento: string }
+        Returns: string
+      }
+      conceder_creditos: {
+        Args: {
+          p_matricula: string
+          p_motivo: string
+          p_origem?: Database["public"]["Enums"]["motivo_credito"]
+          p_quantidade: number
+          p_validade?: string
+        }
+        Returns: string
+      }
+      confirmar_cancelamento_plano: {
+        Args: { p_observacao?: string; p_solicitacao: string }
         Returns: string
       }
       conciliar_wellhub: {
@@ -3209,6 +3413,61 @@ export type Database = {
         Args: { p_cliente: string; p_turma: string; p_data: string }
         Returns: boolean
       }
+      meus_planos: {
+        Args: never
+        Returns: {
+          acumula_creditos: boolean
+          cancelada_em: string | null
+          cancelamento_efetivo_em: string | null
+          ciclo_atual: number
+          ciclos_compromisso: number
+          ciclos_utilizados_se_cancelar: number | null
+          convidados_por_ciclo: number
+          creditos_por_ciclo: number
+          creditos_usados_ciclo: number
+          data_contratacao: string
+          data_fim: string
+          data_inicio: string
+          dentro_prazo_cancelamento: boolean | null
+          desconto_eventos_pct: number
+          devolucao_desconto_centavos: number | null
+          dias_antecedencia_agendamento: number | null
+          dias_antecedencia_cancelamento: number | null
+          fim_compromisso: string | null
+          gera_credito: boolean
+          horas_cancelamento: number
+          matricula_id: string
+          max_agendamentos_simultaneos: number | null
+          modalidades: string[] | null
+          pagamento_pendente_desde: string | null
+          periodicidade_dias: number
+          plano_nome: string
+          prazo_cancelamento: string | null
+          preco_centavos: number
+          produto_id: string
+          proxima_renovacao: string | null
+          proxima_validade: string | null
+          proximo_plano_nome: string | null
+          proximo_plano_preco_centavos: number | null
+          renova_automaticamente: boolean
+          saida_antecipada: boolean | null
+          saldo: number
+          solicitacao_dentro_prazo: boolean | null
+          solicitacao_devolucao_centavos: number | null
+          solicitacao_em: string | null
+          solicitacao_id: string | null
+          solicitacao_motivo: string | null
+          solicitacao_prazo_limite: string | null
+          solicitacao_proxima_renovacao: string | null
+          solicitacao_status: Database["public"]["Enums"]["status_solicitacao_cancelamento"] | null
+          solicitacao_vigente_ate: string | null
+          status: Database["public"]["Enums"]["status_matricula"]
+          teto_acumulo_ciclos: number
+          tipo_produto: Database["public"]["Enums"]["tipo_produto"]
+          turmas_fixas: number
+          vigente_ate_se_cancelar: string | null
+        }[]
+      }
       minha_funcao: {
         Args: never
         Returns: Database["public"]["Enums"]["funcao_interna"]
@@ -3216,10 +3475,22 @@ export type Database = {
       processar_assinaturas: { Args: never; Returns: Json }
       processar_listas_espera: { Args: never; Returns: number }
       professora_atual: { Args: never; Returns: string }
+      previa_cancelamento_aulas: {
+        Args: { p_data: string; p_turmas: string[] }
+        Returns: {
+          agendados: number
+          ja_cancelada: boolean
+          na_fila: number
+          pelo_app: number
+          turma_fixa: number
+          turma_id: string
+        }[]
+      }
       promover_lista_espera: {
         Args: { p_data: string; p_turma: string }
         Returns: string
       }
+      reabrir_aula: { Args: { p_cancelamento: string }; Returns: undefined }
       registrar_checkin_wellhub: {
         Args: {
           p_cliente: string
@@ -3244,6 +3515,10 @@ export type Database = {
         Args: { p_observacao?: string; p_pendencia: string; p_turma: string }
         Returns: string
       }
+      retirar_solicitacao_cancelamento: {
+        Args: { p_observacao?: string; p_solicitacao: string }
+        Returns: undefined
+      }
       revogar_suspensao: {
         Args: { p_motivo?: string; p_suspensao: string }
         Returns: boolean
@@ -3252,6 +3527,10 @@ export type Database = {
       saldo_disponivel: {
         Args: { p_matricula: string; p_para_data?: string }
         Returns: number
+      }
+      solicitar_cancelamento_plano: {
+        Args: { p_matricula: string; p_motivo?: string }
+        Returns: string
       }
       suspensao_vigente: { Args: { p_cliente: string }; Returns: string }
     }
@@ -3276,6 +3555,13 @@ export type Database = {
         | "ex_aluna"
       funcao_interna: "gestao" | "secretaria" | "social"
       modelo_remuneracao: "por_aluna" | "por_hora" | "fixo"
+      motivo_cancelamento_aula:
+        | "professora"
+        | "estudio"
+        | "cidade"
+        | "feriado"
+        | "quorum"
+        | "outro"
       motivo_credito:
         | "compra"
         | "agendamento"
@@ -3307,6 +3593,7 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      status_solicitacao_cancelamento: "pendente" | "confirmada" | "retirada"
       status_saida: "prevista" | "paga" | "cancelada"
       tipo_ajuste_folha:
         | "bonus"
@@ -3481,6 +3768,14 @@ export const Constants = {
       ],
       funcao_interna: ["gestao", "secretaria", "social"],
       modelo_remuneracao: ["por_aluna", "por_hora", "fixo"],
+      motivo_cancelamento_aula: [
+        "professora",
+        "estudio",
+        "cidade",
+        "feriado",
+        "quorum",
+        "outro",
+      ],
       motivo_credito: [
         "compra",
         "agendamento",
@@ -3515,6 +3810,7 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      status_solicitacao_cancelamento: ["pendente", "confirmada", "retirada"],
       status_saida: ["prevista", "paga", "cancelada"],
       tipo_ajuste_folha: [
         "bonus",

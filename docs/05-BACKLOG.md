@@ -88,6 +88,7 @@ antes** (fora do repo, que é público).
 | G3 | **Cutover do Wix** | 💻📋 | A operação continua lá. Capítulo próprio em §3. |
 | G4 | ~~Prazo de cancelamento divergente~~ | ✅ | **Feito em 21/09.** Produção estava em 3h e o Wix em 240 min. Agora os dois em **4h**, valor confirmado pela gestão. DEV já estava em 4h. |
 | G5 | **Secrets do Wellhub em produção** | ⚙️ | Em andamento. Detalhe em §4 (W2) — hoje falha todo dia às 06:00. |
+| G6 | **Ativar o domínio `aluno.studiopolel.com.br`** | ⚙️ | **Código já em produção (21/09); falta só configuração no navegador**, e a gestão pediu para deixar para depois. São 7 passos: repo `portal-aluno`, token, secret `PAGES_PORTAL_ALUNO_TOKEN` no ambiente Production, rodar o deploy, ligar o Pages, CNAME no Registro.br e Redirect URL no Supabase Auth. Passo a passo com os valores exatos em [interno/dominio-portal-aluno.md](interno/dominio-portal-aluno.md). Enquanto não for feito, o deploy pula o passo com aviso e tudo segue em `/agendamentos/`. O passo mais fácil de esquecer é o do Supabase: sem ele o link de "esqueci minha senha" devolve o aluno para o domínio da gestão. |
 
 ---
 
@@ -109,6 +110,8 @@ partir dele, num caminho só, até a virada.
 | X5 | **TotalPass como canal próprio** | 🟡 | 💻 | **Decidido em 21/09.** Há planos TotalPass ativos no Wix e o ERP só conhece `wellhub`/`classpass`. Migration nova no enum de canal/origem + categoria financeira + receita "a reconciliar", no mesmo molde do Wellhub. |
 | X6 | **Plano da virada** | 🟡 | 🔀 | Data do corte, o que fazer com reservas já feitas no Wix para depois da data, e o aviso aos alunos. Enquanto os dois coexistirem, **mudança de horário tem que ser feita nos dois lugares**. |
 | X7 | Desligar o Wix Bookings e redirecionar os links | ⚪ | ⚙️ | Só depois de X6 validado. |
+| X8 | **Importar o preço REAL, não o de tabela** | 🔴 | 💻 | Descoberto em 21/09 ao responder a gestão. O Wix tem **cupom por pedido**: `planPrice` é o preço de tabela e `pricing.prices[0].price.total` é o que a pessoa paga. Hoje **4 pedidos ativos divergem** — um Trimestral 1x pagando **R$128** com o cupom `promo1` (tabela R$160), dois `Pacotes - 4 Aulas` zerados pelo `casinha100` e uma Aula Avulsa zerada. `matriculas.preco_contratado_centavos` tem que receber o valor **pago**; herdar o de tabela cobraria a mais de quem tem desconto. O relatório já foi corrigido (colunas **Valor que paga** / **Valor de tabela** / **Cupom**); falta o `importar-wix-alunos.mjs`. |
+| X9 | **Preço do compromisso vale até o fim do compromisso** | 🔴 | 📋💻 | Quem está em plano **Trimestral/Semestral** contratou a mensalidade N vezes — o preço antigo vale até o último ciclo, mesmo que o reajuste entre no meio. O modelo já suporta (`preco_contratado_centavos` é congelado e `renovar_ciclo()` nunca relê `produtos.preco_centavos`); o que falta é **importar com a data certa**. Hoje são 5 pessoas: 2 Semestrais 1x (R$155, ciclo 6/6, terminam 09/10 e 11/10), 1 Semestral 2x (R$280, ciclo 5/6, termina 06/11), 2 Trimestrais 1x (uma no ciclo 1/3 até 28/11, outra no 3/3 até 09/10 pagando R$128). **Três delas acabam em outubro** — decidir antes se renovam no preço novo. |
 
 ---
 
@@ -145,7 +148,7 @@ Código pronto e publicado; o que falta é configuração e certificação.
 | S7 | ~~Escalação de privilégio via `UPDATE` em `socias`~~ | ✅ | | 22/08. |
 | S8 | Trocar `"socias veem socias"` de `is_socia()` para `is_gestao()` | ⚪ | 💻 | Risco residual aceito: qualquer conta interna que consultar `socias` direto vê o e-mail de toda a equipe. Fechar exige auditar quem lê `socias` fora de `vw_equipe`. |
 | S9 | Converter as 6 views `security_definer_view` em funções | ⚪ | 💻 | É o único jeito de zerar esse lint (o Advisor varre views, não funções). ~1–2 dias. Todas as 6 estão documentadas em `comment on view` explicando por que são *definer* — inclusive `vw_matricula_turmas`, que entrou depois. Não é dívida escondida, é decisão registrada. |
-| S10 | ~~Funções de trigger publicadas como RPC~~ | ✅ | 💻 | **Feito em 21/09**, em duas tentativas. A `20260921120000` revogava de `anon, authenticated` e **não fez nada**: quem tinha o privilégio era `PUBLIC` (padrão do Postgres para toda função nova), e revogar de quem nunca teve é no-op silencioso — o Advisor continuou com os 4 achados. A `20260921170000` revoga de PUBLIC nas 15 funções de gatilho, que é onde o privilégio estava. As RPCs reais têm grant explícito e não foram tocadas. ⚠️ A próxima função de gatilho vai nascer com o mesmo grant: a trava definitiva (`alter default privileges`) pegaria também as RPCs novas, que parariam de funcionar caladas. |
+| S10 | ~~Funções de trigger publicadas como RPC~~ | ✅ | 💻 | **Feito em 21/09**, em duas tentativas. A `20260921120000` revogava de `anon, authenticated` e **não fez nada**: quem tinha o privilégio era `PUBLIC` (padrão do Postgres para toda função nova), e revogar de quem nunca teve é no-op silencioso — o Advisor continuou com os 4 achados. A `20260921170000` revoga de PUBLIC nas 15 funções de gatilho, que é onde o privilégio estava. As RPCs reais têm grant explícito e não foram tocadas. ⚠️ **São DUAS fontes de EXECUTE, e fechar uma não fecha a outra:** o `PUBLIC` do Postgres e os grants **nominais** a `anon`/`authenticated` que o Supabase dá a toda função nova pelas default privileges. Por isso o padrão da casa desde `20260719120500` é `revoke ... from public, anon` — as duas metades. Custou a lição de novo em `20260921190000`: `conceder_creditos` nasceu com `revoke from public` só, e `anon` ficou com EXECUTE (não explorável, a guarda `is_gestao()` barrava, mas fora do padrão). A trava definitiva (`alter default privileges`) pegaria também as RPCs novas, que parariam de funcionar caladas. |
 | S11 | `pg_net` instalado no schema `public` | ⚪ | 💻 | Aviso do Advisor. Mover extensão de schema é operação de risco com o `pg_cron` em produção chamando `net.http_post`. Aceito por ora. |
 | S12 | **MFA (`aal2`) sobre o Financeiro** | ⚪ | 💻 | Sempre foi reforço **extra** sobre a trava de S3, não a trava em si. Não implementado, não bloqueia. |
 
@@ -166,6 +169,125 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | A7 | **E-mails faltantes** | 🟡 | 💻 | Em andamento. Prontos: `vaga_liberada`, `confirmacao_agendamento`, `lembrete_aula`, `vencimento`. Faltam **boas-vindas** e **cobrança recusada** (este só faz sentido depois de A3). |
 | A8 | **Central de Comunicados** | 🟡 | 💻 | **Decidido em 21/09: criar.** Especificação em §12. |
 | A9 | PWA instalável + push | ⚪ | 💻 | V3. |
+| A10 | **Desconto configurável (a experimental é a 1ª regra)** | 🟡 | 💻 | **Não existe hoje.** Regra fechada com a gestão em 21/09: quem fez a experimental e fecha plano em **até 7 dias da AULA** abate **o valor de uma** experimental na 1ª mensalidade — vale também para quem comprou o pacote de 2. O modelo não expressa: `preco_contratado_centavos` é um valor só, usado em todos os ciclos. O mesmo campo serve para desconto manual (o cupom que o Wix já usa, X8). Desenho em §6.1. |
+| A12 | ~~Meu plano + pedido de cancelamento pelo portal~~ | ✅ | 💻 | **Feito em 21/09** (`20260921200000`). Desenho em [04-PORTAL-ALUNA](04-PORTAL-ALUNA.md) ("Revisão de 21/09/2026"). Pedido não cancela: gestão confirma em Matrículas → *Pedidos de cancelamento* (a aba só aparece com pedido) e o painel alerta. ⚠️ Homologar no DEV com e-mail de gestão real: o cron de e-mail do DEV fica inerte sem Vault (§14.4), então no DEV os e-mails só entram na fila. |
+| A13 | **Avisar a gestão pelo WhatsApp** quando houver pedido de cancelamento | 🟡 | 💻 | Hoje é só e-mail + alerta no painel. Encaixa no `solicitar_cancelamento_plano()` quando existir a Edge Function `whatsapp-enviar` (§12). |
+| A14 | ~~Aula cancelada pelo estúdio~~ | ✅ | 💻 | **Feito em 22/09** (`20260921210000`). Grade de horários → **Aulas canceladas**: uma ou várias aulas de um dia (feriado = "o dia inteiro"), motivo (professora, estúdio, cidade, feriado, mínimo de alunos, outro) e recado. O banco encerra a fila ANTES dos agendamentos (senão a fila seria chamada), devolve o crédito sem o prazo de 4h, dá 1 crédito de reposição à turma fixa (2.3.10, fora do limite de reposições; validade em `dias_validade_credito_aula_cancelada`) e avisa cada aluno por e-mail. Portal do aluno, portal da professora e painel mostram a aula como cancelada; o banco recusa agendamento e fila nela. Reabrir não restaura agendamentos. |
+| A19 | **Cancelamento automático por mínimo de alunos** | ⚪ | 💻 | Hoje "mínimo não atingido" é escolha manual da equipe. Automatizar exige decidir antes: mínimo por turma, com quantas horas de antecedência cancelar, e se a turma fixa conta para o mínimo. |
+| A20 | **Remover slot do Wellhub ao cancelar aula** | 🟡 | 💻 | `wellhub-publicar-grade` já não publica aula cancelada, mas slot publicado ANTES do cancelamento continua no app — a equipe remove no Portal do Parceiro (a tela avisa quando há reserva pelo app). Com a Booking API em produção, `cancelar_aulas()` deve chamar o DELETE do slot. |
+| A15 | **Acúmulo de créditos do semestral não acontece** (regulamento 3.4) | 🔴 | 💻 | Verificado em 21/09: os semestrais têm `acumula_creditos = true`, mas `validade_creditos_dias` é nulo, então o lote vence no fim do PRÓPRIO ciclo; e o teto de `renovar_ciclo()` corta o saldo em `teto × créditos` (1 ciclo), não em 2. Na prática o crédito que sobra expira igual ao mensal. O portal mostra a regra do regulamento e o vencimento REAL do lote — as duas coisas vão divergir para o aluno semestral até isto ser corrigido. |
+| A16 | ~~Sucessão semestral → mensal cobra errado~~ (regulamento 7.7) | ✅ | 💻 | **Corrigido em 22/09** (`20260921200000`, testado no DEV com rollback). Eram dois defeitos: a sucessão reiniciava `ciclo_atual` em 1 e colidia com as cobranças do semestral no índice (matrícula, ciclo) — renovação de graça do 2º ao 6º mês do mensal —, e a cobrança D-3 da virada saía com o preço do semestral. Agora o ciclo só cresce (o 1º mês do mensal é o ciclo 7), `ciclo_inicio_contrato` marca o começo do contrato vigente e `cobrar_ciclo()` cobra a virada pelo preço do sucessor. O aluno recebe e-mail antes (`fim_semestral`, `dias_aviso_fim_compromisso` = 10 dias antes da virada) e na virada (`plano_virou_mensal`). Nenhuma matrícula semestral existia em DEV nem em produção: nada a corrigir em dado. |
+| A17 | Ciclo tem 31 dias, não 30 (regulamento 3.1) | 🟡 | 💻 | `data_fim = data_inicio + periodicidade_dias` e a renovação começa em `data_fim + 1`: o ciclo cobre 31 dias corridos. O portal mostra as datas que o banco aplica (coerente), mas elas ficam 1 dia depois do que o regulamento descreve. Decidir antes do Asaas, que vai cobrar nessas datas. |
+| A21 | ~~Tons de cor inexistentes no design system~~ | ✅ | 💻 | **Corrigido em 22/09.** 17 classes (`border-warning-200`, `border-danger-300`, o `ring-danger-300` do botão de perigo…) usavam tons que não existiam em `index.css`: o Tailwind não gerava a classe e a borda saía preta. Adicionados 200/300/400/800 de sucesso, atenção e perigo. |
+| A18 | `produto_modalidades` não é aplicado no agendamento | ⚪ | 💻 | O catálogo permite restringir um plano a algumas modalidades, e "Meu plano" já mostra a lista — mas `agendar_aula()` não confere. Hoje nenhum produto usa a restrição (0 linhas), então não há vazamento. |
+| A11 | ~~Bonificar aluna com créditos / aula extra~~ | ✅ | 💻 | **Feito em 21/09** (`20260921180000`). RPC `conceder_creditos()` — lote + evento na mesma transação, motivo obrigatório (vai para o extrato da aluna), autor registrado, `EXECUTE` tirado de PUBLIC. Botão **dar crédito** no cartão de Matrículas, com Cortesia/Reposição, validade e motivo. Vale também para turma fixa: é assim que o assento fixo ganha aula extra. Restrito a `is_gestao()`, mesmo recorte das outras ações da tela — se a secretária precisar lançar reposição sozinha, é trocar por `is_operacional()`. |
+
+### 6.1 Descontos e bonificações (A10 · A11)
+
+Duas necessidades que a gestão levantou em 21/09 e que o sistema **não
+atende hoje**: abater o valor da experimental na 1ª mensalidade, e bonificar
+uma aluna com créditos ou aula extra. São a mesma família — dar alguma coisa
+a alguém fora da tabela — mas caem em lugares diferentes do modelo.
+
+#### A10 — Desconto da experimental na 1ª mensalidade
+
+**Regra, já decidida pela gestão (21/09):**
+
+| Ponto | Decisão |
+|---|---|
+| Janela | **7 dias** |
+| Contados a partir de | **a aula feita**, não a compra. A pessoa compra na segunda e treina no sábado; o gatilho é ter experimentado. |
+| Vale para | **"Aula experimental"** e **"2 aulas experimentais"** |
+| Quanto abate | sempre o valor de **UMA** experimental — quem comprou o pacote de duas não abate os dois |
+| Onde abate | só na **1ª** mensalidade (num semestral, na 1ª das 6) |
+
+**Por que precisa de banco.** `matriculas.preco_contratado_centavos` é **um**
+valor, congelado na contratação, e `gerar_cobranca_prevista()` usa o mesmo em
+**todos** os ciclos. Não existe onde escrever "o primeiro ciclo custa menos".
+Baixar o preço contratado resolveria o mês 1 e daria o desconto **para
+sempre** — o oposto do combinado.
+
+**Desenho:**
+
+1. **`regras_desconto`** — configurável pela gestão, no espírito do §9.4 do
+   CLAUDE.md ("regras manipuláveis pelas administradoras, não fixas em
+   código"). Uma linha por produto de origem:
+
+   | coluna | para a regra da experimental |
+   |---|---|
+   | `produto_origem_id` | *Aula experimental* — e uma 2ª linha para *2 aulas experimentais* |
+   | `produto_referencia_id` | *Aula experimental* nas **duas** linhas — é ele que define o valor abatido |
+   | `produto_destino_id` | nulo = qualquer plano |
+   | `janela_dias` | 7 |
+   | `contar_de` | `aula_feita` \| `compra` |
+   | `ativa` | sim |
+
+   Duas linhas em vez de uma com lista de origens: cada promoção fica
+   editável sozinha, sem tabela-filha e sem migration para mudar o valor.
+
+2. **`matriculas.desconto_primeiro_ciclo_centavos`** (+ qual compra o
+   originou, para auditoria). `matricular()` resolve a regra na contratação e
+   **congela** o valor — mesma filosofia do preço contratado: promoção que
+   mudar depois não mexe em matrícula já feita, e a fatura consegue dizer
+   *por que* saiu mais barata. O mesmo campo serve para **desconto manual**,
+   digitado pela equipe num caso fora de regra (é o equivalente do cupom que
+   o Wix já usa — ver X8).
+
+3. **`gerar_cobranca_prevista()`** abate quando `p_ciclo = 1`, com piso em
+   zero.
+
+**O ponto técnico que falta resolver:** "aula feita" precisa de uma fonte.
+A confiável é a `presencas` do agendamento pago pelo crédito daquela
+matrícula de experimental — é automático e exato. O estágio do funil
+(`fez_experimental`) **não** serve sozinho: depende de alguém mover o funil
+à mão.
+
+#### A11 — Bonificar uma aluna com créditos ou aula extra ✅
+
+**Feito em 21/09** (`20260921180000_conceder_creditos.sql`). O modelo de dados
+**não mudou** — `creditos_lotes` já tinha `origem` (com `ajuste` e
+`reposicao`), `validade` e `detalhe`, e `saldo_disponivel()` soma por lote
+válido. O que faltava era o caminho: **nenhuma RPC criava lote**, todos os
+inserts estavam dentro de `renovar_ciclo()` e afins. Ou seja, só o sistema
+dava crédito, nunca uma pessoa.
+
+Como ficou:
+
+- `conceder_creditos(matricula, quantidade, motivo, validade, origem)` — lote
+  + evento na **mesma transação** (lote sem evento fica com saldo zero,
+  invisível, e sem erro), **motivo obrigatório no banco** porque ele aparece
+  no extrato que a aluna vê, e `criado_por` gravado.
+- `EXECUTE` revogado de PUBLIC e concedido a `authenticated` — a lição do S10,
+  aplicada já na primeira versão em vez de virar achado do Advisor.
+- Guarda `is_gestao()`, o mesmo recorte das outras ações da tela de
+  Matrículas. **Se a secretária precisar lançar reposição sozinha, é trocar
+  por `is_operacional()`** — é decisão de produto, não de código.
+- Botão **dar crédito** no cartão de Matrículas: quantidade, tipo (Cortesia /
+  Reposição de aula), validade e motivo. Vale também para turma fixa — é
+  assim que a aluna de assento fixo ganha uma aula extra.
+
+⚠️ **A policy da tabela continua mais larga que a RPC.** `"socias gerenciam
+lotes"` aceita qualquer conta interna escrevendo direto por PostgREST — é a
+pendência S3b, anterior a isto. A função não é a última linha de defesa; ela
+garante que o caminho **novo** já nasça no recorte certo.
+
+**O que o teste em DEV pegou, e que a revisão de código não pegaria:** a
+validade padrão era o fim do ciclo — mas bonificar quem sumiu é justamente o
+caso em que o ciclo **já venceu**, e o lote nasceria morto: vencido antes de
+existir, invisível no saldo, sem erro nenhum. Agora, com o ciclo vencido, a
+função **pede** a data em vez de inventar um prazo (30 dias? até a próxima
+renovação? é política de negócio, não decisão de banco), e a tela chega com
+30 dias já preenchidos para a equipe não travar no balcão.
+
+⚠️ **Nada disso pode virar `if` de caso especial.** O Wix já opera com cupom
+(`promo1`, `casinha100` — ver X8), a experimental é só a primeira regra, e
+bonificação avulsa acontece o tempo todo. Construir como mecanismo desde o
+início custa o mesmo e evita reescrever na terceira promoção.
+
+⏱️ **Sequência:** nada disso é usável antes de existir aluno no sistema
+(G2/§3). A11 é pequena (uma RPC + um botão) e independente; A10 mexe em
+cobrança e vale entrar junto com o gateway (§11), que é quem transforma
+`gerar_cobranca_prevista()` em dinheiro de verdade.
 
 ---
 
@@ -204,7 +326,7 @@ Especificação das fases em [04-PORTAL-ALUNA.md §12](04-PORTAL-ALUNA.md).
 | T5 | **Bundle único, agora 1,31 MB (356 kB gzip)** | 🟡 | Era 970 kB / 271 kB em julho. Os três portais no mesmo JS; quem paga é o aluno abrindo no 4G. Code-splitting por jornada resolve. |
 | T6 | ~~Dados de teste misturados com reais~~ | ✅ | Limpeza de 21/09 (§1.2). |
 | T7 | **DEV e PROD com configurações de negócio diferentes** | 🟡 | `faltas_para_suspensao` 3 no DEV × 2 na PROD; `valor_checkin_wellhub_centavos` R$15 × R$27. Homologar regra de falta no DEV dá resultado diferente do que produção fará. |
-| T8 | **CLAUDE.md §5.1 desatualizado** | 🟡 | Documenta `#/portal` e `#/prof` como rotas atuais (ver §1.1). |
+| T8 | ~~CLAUDE.md §5.1 desatualizado~~ | ✅ | **Corrigido em 21/09.** A §5.1 agora descreve a ordem real (hostname → caminho → hash), o domínio do aluno e o motivo de cada endereço. |
 | T9 | **O smoke test não cobre as rotas de produção** | 🟡 | `scripts/smoke.mjs` sobe `''`, `#/`, `#/portal` e `#/prof`. Os dois últimos só funcionam por compatibilidade; o que o aluno e a professora abrem de verdade é `/agendamentos/` e `/portalequipe/`, que têm `index.html` próprio no build. Uma quebra ali passa pelo CI sem ninguém ver. |
 
 ---

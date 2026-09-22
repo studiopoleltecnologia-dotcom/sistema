@@ -37,6 +37,32 @@ export type TurmaComProfessora = Turma & {
 }
 export type AgendamentoComCliente = Agendamento & { cliente: Cliente }
 
+/** Uma ocorrência (turma + data) que o estúdio cancelou. */
+export type AulaCancelada = Tables<'aulas_canceladas'>
+export type MotivoCancelamentoAula = Enums<'motivo_cancelamento_aula'>
+
+/**
+ * Os motivos reais de o estúdio cancelar uma aula. O rótulo é o que o
+ * aluno lê no portal; no e-mail o texto vem do banco
+ * (`rotulo_motivo_cancelamento_aula`), com as mesmas palavras.
+ */
+export const MOTIVOS_CANCELAMENTO_AULA: {
+  valor: MotivoCancelamentoAula
+  rotulo: string
+  exemplo: string
+}[] = [
+  { valor: 'professora', rotulo: 'Imprevisto da professora', exemplo: 'doença, emergência, atraso' },
+  { valor: 'estudio', rotulo: 'Imprevisto no estúdio', exemplo: 'manutenção, falta de luz na sala' },
+  { valor: 'cidade', rotulo: 'Imprevisto na cidade', exemplo: 'chuva forte, alagamento, greve' },
+  { valor: 'feriado', rotulo: 'Feriado', exemplo: 'o estúdio não abre' },
+  { valor: 'quorum', rotulo: 'Mínimo de alunos não atingido', exemplo: 'turma com poucas reservas' },
+  { valor: 'outro', rotulo: 'Outro motivo', exemplo: 'descreva no recado' },
+]
+
+export const ROTULO_MOTIVO_AULA = Object.fromEntries(
+  MOTIVOS_CANCELAMENTO_AULA.map((m) => [m.valor, m.rotulo]),
+) as Record<MotivoCancelamentoAula, string>
+
 export const DIAS_SEMANA = [
   'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado',
 ] as const

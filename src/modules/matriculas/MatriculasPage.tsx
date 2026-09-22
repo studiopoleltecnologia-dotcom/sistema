@@ -10,18 +10,27 @@ import { useAbaUrl } from '../../lib/aba'
 import { fmtData } from '../../lib/datas'
 import { fmtCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
+import { BonusCreditos } from './components/BonusCreditos'
 import { MatriculaForm } from './components/MatriculaForm'
+import { SolicitacoesCancelamento } from './components/SolicitacoesCancelamento'
 import { TurmasVinculadas } from './components/TurmasVinculadas'
 import {
   useCancelarAssinatura,
   useMarcarInadimplente,
   useMatriculasCompletas,
   useRenovarCiclo,
+  useSolicitacoesPendentes,
 } from './hooks/useMatriculas'
 import type { MatriculaCompleta } from './types'
 
-type Filtro = 'todas' | 'creditos' | 'turma_fixa' | 'em_aberto'
-const FILTROS = ['todas', 'creditos', 'turma_fixa', 'em_aberto'] as const satisfies readonly Filtro[]
+type Filtro = 'todas' | 'creditos' | 'turma_fixa' | 'em_aberto' | 'cancelamentos'
+const FILTROS = [
+  'todas',
+  'creditos',
+  'turma_fixa',
+  'em_aberto',
+  'cancelamentos',
+] as const satisfies readonly Filtro[]
 
 /**
  * Matrículas: quem contratou o quê, e em que situação está.
@@ -34,6 +43,7 @@ const FILTROS = ['todas', 'creditos', 'turma_fixa', 'em_aberto'] as const satisf
  */
 export function MatriculasPage() {
   const { data: matriculas, isLoading } = useMatriculasCompletas()
+  const { data: pedidos } = useSolicitacoesPendentes()
   const { data: funcao } = useMinhaFuncao()
   // Secretária acompanha a operação (quem está ativo, em qual turma)
   // mas não mexe em cobrança nem cancela. A RLS já recusa; aqui é só
@@ -46,6 +56,7 @@ export function MatriculasPage() {
   const cancelar = useCancelarAssinatura()
 
   const [novo, setNovo] = useState(false)
+  const [bonus, setBonus] = useState<MatriculaCompleta | null>(null)
   // Na URL (?aba=em_aberto): o menu lateral aponta direto para cada recorte,
   // e o alerta de inadimplência do painel pode linkar 'Em aberto' de uma vez.
   const [filtro, setFiltro] = useAbaUrl(FILTROS, 'todas')
@@ -57,14 +68,19 @@ export function MatriculasPage() {
       creditos: l.filter((m) => !m.ehTurmaFixa).length,
       turma_fixa: l.filter((m) => m.ehTurmaFixa).length,
       em_aberto: l.filter((m) => m.saldo.status === 'inadimplente').length,
+      cancelamentos: pedidos?.length ?? 0,
     }
-  }, [matriculas])
+  }, [matriculas, pedidos])
+
+  const comPedido = useMemo(() => new Set((pedidos ?? []).map((p) => p.matricula_id)), [pedidos])
 
   const visiveis = useMemo(() => {
     const l = matriculas
     if (filtro === 'creditos') return l.filter((m) => !m.ehTurmaFixa)
     if (filtro === 'turma_fixa') return l.filter((m) => m.ehTurmaFixa)
     if (filtro === 'em_aberto') return l.filter((m) => m.saldo.status === 'inadimplente')
+    // Os pedidos têm cartão próprio (SolicitacoesCancelamento), acima.
+    if (filtro === 'cancelamentos') return []
     return l
   }, [matriculas, filtro])
 
@@ -95,8 +111,22 @@ export function MatriculasPage() {
             ...(contagens.em_aberto > 0
               ? [{ value: 'em_aberto' as Filtro, label: `Em aberto (${contagens.em_aberto})` }]
               : []),
+            // Pedidos do portal (regulamento 7.1): a aba só existe quando há
+            // o que responder, como "Em aberto".
+            ...(contagens.cancelamentos > 0
+              ? [
+                  {
+                    value: 'cancelamentos' as Filtro,
+                    label: `Pedidos de cancelamento (${contagens.cancelamentos})`,
+                  },
+                ]
+              : []),
           ]}
         />
+      )}
+
+      {filtro === 'cancelamentos' && (
+        <SolicitacoesCancelamento solicitacoes={pedidos ?? []} gestao={ehGestao} />
       )}
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
@@ -123,6 +153,7 @@ export function MatriculasPage() {
             key={m.saldo.matricula_id}
             matricula={m}
             gestao={ehGestao}
+            pedidoCancelamento={comPedido.has(m.saldo.matricula_id ?? '')}
             onRenovar={() =>
               confirmar.pedir({
                 titulo: 'Adiantar a renovação?',
@@ -140,6 +171,7 @@ export function MatriculasPage() {
                 aoConfirmar: () => renovar.mutateAsync(m.saldo.matricula_id!),
               })
             }
+            onBonus={() => setBonus(m)}
             onInadimplir={() => inadimplir.mutate(m.saldo.matricula_id!)}
             onCancelar={() =>
               confirmar.pedir({
@@ -172,6 +204,7 @@ export function MatriculasPage() {
       </div>
 
       {novo && <MatriculaForm onFechar={() => setNovo(false)} />}
+      {bonus && <BonusCreditos matricula={bonus} onFechar={() => setBonus(null)} />}
       {confirmar.dialogo}
     </div>
   )
@@ -180,13 +213,18 @@ export function MatriculasPage() {
 function CartaoMatricula({
   matricula: m,
   gestao,
+  pedidoCancelamento,
   onRenovar,
+  onBonus,
   onInadimplir,
   onCancelar,
 }: {
   matricula: MatriculaCompleta
   gestao: boolean
+  /** O aluno pediu cancelamento pelo portal e ninguém respondeu ainda. */
+  pedidoCancelamento: boolean
   onRenovar: () => void
+  onBonus: () => void
   onInadimplir: () => void
   onCancelar: () => void
 }) {
@@ -246,6 +284,7 @@ function CartaoMatricula({
 
       <div className="flex flex-wrap items-center gap-1.5">
         {emAberto && <Badge variant="danger">pagamento em aberto</Badge>}
+        {pedidoCancelamento && <Badge variant="warning">pediu cancelamento</Badge>}
         {cancelando && (
           <Badge variant="warning">cancela {fmtData(s.cancelamento_efetivo_em)}</Badge>
         )}
@@ -284,6 +323,17 @@ function CartaoMatricula({
               renovar agora
             </button>
           )}
+          {/*
+            Vale também para turma fixa: é assim que a aluna de assento
+            fixo ganha uma aula extra fora da turma dela.
+          */}
+          <button
+            onClick={onBonus}
+            title="Cortesia ou reposição — entra no saldo dela com prazo e motivo"
+            className="rounded-md px-2.5 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50"
+          >
+            dar crédito
+          </button>
           {s.status === 'ativa' && (
             <button
               onClick={onInadimplir}

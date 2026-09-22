@@ -1,5 +1,14 @@
 import { requireSupabase } from '../../../lib/supabase'
 
+/*
+ * Todo SELECT de dado pessoal filtra por `cliente_id` explicitamente,
+ * mesmo com a RLS já recortando. Desde 21/09/2026 aluna e professora podem
+ * ser a mesma conta (CLAUDE.md §5.1), e em `agendamentos`, `lista_espera` e
+ * `vw_matricula_turmas` a policy da professora SOMA as aulas que ela dá.
+ * Sem o filtro, "minhas aulas" de uma professora-aluna listaria os
+ * agendamentos das alunas dela.
+ */
+
 export async function obterContaAluna() {
   const { data, error } = await requireSupabase()
     .from('contas_aluna')
@@ -37,8 +46,12 @@ export async function criarContaAluna(args: {
   return data
 }
 
-export async function obterMeuCliente() {
-  const { data, error } = await requireSupabase().from('clientes').select('*').maybeSingle()
+export async function obterMeuCliente(clienteId: string) {
+  const { data, error } = await requireSupabase()
+    .from('clientes')
+    .select('*')
+    .eq('id', clienteId)
+    .maybeSingle()
   if (error) throw error
   return data
 }
@@ -83,12 +96,43 @@ export async function listarVagas(dataInicio: string, dataFim: string) {
   return data
 }
 
-export async function listarMinhasReservas() {
+/** Aulas agendadas do aluno, de hoje em diante. */
+export async function listarMeusAgendamentos(clienteId: string, desde: string) {
   const { data, error } = await requireSupabase()
     .from('agendamentos')
     .select('*')
+    .eq('cliente_id', clienteId)
     .eq('status', 'agendado')
+    .gte('data', desde)
     .order('data')
+  if (error) throw error
+  return data
+}
+
+/**
+ * Agendamentos do aluno que O ESTÚDIO cancelou (aula cancelada), para a
+ * tela dizer "sua aula de quinta foi cancelada, o crédito voltou" em vez
+ * de a aula simplesmente sumir da lista.
+ */
+export async function listarMeusAgendamentosCanceladosPeloEstudio(clienteId: string, desde: string) {
+  const { data, error } = await requireSupabase()
+    .from('agendamentos')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .eq('status', 'cancelado')
+    .eq('origem_cancelamento', 'socia')
+    .gte('data', desde)
+  if (error) throw error
+  return data
+}
+
+/** Aulas canceladas pelo estúdio daqui para frente (sem as reabertas). */
+export async function listarAulasCanceladas(desde: string) {
+  const { data, error } = await requireSupabase()
+    .from('aulas_canceladas')
+    .select('*')
+    .is('reaberta_em', null)
+    .gte('data', desde)
   if (error) throw error
   return data
 }
@@ -119,14 +163,58 @@ export async function contratarPlano(args: { clienteId: string; planoId: string 
   return data
 }
 
-export async function obterMeuSaldo() {
+/**
+ * Tudo o que "Meu plano" mostra, numa chamada: saldo, pagamento pendente,
+ * próxima renovação, prazo do pedido de cancelamento e o pedido em
+ * aberto. As datas vêm calculadas pelo banco — é a mesma conta que grava
+ * a solicitação.
+ */
+export async function listarMeusPlanos() {
+  const { data, error } = await requireSupabase().rpc('meus_planos')
+  if (error) throw error
+  return data ?? []
+}
+
+/** Lotes de crédito ainda com saldo — o que decide se há crédito numa data. */
+export async function listarMeusLotes(clienteId: string) {
   const { data, error } = await requireSupabase()
-    .from('vw_saldo_creditos')
+    .from('vw_creditos_lotes')
     .select('*')
-    .eq('status', 'ativa')
-    .order('data_fim')
+    .eq('cliente_id', clienteId)
+    .gt('saldo', 0)
+    .eq('vencido', false)
+    .order('validade')
   if (error) throw error
   return data
+}
+
+/** Assentos de turma fixa do aluno: vigentes e os que começam na próxima renovação. */
+export async function listarMinhasTurmasFixas(clienteId: string) {
+  const { data, error } = await requireSupabase()
+    .from('vw_matricula_turmas')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .or('vigente.eq.true,futuro.eq.true')
+    .order('dia_semana')
+    .order('horario')
+  if (error) throw error
+  return data
+}
+
+export async function solicitarCancelamentoPlano(args: { matriculaId: string; motivo: string }) {
+  const { data, error } = await requireSupabase().rpc('solicitar_cancelamento_plano', {
+    p_matricula: args.matriculaId,
+    ...(args.motivo.trim() ? { p_motivo: args.motivo.trim() } : {}),
+  })
+  if (error) throw error
+  return data
+}
+
+export async function retirarSolicitacaoCancelamento(solicitacaoId: string) {
+  const { error } = await requireSupabase().rpc('retirar_solicitacao_cancelamento', {
+    p_solicitacao: solicitacaoId,
+  })
+  if (error) throw error
 }
 
 export async function obterConfigAgendamento() {
@@ -165,16 +253,17 @@ export async function sairListaEspera(filaId: string) {
 }
 
 /** Minhas inscrições vivas em fila, com a posição calculada. */
-export async function listarMinhaFila() {
+export async function listarMinhaFila(clienteId: string) {
   const { data, error } = await requireSupabase()
     .from('vw_posicao_fila')
     .select('*')
+    .eq('cliente_id', clienteId)
     .order('data')
   if (error) throw error
   return data
 }
 
-export async function cancelarReserva(agendamentoId: string) {
+export async function cancelarAgendamento(agendamentoId: string) {
   const { data, error } = await requireSupabase().rpc('cancelar_agendamento', {
     p_agendamento: agendamentoId,
     p_origem: 'aluna',
@@ -184,15 +273,15 @@ export async function cancelarReserva(agendamentoId: string) {
 }
 
 /**
- * Suspensão vigente do agendamento antecipado (regulamento 4.7).
+ * Suspensão vigente do agendamento antecipado (regulamento 4.11).
  * A policy `cliente ve a propria suspensao` já limita à própria aluna —
- * o filtro aqui é só de vigência.
+ * o filtro aqui é de vigência.
  */
-export async function obterMinhaSuspensao() {
-  const hoje = new Date().toISOString().slice(0, 10)
+export async function obterMinhaSuspensao(clienteId: string, hoje: string) {
   const { data, error } = await requireSupabase()
     .from('suspensoes_agendamento')
     .select('*')
+    .eq('cliente_id', clienteId)
     .is('revogada_em', null)
     .lte('inicio', hoje)
     .gte('fim', hoje)

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ROTULO_MOTIVO_AULA } from '../agenda/types'
 import {
   useAlunasDaAula,
+  useAulasCanceladas,
   useBuscarAluna,
   useMinhasTurmas,
   useRegistrarPresenca,
@@ -47,6 +49,8 @@ export function ChamadaPage() {
   const busca = useBuscarAluna(termo)
 
   const turma = turmas.data?.find((t) => t.id === turmaId)
+  const canceladas = useAulasCanceladas(data, data)
+  const cancelada = (canceladas.data ?? []).find((c) => c.turma_id === turmaId)
   // O banco recusa presença de aula futura; a tela avisa antes de tentar.
   const futura = deISO(data) > deISO(hojeISO())
 
@@ -79,7 +83,14 @@ export function ChamadaPage() {
         {turma ? ` · ${fmtHora(turma.horario)}` : ''}
       </p>
 
-      {futura && (
+      {cancelada && (
+        <p className="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+          <strong>Aula cancelada pelo estúdio</strong> ({ROTULO_MOTIVO_AULA[cancelada.motivo].toLowerCase()}). Os
+          alunos foram avisados e não há chamada.
+        </p>
+      )}
+
+      {futura && !cancelada && (
         <p className="mb-4 rounded-md bg-neutral-100 p-3 text-xs text-neutral-500">
           Esta aula ainda não aconteceu — a chamada abre no dia.
         </p>

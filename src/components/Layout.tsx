@@ -98,6 +98,7 @@ const SECOES: Secao[] = [
         subs: [
           { to: '/agenda', label: 'Grade' },
           { to: '/agenda?aba=ocupacao', label: 'Ocupação' },
+          { to: '/agenda?aba=canceladas', label: 'Aulas canceladas' },
           { to: '/agenda?aba=config', label: 'Regras de agendamento', funcoes: ['gestao'] },
         ],
       },

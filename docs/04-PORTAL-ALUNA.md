@@ -14,6 +14,84 @@ aluna; não as contradiz.
 
 ---
 
+## Revisão de 21/09/2026 — Meu plano, cancelamento, Agenda e desktop
+
+> Esta seção descreve **o que está implementado hoje**. Onde ela conflita com
+> as seções mais antigas abaixo (wireframes da §5, barra de 4 itens da §6),
+> **vale esta**. Regras de contratação e cancelamento seguem o
+> *Regulamento v3* (itens 1.5, 3.1, 7.1–7.7), que prevalece sobre qualquer
+> texto de tela.
+
+**Navegação.** Cinco áreas: Início · Agenda · Aulas agendadas · Meu plano ·
+Perfil. No celular é a barra inferior (rótulo curto "Agendadas"); a partir
+de 1024px vira coluna lateral no mesmo ameixa-escuro do ERP, com "Planos e
+aulas avulsas" como item secundário. O desktop **não** é o layout do celular
+centralizado: Agenda vira semana em 7 colunas, Meu plano/Início/Aulas usam
+grade de 2–3 colunas. `/reservas` redireciona para `/aulas`.
+
+**Linguagem.** "Reserva" saiu de toda tela do aluno → "aula agendada" /
+"agendar". "Assinatura" → "plano". "Produto" não aparece para o aluno.
+
+**Meu plano** (`/meu-plano`). O primeiro cartão responde as seis perguntas —
+qual é, situação, válido até, próxima renovação, valor, o que tenho
+disponível (créditos **ou** turmas, nunca "0 créditos" para turma fixa).
+Depois: créditos (usados/disponíveis/próximo vencimento) ou turmas fixas;
+o bloco **Renovação e cancelamento**, com a data-limite do pedido já
+calculada ("solicite até 08/10/2026"); detalhes do contrato; e "Ver regras
+do plano" (folha com o resumo do regulamento, números vindos do plano e da
+configuração). Aluno com mais de um contrato vê um bloco por contrato;
+pacotes avulsos aparecem numa lista à parte.
+
+**Cancelamento — o pedido não cancela nada.**
+
+| Passo | Onde | O que acontece |
+|---|---|---|
+| Aluno pede | `solicitar_cancelamento_plano()` | Grava em `solicitacoes_cancelamento` um **retrato**: próxima renovação, prazo, dentro/fora do prazo, "ativo até", devolução do desconto do semestral (7.4). E-mail para cada conta de **gestão** + comprovante para o aluno. |
+| Aluno desiste | `retirar_solicitacao_cancelamento()` | Pedido vira `retirada`; o plano segue renovando. |
+| Gestão confirma | `confirmar_cancelamento_plano()` (só `is_gestao()`) | Encerra na data do retrato, cancela cobranças posteriores, fecha assento de turma fixa, e-mail "cancelamento confirmado" = a confirmação **por escrito** do 7.1. |
+
+- A conta do prazo é **uma função só**, `regras_cancelamento_plano()`: a tela
+  lê o resultado via `meus_planos()` e a solicitação grava o mesmo resultado.
+- Prazo = próxima renovação − `config_agendamento.dias_antecedencia_cancelamento_plano`
+  (5, editável em Grade de horários → Regras de agendamento). Data de
+  referência no fuso de São Paulo, não em UTC.
+- **Fora do prazo** (7.1): a próxima renovação acontece e o plano vale até o
+  fim do ciclo seguinte. A tela diz isso **antes** do envio.
+- Pedido dentro do prazo, ainda sem confirmação, **segura** a cobrança e a
+  renovação daquele ciclo em `processar_assinaturas()` — senão a cobrança de
+  D-3 nasceria para um ciclo que o aluno tem o direito de não pagar.
+- `cancelar_assinatura()` deixou de aceitar chamada do aluno (antes ele
+  cancelava direto, sem a equipe ver).
+- WhatsApp para a gestão: **não** — não há integração (backlog §12).
+
+**Agenda.** Um dia por vez no celular (faixa "Hoje / Amanhã / qua 24…",
+bolinha nos dias em que o aluno tem aula, agrupado em Manhã/Tarde/Noite);
+semana inteira no desktop. Filtros por modalidade, professora, sala, "só com
+vaga" e "disponível para meu plano" — no celular numa folha, com as pílulas
+ativas à vista. Estado de cada aula (uma palavra, uma cor): disponível,
+últimas vagas, lotada, agendada, sua turma fixa, na fila, vaga guardada,
+fora do plano, agenda abre em DD/MM, pausado, limite, encerrada. O estado é
+**espelho** do que `agendar_aula()` decide — quem autoriza é o banco.
+
+**Turma fixa.** Nunca aparece como "Agendar": o cartão diz "Sua turma fixa" e
+a folha explica que não é preciso agendar. As ocorrências da turma entram em
+"Aulas agendadas" e no Início ("Sua próxima turma"), sem botão de cancelar.
+
+**Aula cancelada pelo estúdio (22/09).** Na Agenda a aula aparece como
+"Cancelada · motivo", sem ação, com o recado da equipe no detalhe. No Início
+e em Aulas agendadas o aluno atingido vê um aviso que diz o que aconteceu com
+ele: crédito devolvido (quem agendou) ou crédito de reposição (turma fixa). O
+e-mail sai na hora do cancelamento.
+
+**Fim do semestral (22/09).** No último ciclo, "Meu plano" e o Início avisam
+que o plano passa a mensal e por quanto; o aluno recebe e-mail antes da virada
+(com o prazo de cancelamento) e quando ela acontece.
+
+**Ainda não coberto** (ver 05-BACKLOG §6): forma de pagamento real (depende do
+Asaas), pausa do plano pelo portal.
+
+---
+
 ## 0. O que já existe vs. o que é novo
 
 Levantamento no schema atual (Supabase, Fases 0–4 já implementadas) antes de
@@ -359,8 +437,9 @@ flowchart TD
 ## 5. Wireframes de baixa fidelidade
 
 Convenção: `[  ]` = botão, `( )` = card, `====` = divisor. Mobile-first (largura
-~375px de referência); tablet/desktop apenas centralizam o mesmo conteúdo com
-mais respiro lateral, não recompõem a hierarquia.
+~375px de referência). ⚠️ **Superado em 21/09/2026:** o desktop agora tem
+composição própria (coluna lateral, semana em 7 colunas) — ver a seção
+"Revisão de 21/09/2026" no topo.
 
 ### 5.1 Dashboard (`/portal`)
 
@@ -514,6 +593,10 @@ transparência gera confiança).
 ---
 
 ## 6. Navegação mobile
+
+> ⚠️ **Superado em 21/09/2026:** a barra tem 5 itens (Início · Agenda ·
+> Agendadas · Meu plano · Perfil) — "Meu plano" virou área própria e o
+> catálogo saiu da barra. Ver a seção "Revisão de 21/09/2026" no topo.
 
 **Bottom navigation fixa, 4 itens** (5 é excessivo para o volume de tarefas do
 Portal — "nada poluído", CLAUDE.md §4):

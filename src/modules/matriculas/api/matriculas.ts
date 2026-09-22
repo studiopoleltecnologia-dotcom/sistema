@@ -93,10 +93,78 @@ export async function marcarInadimplente(matriculaId: string) {
   if (error) throw error
 }
 
+// ------------------------------------------------------------
+// Pedidos de cancelamento vindos do portal (regulamento 7.1)
+// ------------------------------------------------------------
+
+/**
+ * Pedidos em aberto, do mais antigo para o mais novo — o mais antigo é o
+ * que está mais perto do prazo. O contato vem junto porque a equipe
+ * costuma responder pelo WhatsApp antes de confirmar.
+ */
+export async function listarSolicitacoesPendentes() {
+  const { data, error } = await requireSupabase()
+    .from('solicitacoes_cancelamento')
+    .select('*, clientes(nome, telefone, email)')
+    .eq('status', 'pendente')
+    .order('solicitada_em')
+  if (error) throw error
+  return data
+}
+
+/** Encerra a assinatura na data que as regras deram ao pedido. Só gestão. */
+export async function confirmarCancelamentoPlano(solicitacaoId: string, observacao?: string) {
+  const { data, error } = await requireSupabase().rpc('confirmar_cancelamento_plano', {
+    p_solicitacao: solicitacaoId,
+    ...(observacao?.trim() ? { p_observacao: observacao.trim() } : {}),
+  })
+  if (error) throw error
+  return data
+}
+
+/** Arquiva sem cancelar (o aluno desistiu, ou foi resolvido por fora). */
+export async function arquivarSolicitacaoCancelamento(solicitacaoId: string, observacao?: string) {
+  const { error } = await requireSupabase().rpc('retirar_solicitacao_cancelamento', {
+    p_solicitacao: solicitacaoId,
+    ...(observacao?.trim() ? { p_observacao: observacao.trim() } : {}),
+  })
+  if (error) throw error
+}
+
 export async function cancelarAssinatura(matriculaId: string, motivo?: string) {
   const { data, error } = await requireSupabase().rpc('cancelar_assinatura', {
     p_matricula: matriculaId,
     ...(motivo ? { p_motivo: motivo } : {}),
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Bonificar a aluna com créditos — cortesia ou reposição.
+ *
+ * O motivo é obrigatório no BANCO, não só aqui: ele vai para o extrato
+ * que a aluna enxerga, e "+2 créditos" sem explicação é o lançamento
+ * que ninguém consegue justificar depois.
+ *
+ * `validade` é opcional e, omitida, o banco usa o fim do ciclo. Só que
+ * ele **recusa** a omissão quando o ciclo já venceu — caso real (bônus
+ * para quem sumiu), em que o padrão nasceria morto. A tela manda a data
+ * sempre preenchida para que esse erro não chegue à equipe.
+ */
+export async function concederCreditos(a: {
+  matriculaId: string
+  quantidade: number
+  motivo: string
+  validade?: string
+  origem?: 'ajuste' | 'reposicao'
+}) {
+  const { data, error } = await requireSupabase().rpc('conceder_creditos', {
+    p_matricula: a.matriculaId,
+    p_quantidade: a.quantidade,
+    p_motivo: a.motivo,
+    ...(a.validade ? { p_validade: a.validade } : {}),
+    ...(a.origem ? { p_origem: a.origem } : {}),
   })
   if (error) throw error
   return data

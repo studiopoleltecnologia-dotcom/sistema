@@ -1,11 +1,12 @@
-import { HashRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AgendaPage } from './AgendaPage'
+import { AulasPage } from './AulasPage'
 import { DashboardPage } from './DashboardPage'
+import { MeuPlanoPage } from './MeuPlanoPage'
 import { PerfilPage } from './PerfilPage'
 import { PlanosPage } from './PlanosPage'
 import { PortalAuthGate } from './PortalAuthGate'
 import { PortalLayout } from './PortalLayout'
-import { ReservasPage } from './ReservasPage'
 
 /**
  * O basename do HashRouter depende de COMO a jornada foi aberta.
@@ -33,9 +34,14 @@ export function PortalApp() {
           <Route element={<PortalLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="agenda" element={<AgendaPage />} />
+            <Route path="aulas" element={<AulasPage />} />
+            <Route path="meu-plano" element={<MeuPlanoPage />} />
             <Route path="planos" element={<PlanosPage />} />
-            <Route path="reservas" element={<ReservasPage />} />
             <Route path="perfil" element={<PerfilPage />} />
+            {/* "Reservas" virou "Aulas agendadas" (21/09/2026). O endereço
+                antigo continua funcionando para quem salvou o link. */}
+            <Route path="reservas" element={<Navigate to="../aulas" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </HashRouter>

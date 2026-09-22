@@ -4,7 +4,11 @@ import { useClientes } from '../../clientes/hooks/useClientes'
 import { useProdutos } from '../../produtos/hooks/useProdutos'
 import {
   adicionarTurmaFixa,
+  arquivarSolicitacaoCancelamento,
   cancelarAssinatura,
+  concederCreditos,
+  confirmarCancelamentoPlano,
+  listarSolicitacoesPendentes,
   encerrarTurmaFixa,
   listarMatriculaTurmas,
   listarMatriculas,
@@ -97,7 +101,32 @@ function useInvalidarMatriculas() {
     // A vaga da turma muda quando um assento nasce ou morre.
     qc.invalidateQueries({ queryKey: ['ocupacao'] })
     qc.invalidateQueries({ queryKey: ['ocupacao-periodo'] })
+    qc.invalidateQueries({ queryKey: ['solicitacoes-cancelamento'] })
+    qc.invalidateQueries({ queryKey: ['dash-cancelamentos'] })
   }
+}
+
+/** Pedidos de cancelamento feitos pelo portal, ainda sem resposta. */
+export function useSolicitacoesPendentes() {
+  return useQuery({ queryKey: ['solicitacoes-cancelamento'], queryFn: listarSolicitacoesPendentes })
+}
+
+export function useConfirmarCancelamentoPlano() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({
+    mutationFn: (a: { solicitacaoId: string; observacao?: string }) =>
+      confirmarCancelamentoPlano(a.solicitacaoId, a.observacao),
+    onSuccess: invalidar,
+  })
+}
+
+export function useArquivarSolicitacao() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({
+    mutationFn: (a: { solicitacaoId: string; observacao?: string }) =>
+      arquivarSolicitacaoCancelamento(a.solicitacaoId, a.observacao),
+    onSuccess: invalidar,
+  })
 }
 
 export function useMatricular() {
@@ -155,4 +184,14 @@ export function useEncerrarTurmaFixa() {
       encerrarTurmaFixa(a.vinculoId, { imediato: a.imediato, motivo: a.motivo }),
     onSuccess: invalidar,
   })
+}
+
+/**
+ * Bônus de crédito. Invalida o mesmo bloco das outras ações porque o
+ * saldo aparece na tela de matrículas, na ficha do aluno e no portal
+ * dela — três lugares que não podem discordar depois do clique.
+ */
+export function useConcederCreditos() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({ mutationFn: concederCreditos, onSuccess: invalidar })
 }

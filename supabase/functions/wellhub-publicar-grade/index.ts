@@ -104,7 +104,20 @@ Deno.serve(async (_req) => {
       .in('data', datas)
 
     const publicadasSet = new Set((jaPublicadas ?? []).map((r: { data: string }) => r.data))
-    const novasDatas = datas.filter((d) => !publicadasSet.has(d))
+
+    // Aula cancelada pelo estúdio não vira slot: publicar seria vender no
+    // app uma vaga que o banco recusa. Slot publicado ANTES do
+    // cancelamento continua lá — a equipe remove no Portal do Parceiro
+    // (a tela de Aulas canceladas avisa quando há reserva pelo app).
+    const { data: canceladas } = await sb
+      .from('aulas_canceladas')
+      .select('data')
+      .eq('turma_id', turma.id)
+      .is('reaberta_em', null)
+      .in('data', datas)
+    const canceladasSet = new Set((canceladas ?? []).map((r: { data: string }) => r.data))
+
+    const novasDatas = datas.filter((d) => !publicadasSet.has(d) && !canceladasSet.has(d))
     if (novasDatas.length === 0) continue
 
     const { count: agendados } = await sb
