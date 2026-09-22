@@ -1532,6 +1532,7 @@ export type Database = {
           criada_em: string
           data_fim: string
           data_inicio: string
+          dia_renovacao: number
           id: string
           motivo_cancelamento: string | null
           plano_id: string
@@ -1551,6 +1552,7 @@ export type Database = {
           criada_em?: string
           data_fim: string
           data_inicio?: string
+          dia_renovacao: number
           id?: string
           motivo_cancelamento?: string | null
           plano_id: string
@@ -1570,6 +1572,7 @@ export type Database = {
           criada_em?: string
           data_fim?: string
           data_inicio?: string
+          dia_renovacao?: number
           id?: string
           motivo_cancelamento?: string | null
           plano_id?: string
@@ -1921,6 +1924,7 @@ export type Database = {
           nome: string
           ordem: number
           periodicidade_dias: number
+          periodicidade_meses: number | null
           preco_centavos: number
           produto_sucessor_id: string | null
           renova_automaticamente: boolean
@@ -1949,6 +1953,7 @@ export type Database = {
           nome: string
           ordem?: number
           periodicidade_dias: number
+          periodicidade_meses?: number | null
           preco_centavos: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
@@ -1977,6 +1982,7 @@ export type Database = {
           nome?: string
           ordem?: number
           periodicidade_dias?: number
+          periodicidade_meses?: number | null
           preco_centavos?: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
@@ -3413,6 +3419,16 @@ export type Database = {
         Args: { p_cliente: string; p_turma: string; p_data: string }
         Returns: boolean
       }
+      data_renovacao: {
+        Args: {
+          p_base: string
+          p_ciclos: number
+          p_dia: number
+          p_dias: number
+          p_meses: number
+        }
+        Returns: string
+      }
       meus_planos: {
         Args: never
         Returns: {
@@ -3431,6 +3447,7 @@ export type Database = {
           dentro_prazo_cancelamento: boolean | null
           desconto_eventos_pct: number
           devolucao_desconto_centavos: number | null
+          dia_renovacao: number
           dias_antecedencia_agendamento: number | null
           dias_antecedencia_cancelamento: number | null
           fim_compromisso: string | null
@@ -3441,6 +3458,7 @@ export type Database = {
           modalidades: string[] | null
           pagamento_pendente_desde: string | null
           periodicidade_dias: number
+          periodicidade_meses: number | null
           plano_nome: string
           prazo_cancelamento: string | null
           preco_centavos: number

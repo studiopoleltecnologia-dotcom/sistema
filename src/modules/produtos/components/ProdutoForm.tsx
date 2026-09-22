@@ -89,7 +89,11 @@ export function ProdutoForm({
   const [preco, setPreco] = useState(
     produto ? String(produto.preco_centavos / 100).replace('.', ',') : '',
   )
-  const [periodicidade, setPeriodicidade] = useState(String(produto?.periodicidade_dias ?? 30))
+  // Assinatura renova por mês civil, no mesmo dia (A17): é o que o Asaas
+  // cobra, e o banco recusa assinatura sem meses. `periodicidade_dias`
+  // fica como está — só a compra única ainda mede o prazo em dias.
+  const [meses, setMeses] = useState(String(produto?.periodicidade_meses ?? 1))
+  const periodicidade = String(produto?.periodicidade_dias ?? 30)
   const [ciclos, setCiclos] = useState(String(produto?.ciclos_compromisso ?? 1))
 
   const [turmasFixas, setTurmasFixas] = useState(String(produto?.turmas_fixas || 1))
@@ -203,6 +207,7 @@ export function ProdutoForm({
           preco_centavos: precoCentavos,
           renova_automaticamente: ehAssinatura,
           periodicidade_dias: Number(periodicidade) || 30,
+          periodicidade_meses: ehAssinatura ? Number(meses) || 1 : null,
           ciclos_compromisso: ehAssinatura ? Number(ciclos) || 1 : 1,
           turmas_fixas: nTurmas,
           gera_credito: entregaCredito,
@@ -235,6 +240,7 @@ export function ProdutoForm({
     preco_centavos: preco.trim() === '' ? 0 : (parseCentavos(preco) ?? 0),
     renova_automaticamente: ehAssinatura,
     periodicidade_dias: Number(periodicidade) || 30,
+    periodicidade_meses: ehAssinatura ? Number(meses) || 1 : null,
     ciclos_compromisso: ehAssinatura ? Number(ciclos) || 1 : 1,
   } as Produto)
 
@@ -338,14 +344,18 @@ export function ProdutoForm({
           <Secao titulo="Como cobra">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className={labelCls}>A cada quantos dias</label>
+                <label className={labelCls}>Renova a cada quantos meses</label>
                 <Input
                   type="number"
                   min={1}
-                  value={periodicidade}
-                  onChange={(e) => setPeriodicidade(e.target.value)}
+                  max={12}
+                  value={meses}
+                  onChange={(e) => setMeses(e.target.value)}
                   className="w-full"
                 />
+                <p className={ajudaCls}>
+                  Sempre no dia da contratação. Em mês sem esse dia (29 a 31), no último dia.
+                </p>
               </div>
               <div>
                 <label className={labelCls}>Permanência mínima (ciclos)</label>
