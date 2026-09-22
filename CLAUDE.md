@@ -295,8 +295,21 @@ plataformas parceiras) — referência de comparação, não de cópia de interf
   mês seguinte. Um semestral **nunca** entrega os 6 meses de crédito de uma vez
   — senão a aluna queima tudo no primeiro mês e o bloqueio por falta de
   pagamento perde o sentido.
+- **O ciclo é o mês civil, no mesmo dia** (decisão de 22/09/2026, A17). A
+  assinatura renova sempre no `matriculas.dia_renovacao` (o dia da
+  contratação); mês sem o dia (29–31) renova no último dia e volta no
+  seguinte — exatamente como o Asaas cobra, que não tem "a cada 30 dias".
+  Toda data de ciclo sai de **`data_renovacao()`**; não somar
+  `periodicidade_dias` a data de assinatura. `produtos.periodicidade_meses`
+  é obrigatório em produto que renova (constraint); só compra única mede
+  prazo em dias.
 - **Crédito não usado expira no fim do ciclo** (registrado no livro-razão com
   motivo `expiracao`, para a aluna conseguir ver o que houve com o saldo).
+  **Exceção, o semestral (3.4):** o saldo do plano que sobra passa para o
+  ciclo seguinte até `teto_acumulo_ciclos` ciclos (1 = o saldo nunca passa
+  do dobro), e expira no fim do compromisso (3.6). **Cortesia e reposição**
+  (`ajuste`, `reposicao`) ficam fora dessa conta: não ocupam o limite e não
+  expiram na renovação — valem até a validade que tiverem (22/09/2026).
 - **Inadimplência:** ciclo não pago → `marcar_inadimplente()` → a matrícula sai
   de `ativa` e `agendar_aula()` recusa com mensagem própria. Não apaga crédito
   nem cancela a matrícula: os créditos do ciclo já pago valem até expirarem.
@@ -412,8 +425,8 @@ pedido é "confirmado por escrito por nós". Implementado em
   `processar_assinaturas()`. Confirmado fora do prazo, a matrícula fica com
   `cancelada_em` + `renova_automaticamente = true` + `cancelamento_efetivo_em`
   além do ciclo: `renovar_ciclo()` aceita essa **única** renovação.
-- Desvios do motor de créditos achados no caminho: acúmulo do semestral e
-  ciclo de 31 dias seguem abertos (backlog A15, A17).
+- Desvios do motor de créditos achados no caminho — acúmulo do semestral e
+  ciclo de 31 dias (A15, A17) — corrigidos em `20260922120000` (ver 9.4).
 - **Virada do semestral (7.7, A16 corrigido):** `ciclo_atual` **nunca volta
   a 1** — a cobrança é única por (matrícula, ciclo), e voltar a 1 fazia o
   mensal sucessor renovar de graça. O ciclo do compromisso é

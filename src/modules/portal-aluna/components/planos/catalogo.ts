@@ -1,3 +1,4 @@
+import { cadaCiclo, porCiclo, sufixoCiclo } from '../../../../lib/ciclo'
 import type { Enums, Tables } from '../../../../lib/database.types'
 import {
   economiaMensal,
@@ -41,10 +42,10 @@ export function fmtPreco(centavos: number): string {
   })
 }
 
-/** "/mês" em assinatura de 30 dias; compra única não leva sufixo. */
+/** "/mês" na assinatura mensal; compra única não leva sufixo. */
 export function sufixoPreco(p: Produto): string {
   if (!p.renova_automaticamente) return ''
-  return p.periodicidade_dias === 30 ? '/mês' : `/${p.periodicidade_dias} dias`
+  return sufixoCiclo(p)
 }
 
 /** O número grande do cartão e a unidade embaixo dele: "8" + "aulas". */
@@ -61,14 +62,13 @@ export function tituloDoPlano(p: Produto): string {
     return `${p.turmas_fixas} ${plural(p.turmas_fixas, 'turma fixa', 'turmas fixas')}`
   }
   const n = p.creditos_por_ciclo
-  const quando = p.periodicidade_dias === 30 ? 'por mês' : `a cada ${p.periodicidade_dias} dias`
-  return `${n} ${plural(n, 'aula')} ${quando}`
+  return `${n} ${plural(n, 'aula')} ${porCiclo(p)}`
 }
 
 /**
  * A única linha de apoio do cartão de plano. No mensal o crédito morre no
- * fim do ciclo, então "válidos por 30 dias" é literal; no semestral ele
- * acumula, e a mesma frase seria mentira.
+ * fim do ciclo, então "válidos até a renovação" é literal; no semestral
+ * ele acumula, e a mesma frase seria mentira.
  */
 export function entregaDoPlano(p: Produto): string {
   if (p.turmas_fixas > 0) {
@@ -80,8 +80,8 @@ export function entregaDoPlano(p: Produto): string {
   const n = p.creditos_por_ciclo
   const creditos = `${n} ${plural(n, 'crédito')}`
   return p.acumula_creditos
-    ? `${creditos} a cada ${p.periodicidade_dias} dias`
-    : `${creditos} ${plural(n, 'válido')} por ${p.periodicidade_dias} dias`
+    ? `${creditos} ${porCiclo(p)}`
+    : `${creditos} ${porCiclo(p)}, ${plural(n, 'válido')} até a renovação`
 }
 
 /** Linha de apoio de um avulso: quanto entrega e por quanto tempo vale. */
@@ -106,7 +106,7 @@ export function economiaNoCompromisso(p: Produto, porId: Map<string, Produto>): 
 /** A frase de cobrança dita ANTES do botão de contratar (regulamento 1.3). */
 export function fraseCobranca(p: Produto): string {
   if (!p.renova_automaticamente) return 'Pagamento único.'
-  const cada = `a cada ${p.periodicidade_dias} dias`
+  const cada = cadaCiclo(p)
   return p.ciclos_compromisso > 1
     ? `Cobrança automática ${cada}, com permanência mínima de ${p.ciclos_compromisso} meses.`
     : `Cobrança automática ${cada}. Renova sozinho até você cancelar.`

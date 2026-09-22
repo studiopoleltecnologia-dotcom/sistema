@@ -1,3 +1,4 @@
+import { porCiclo, sufixoCiclo } from '../../lib/ciclo'
 import { fmtPreco } from './components/planos/catalogo'
 import { hojeIso, somarDias } from './datas'
 import type { MeuPlano } from './types'
@@ -55,15 +56,13 @@ export function tituloDoPlano(p: MeuPlano): string {
     return `${p.turmas_fixas} ${plural(p.turmas_fixas, 'turma fixa', 'turmas fixas')}`
   }
   if (formato === 'pacote') return p.plano_nome
-  const quando = p.periodicidade_dias === 30 ? 'por mês' : `a cada ${p.periodicidade_dias} dias`
-  return `${fmtCreditos(p.creditos_por_ciclo)} ${quando}`
+  return `${fmtCreditos(p.creditos_por_ciclo)} ${porCiclo(p)}`
 }
 
 /** "R$ 290/mês" */
 export function precoDoPlano(p: MeuPlano): string {
   if (formatoDoPlano(p) === 'pacote') return fmtPreco(p.preco_centavos)
-  const sufixo = p.periodicidade_dias === 30 ? '/mês' : ` a cada ${p.periodicidade_dias} dias`
-  return `${fmtPreco(p.preco_centavos)}${sufixo}`
+  return `${fmtPreco(p.preco_centavos)}${sufixoCiclo(p)}`
 }
 
 // ------------------------------------------------------------

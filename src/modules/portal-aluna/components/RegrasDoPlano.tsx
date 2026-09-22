@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { diaDaRenovacao } from '../../../lib/ciclo'
 import { fmtPreco } from './planos/catalogo'
 import { RegrasTurmaFixa } from './planos/Detalhes'
 import { formatoDoPlano } from '../plano'
@@ -50,6 +51,10 @@ export function RegrasDoPlano({ plano: p }: { plano: MeuPlano }) {
                 : 'Crédito que sobra expira no fim do ciclo (item 3.3).'}
             </Regra>
             <Regra>Os créditos mais antigos são usados primeiro (item 3.5).</Regra>
+            <Regra>
+              Crédito de cortesia ou de reposição vale até a data que aparece nele e não entra no limite do
+              plano.
+            </Regra>
             <Regra>Créditos não valem para aula particular, treino livre, aulões e workshops (item 3.8).</Regra>
           </Lista>
         </Bloco>
@@ -58,8 +63,11 @@ export function RegrasDoPlano({ plano: p }: { plano: MeuPlano }) {
       <Bloco titulo="Renovação">
         <Lista>
           <Regra>
-            O plano renova sozinho a cada {p.periodicidade_dias} dias, com cobrança no meio de pagamento
-            combinado, até você pedir o cancelamento (item 1.5).
+            O plano renova sozinho{' '}
+            {p.periodicidade_meses
+              ? `${p.periodicidade_meses === 1 ? 'todo mês' : `a cada ${p.periodicidade_meses} meses`}, ${diaDaRenovacao(p.dia_renovacao)}`
+              : `a cada ${p.periodicidade_dias} dias`}
+            , com cobrança no meio de pagamento combinado, até você pedir o cancelamento (itens 1.5 e 3.1).
           </Regra>
           {semestral ? (
             <>
