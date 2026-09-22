@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
+import { Cabecalho } from './components/Basicos'
 import { useAtualizarMeuCliente, useMeuCliente } from './hooks/usePortalAluna'
 
 const inputCls =
@@ -37,8 +38,8 @@ export function PerfilPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-4 text-xl font-semibold text-neutral-900">Meu Perfil</h1>
+    <div className="lg:max-w-xl">
+      <Cabecalho titulo="Meu perfil" subtitulo={cliente?.email ?? undefined} />
 
       <form onSubmit={handleSubmit} className="rounded-lg border border-neutral-200 bg-white p-4">
         <label className="mb-4 block">
@@ -94,7 +95,7 @@ export function PerfilPage() {
 
       <button
         onClick={() => supabase?.auth.signOut()}
-        className="mt-4 w-full rounded-md border border-neutral-200 py-2.5 text-sm text-neutral-500 hover:bg-neutral-50"
+        className="mt-4 w-full rounded-md border border-neutral-200 py-2.5 text-sm text-neutral-500 hover:bg-neutral-50 lg:hidden"
       >
         Sair
       </button>

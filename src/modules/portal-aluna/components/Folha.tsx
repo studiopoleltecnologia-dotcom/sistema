@@ -1,21 +1,27 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
-import { cn } from '../../../../components/ui/cn'
+import { cn } from '../../../components/ui/cn'
 
 /**
  * Folha que sobe da base da tela — no celular é onde o polegar já está.
  * A partir de `sm` vira um cartão centralizado, como o Modal do sistema.
  *
- * É o "segundo andar" da tela de Planos: tudo que não ajuda a ESCOLHER
- * (regras, cobrança, comparação) mora aqui, aberto só quando pedido.
+ * É o "segundo andar" das telas do portal: tudo que não ajuda a decidir
+ * de relance (regras, cobrança, confirmação de cancelamento, detalhe de
+ * uma aula) mora aqui, aberto só quando pedido.
+ *
+ * `rodape` fica fora da área que rola: numa confirmação longa, o botão
+ * de agir continua à vista sem a pessoa precisar rolar até o fim.
  */
 export function Folha({
   titulo,
   children,
+  rodape,
   onFechar,
 }: {
   titulo: ReactNode
   children: ReactNode
+  rodape?: ReactNode
   onFechar: () => void
 }) {
   const tituloId = useId()
@@ -82,9 +88,19 @@ export function Folha({
             <X className="size-4" />
           </button>
         </div>
-        <div className="overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+        <div
+          className={cn(
+            'overflow-y-auto px-5 pt-3',
+            rodape ? 'pb-4' : 'pb-[max(1.25rem,env(safe-area-inset-bottom))]',
+          )}
+        >
           {children}
         </div>
+        {rodape && (
+          <div className="shrink-0 border-t border-neutral-100 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+            {rodape}
+          </div>
+        )}
       </div>
     </div>
   )

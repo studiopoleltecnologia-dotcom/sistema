@@ -4,8 +4,11 @@ import { useClientes } from '../../clientes/hooks/useClientes'
 import { useProdutos } from '../../produtos/hooks/useProdutos'
 import {
   adicionarTurmaFixa,
+  arquivarSolicitacaoCancelamento,
   cancelarAssinatura,
   concederCreditos,
+  confirmarCancelamentoPlano,
+  listarSolicitacoesPendentes,
   encerrarTurmaFixa,
   listarMatriculaTurmas,
   listarMatriculas,
@@ -98,7 +101,32 @@ function useInvalidarMatriculas() {
     // A vaga da turma muda quando um assento nasce ou morre.
     qc.invalidateQueries({ queryKey: ['ocupacao'] })
     qc.invalidateQueries({ queryKey: ['ocupacao-periodo'] })
+    qc.invalidateQueries({ queryKey: ['solicitacoes-cancelamento'] })
+    qc.invalidateQueries({ queryKey: ['dash-cancelamentos'] })
   }
+}
+
+/** Pedidos de cancelamento feitos pelo portal, ainda sem resposta. */
+export function useSolicitacoesPendentes() {
+  return useQuery({ queryKey: ['solicitacoes-cancelamento'], queryFn: listarSolicitacoesPendentes })
+}
+
+export function useConfirmarCancelamentoPlano() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({
+    mutationFn: (a: { solicitacaoId: string; observacao?: string }) =>
+      confirmarCancelamentoPlano(a.solicitacaoId, a.observacao),
+    onSuccess: invalidar,
+  })
+}
+
+export function useArquivarSolicitacao() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({
+    mutationFn: (a: { solicitacaoId: string; observacao?: string }) =>
+      arquivarSolicitacaoCancelamento(a.solicitacaoId, a.observacao),
+    onSuccess: invalidar,
+  })
 }
 
 export function useMatricular() {

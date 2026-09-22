@@ -93,6 +93,44 @@ export async function marcarInadimplente(matriculaId: string) {
   if (error) throw error
 }
 
+// ------------------------------------------------------------
+// Pedidos de cancelamento vindos do portal (regulamento 7.1)
+// ------------------------------------------------------------
+
+/**
+ * Pedidos em aberto, do mais antigo para o mais novo — o mais antigo é o
+ * que está mais perto do prazo. O contato vem junto porque a equipe
+ * costuma responder pelo WhatsApp antes de confirmar.
+ */
+export async function listarSolicitacoesPendentes() {
+  const { data, error } = await requireSupabase()
+    .from('solicitacoes_cancelamento')
+    .select('*, clientes(nome, telefone, email)')
+    .eq('status', 'pendente')
+    .order('solicitada_em')
+  if (error) throw error
+  return data
+}
+
+/** Encerra a assinatura na data que as regras deram ao pedido. Só gestão. */
+export async function confirmarCancelamentoPlano(solicitacaoId: string, observacao?: string) {
+  const { data, error } = await requireSupabase().rpc('confirmar_cancelamento_plano', {
+    p_solicitacao: solicitacaoId,
+    ...(observacao?.trim() ? { p_observacao: observacao.trim() } : {}),
+  })
+  if (error) throw error
+  return data
+}
+
+/** Arquiva sem cancelar (o aluno desistiu, ou foi resolvido por fora). */
+export async function arquivarSolicitacaoCancelamento(solicitacaoId: string, observacao?: string) {
+  const { error } = await requireSupabase().rpc('retirar_solicitacao_cancelamento', {
+    p_solicitacao: solicitacaoId,
+    ...(observacao?.trim() ? { p_observacao: observacao.trim() } : {}),
+  })
+  if (error) throw error
+}
+
 export async function cancelarAssinatura(matriculaId: string, motivo?: string) {
   const { data, error } = await requireSupabase().rpc('cancelar_assinatura', {
     p_matricula: matriculaId,

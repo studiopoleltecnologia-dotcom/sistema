@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   aniversariantesDoMes,
   aulasDeHoje,
+  contarCancelamentosPendentes,
   contarFollowupsPendentes,
   contarFunil,
   contarInadimplentes,
@@ -18,6 +19,10 @@ export function useFollowupsPendentes() {
 
 export function useInadimplentes() {
   return useQuery({ queryKey: ['dash-inadimplentes'], queryFn: contarInadimplentes })
+}
+
+export function useCancelamentosPendentes() {
+  return useQuery({ queryKey: ['dash-cancelamentos'], queryFn: contarCancelamentosPendentes })
 }
 
 /** Grade de hoje — inclui a aula sem ninguém agendado (é o ponto). */
