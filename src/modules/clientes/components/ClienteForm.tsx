@@ -73,7 +73,7 @@ export function ClienteForm({
 
   return (
     <div
-      className="fixed inset-0 z-20 flex items-center justify-center bg-neutral-900/20 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-neutral-900/20 p-4"
       onClick={onFechar}
     >
       <form

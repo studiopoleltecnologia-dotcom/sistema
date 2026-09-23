@@ -298,7 +298,7 @@ function NovaEntradaModal({ onFechar }: { onFechar: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-neutral-900/20 p-4" onClick={onFechar}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-neutral-900/20 p-4" onClick={onFechar}>
       <form
         onSubmit={lancar}
         onClick={(ev) => ev.stopPropagation()}
