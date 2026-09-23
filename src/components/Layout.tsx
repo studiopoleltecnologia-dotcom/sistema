@@ -16,6 +16,7 @@ import {
   MessageCircleHeart,
   PanelLeftClose,
   PanelLeftOpen,
+  Scale,
   ShieldCheck,
   TrendingUp,
   Users,
@@ -180,6 +181,14 @@ const SECOES: Secao[] = [
     itens: [
       { to: '/analises', label: 'Análises', icon: BarChart3, funcoes: ['gestao', 'secretaria'] },
       { to: '/professoras', label: 'Professoras', icon: GraduationCap, funcoes: ['gestao'] },
+      // Aba permanente da mesma tela: o CLAUDE.md pede que só chegue ao
+      // menu a seção que tem endereço, e a remuneração tem (?aba=).
+      {
+        to: '/professoras?aba=remuneracao',
+        label: 'Regras de remuneração',
+        icon: Scale,
+        funcoes: ['gestao'],
+      },
       { to: '/equipe', label: 'Equipe & Acessos', icon: ShieldCheck, funcoes: ['gestao'] },
     ],
   },
