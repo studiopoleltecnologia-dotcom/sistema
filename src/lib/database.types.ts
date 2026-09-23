@@ -164,6 +164,105 @@ export type Database = {
           },
         ]
       }
+      assinaturas_gateway: {
+        Row: {
+          atualizada_em: string
+          checkout_ref: string | null
+          cliente_id: string
+          criada_em: string
+          id: string
+          matricula_id: string | null
+          provider: string
+          provider_ref: string | null
+          solicitacao_id: string | null
+          status: string
+          url_checkout: string | null
+        }
+        Insert: {
+          atualizada_em?: string
+          checkout_ref?: string | null
+          cliente_id: string
+          criada_em?: string
+          id?: string
+          matricula_id?: string | null
+          provider?: string
+          provider_ref?: string | null
+          solicitacao_id?: string | null
+          status?: string
+          url_checkout?: string | null
+        }
+        Update: {
+          atualizada_em?: string
+          checkout_ref?: string | null
+          cliente_id?: string
+          criada_em?: string
+          id?: string
+          matricula_id?: string | null
+          provider?: string
+          provider_ref?: string | null
+          solicitacao_id?: string | null
+          status?: string
+          url_checkout?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_gateway_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_gateway_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_gateway_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_gateway_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_gateway_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_gateway_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "assinaturas_gateway_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_contratacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_gateway_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "vw_solicitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auditoria: {
         Row: {
           acao: string
@@ -472,10 +571,12 @@ export type Database = {
       }
       clientes: {
         Row: {
+          asaas_customer_id: string | null
           atualizada_em: string
           contato_emergencia_nome: string | null
           contato_emergencia_parentesco: string | null
           contato_emergencia_telefone: string | null
+          cpf: string | null
           criada_em: string
           data_nascimento: string | null
           email: string | null
@@ -495,10 +596,12 @@ export type Database = {
           vip: boolean
         }
         Insert: {
+          asaas_customer_id?: string | null
           atualizada_em?: string
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
+          cpf?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
@@ -518,10 +621,12 @@ export type Database = {
           vip?: boolean
         }
         Update: {
+          asaas_customer_id?: string | null
           atualizada_em?: string
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
+          cpf?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
@@ -553,6 +658,123 @@ export type Database = {
             columns: ["responsavel_id"]
             isOneToOne: false
             referencedRelation: "vw_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cobrancas: {
+        Row: {
+          atualizada_em: string
+          ciclo: number | null
+          cliente_id: string
+          criada_em: string
+          descricao: string | null
+          forma_pagamento: string | null
+          id: string
+          matricula_id: string | null
+          pago_em: string | null
+          provider: string
+          provider_ref: string | null
+          solicitacao_id: string | null
+          status: Database["public"]["Enums"]["status_cobranca"]
+          url_pagamento: string | null
+          valor_centavos: number
+          valor_pago_centavos: number | null
+          vencimento: string
+        }
+        Insert: {
+          atualizada_em?: string
+          ciclo?: number | null
+          cliente_id: string
+          criada_em?: string
+          descricao?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          matricula_id?: string | null
+          pago_em?: string | null
+          provider?: string
+          provider_ref?: string | null
+          solicitacao_id?: string | null
+          status?: Database["public"]["Enums"]["status_cobranca"]
+          url_pagamento?: string | null
+          valor_centavos: number
+          valor_pago_centavos?: number | null
+          vencimento: string
+        }
+        Update: {
+          atualizada_em?: string
+          ciclo?: number | null
+          cliente_id?: string
+          criada_em?: string
+          descricao?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          matricula_id?: string | null
+          pago_em?: string | null
+          provider?: string
+          provider_ref?: string | null
+          solicitacao_id?: string | null
+          status?: Database["public"]["Enums"]["status_cobranca"]
+          url_pagamento?: string | null
+          valor_centavos?: number
+          valor_pago_centavos?: number | null
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cobrancas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobrancas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobrancas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_contratacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobrancas_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "vw_solicitacoes"
             referencedColumns: ["id"]
           },
         ]
@@ -609,10 +831,12 @@ export type Database = {
         Row: {
           atualizada_em: string
           id: boolean
+          juros_mes_atraso_pct: number
           limite_mei_centavos: number
           meta_faturamento_anual_centavos: number
           meta_faturamento_mensal_centavos: number
           meta_reserva_meses: number
+          multa_atraso_pct: number
           percentual_reserva: number
           saldo_inicial_centavos: number
           saldo_inicial_data: string
@@ -620,10 +844,12 @@ export type Database = {
         Insert: {
           atualizada_em?: string
           id?: boolean
+          juros_mes_atraso_pct?: number
           limite_mei_centavos?: number
           meta_faturamento_anual_centavos?: number
           meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
+          multa_atraso_pct?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number
           saldo_inicial_data?: string
@@ -631,10 +857,12 @@ export type Database = {
         Update: {
           atualizada_em?: string
           id?: boolean
+          juros_mes_atraso_pct?: number
           limite_mei_centavos?: number
           meta_faturamento_anual_centavos?: number
           meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
+          multa_atraso_pct?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number
           saldo_inicial_data?: string
@@ -1404,6 +1632,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entradas_financeiras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followups_entrada_id_fkey"
+            columns: ["entrada_id"]
+            isOneToOne: false
+            referencedRelation: "vw_cobrancas_a_emitir"
+            referencedColumns: ["entrada_id"]
           },
           {
             foreignKeyName: "followups_entrada_id_fkey"
@@ -3279,6 +3514,65 @@ export type Database = {
           },
         ]
       }
+      vw_cobrancas_a_emitir: {
+        Row: {
+          asaas_customer_id: string | null
+          ciclo: number | null
+          cliente_cpf: string | null
+          cliente_email: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          descricao: string | null
+          entrada_id: string | null
+          matricula_id: string | null
+          valor_centavos: number | null
+          vencimento: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entradas_financeiras_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "entradas_financeiras_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       vw_contas_a_pagar: {
         Row: {
           bucket: string | null
@@ -3872,6 +4166,9 @@ export type Database = {
           cliente_email: string | null
           cliente_id: string | null
           cliente_nome: string | null
+          cobranca_id: string | null
+          cobranca_status: Database["public"]["Enums"]["status_cobranca"] | null
+          cobranca_vencimento: string | null
           decidida_em: string | null
           decisor_nome: string | null
           forma_pagamento: string | null
@@ -3890,6 +4187,7 @@ export type Database = {
           status: Database["public"]["Enums"]["status_solicitacao"] | null
           tipo_produto: Database["public"]["Enums"]["tipo_produto"] | null
           turmas: string[] | null
+          url_pagamento: string | null
         }
         Relationships: [
           {
@@ -3978,6 +4276,18 @@ export type Database = {
         Args: { p_data: string; p_turma: string }
         Returns: number
       }
+      assinatura_ativada: {
+        Args: {
+          p_checkout_ref: string
+          p_provider: string
+          p_provider_ref: string
+        }
+        Returns: string
+      }
+      assinatura_encerrada: {
+        Args: { p_checkout_ref: string; p_provider: string; p_status: string }
+        Returns: string
+      }
       avisar_aluno_contratacao: {
         Args: {
           p_cliente: string
@@ -4024,6 +4334,28 @@ export type Database = {
         Returns: undefined
       }
       cliente_atual: { Args: never; Returns: string }
+      cobranca_cancelada: {
+        Args: {
+          p_estorno?: boolean
+          p_provider: string
+          p_provider_ref: string
+        }
+        Returns: string
+      }
+      cobranca_paga: {
+        Args: {
+          p_forma: string
+          p_pago_em: string
+          p_provider: string
+          p_provider_ref: string
+          p_valor_pago_centavos?: number
+        }
+        Returns: string
+      }
+      cobranca_vencida: {
+        Args: { p_provider: string; p_provider_ref: string }
+        Returns: string
+      }
       cobrar_ciclo: {
         Args: { p_ciclo: number; p_matricula: string; p_vencimento: string }
         Returns: string
@@ -4119,6 +4451,7 @@ export type Database = {
         }
         Returns: string
       }
+      disparar_cobrancas: { Args: never; Returns: undefined }
       disparar_emails: { Args: never; Returns: undefined }
       disparar_publicacao_grade_wellhub: { Args: never; Returns: undefined }
       elegivel_para_produto: {
@@ -4319,6 +4652,17 @@ export type Database = {
         Args: { p_motivo: string; p_solicitacao: string }
         Returns: undefined
       }
+      registrar_assinatura_gateway: {
+        Args: {
+          p_checkout_ref: string
+          p_cliente: string
+          p_matricula: string
+          p_provider: string
+          p_solicitacao: string
+          p_url: string
+        }
+        Returns: string
+      }
       registrar_checkin_wellhub: {
         Args: {
           p_cliente: string
@@ -4326,6 +4670,32 @@ export type Database = {
           p_momento?: string
         }
         Returns: Json
+      }
+      registrar_cobranca: {
+        Args: {
+          p_ciclo: number
+          p_cliente: string
+          p_descricao: string
+          p_matricula: string
+          p_provider: string
+          p_provider_ref: string
+          p_solicitacao: string
+          p_url: string
+          p_valor_centavos: number
+          p_vencimento: string
+        }
+        Returns: string
+      }
+      registrar_cobranca_de_assinatura: {
+        Args: {
+          p_assinatura_ref: string
+          p_descricao: string
+          p_provider: string
+          p_provider_ref: string
+          p_valor_centavos: number
+          p_vencimento: string
+        }
+        Returns: string
       }
       registrar_presenca: {
         Args: {
@@ -4467,6 +4837,12 @@ export type Database = {
       plano_tipo: "creditos" | "semanal"
       rotina_checklist: "abertura" | "fechamento"
       status_agendamento: "agendado" | "cancelado"
+      status_cobranca:
+        | "pendente"
+        | "paga"
+        | "vencida"
+        | "cancelada"
+        | "estornada"
       status_email: "pendente" | "enviado" | "erro"
       status_entrada: "prevista" | "recebida" | "cancelada"
       status_fechamento: "aberto" | "aprovado"
@@ -4697,6 +5073,13 @@ export const Constants = {
       plano_tipo: ["creditos", "semanal"],
       rotina_checklist: ["abertura", "fechamento"],
       status_agendamento: ["agendado", "cancelado"],
+      status_cobranca: [
+        "pendente",
+        "paga",
+        "vencida",
+        "cancelada",
+        "estornada",
+      ],
       status_email: ["pendente", "enviado", "erro"],
       status_entrada: ["prevista", "recebida", "cancelada"],
       status_fechamento: ["aberto", "aprovado"],

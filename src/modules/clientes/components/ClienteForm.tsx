@@ -40,6 +40,7 @@ export function ClienteForm({
     nome: cliente?.nome ?? '',
     email: cliente?.email ?? null,
     telefone: cliente?.telefone ?? null,
+    cpf: cliente?.cpf ?? null,
     instagram: cliente?.instagram ?? null,
     origem: cliente?.origem ?? 'whatsapp',
     estagio: cliente?.estagio ?? 'lead',
@@ -127,6 +128,25 @@ export function ClienteForm({
               onChange={(e) => set('telefone', texto(e.target.value))}
               placeholder="(21) 9…"
             />
+          </div>
+          {/*
+            Não é obrigatório de propósito: lead que ainda não virou
+            aluno não tem por que informar CPF, e exigir aqui colocaria
+            barreira no começo do funil. Quem exige é a cobrança — o
+            gateway recusa emitir sem ele, e a tela avisa lá.
+          */}
+          <div>
+            <label className={labelCls}>CPF</label>
+            <input
+              inputMode="numeric"
+              className={inputCls}
+              value={form.cpf ?? ''}
+              onChange={(e) => set('cpf', texto(e.target.value))}
+              placeholder="só números"
+            />
+            <p className="mt-1 text-[11px] text-neutral-400">
+              Necessário para emitir cobrança. Pode ficar em branco enquanto for lead.
+            </p>
           </div>
           <div>
             <label className={labelCls}>Instagram</label>
