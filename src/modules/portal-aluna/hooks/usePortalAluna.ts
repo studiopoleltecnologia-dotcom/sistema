@@ -17,6 +17,7 @@ import {
   listarMinhasTurmasFixas,
   listarPlanos,
   listarVagas,
+  meuCadastroPrevio,
   obterConfigAgendamento,
   obterContaAluna,
   obterMeuCliente,
@@ -36,6 +37,10 @@ export function useContaAluna() {
 
 export function useSouEquipe() {
   return useQuery({ queryKey: ['portal-sou-equipe'], queryFn: souEquipe })
+}
+
+export function useMeuCadastroPrevio() {
+  return useQuery({ queryKey: ['portal-cadastro-previo'], queryFn: meuCadastroPrevio })
 }
 
 export function useCriarContaAluna() {
