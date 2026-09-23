@@ -11,6 +11,7 @@ import {
   listarSolicitacoesPendentes,
   encerrarTurmaFixa,
   listarMatriculaTurmas,
+  listarHistoricoMatricula,
   listarMatriculas,
   listarTurmasDoCliente,
   marcarInadimplente,
@@ -200,4 +201,12 @@ export function useEncerrarTurmaFixa() {
 export function useConcederCreditos() {
   const invalidar = useInvalidarMatriculas()
   return useMutation({ mutationFn: concederCreditos, onSuccess: invalidar })
+}
+
+export function useHistoricoMatricula(matriculaId: string | null) {
+  return useQuery({
+    queryKey: ['historico-matricula', matriculaId],
+    queryFn: () => listarHistoricoMatricula(matriculaId!),
+    enabled: Boolean(matriculaId),
+  })
 }
