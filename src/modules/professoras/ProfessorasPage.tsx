@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { ShieldAlert, SlidersHorizontal } from 'lucide-react'
+import { Tabs } from '../../components/ui/Tabs'
 import { useConfirmar } from '../../components/ui/ConfirmarAcao'
+import { useAbaUrl } from '../../lib/aba'
 import { fmtCentavos, parseCentavos } from '../../lib/dinheiro'
 import { ContatoEmergenciaModal } from './components/ContatoEmergenciaModal'
+import { RegrasRemuneracao } from './components/RegrasRemuneracao'
 import { RemuneracaoModal } from './components/RemuneracaoModal'
 import {
   useContasProfessora,
@@ -24,7 +27,12 @@ function resumoModelo(p: Professora): string {
 const temEmergencia = (p: Professora) =>
   Boolean(p.contato_emergencia_nome?.trim() && p.contato_emergencia_telefone?.trim())
 
+const ABAS = ['equipe', 'remuneracao'] as const
+
 export function ProfessorasPage() {
+  // Na URL (?aba=remuneracao): o menu lateral e o fechamento da folha
+  // precisam conseguir apontar direto para as regras.
+  const [aba, setAba] = useAbaUrl(ABAS, 'equipe')
   const { data: professoras, isLoading } = useProfessoras()
   const { data: comAcesso } = useContasProfessora()
   const criar = useCriarProfessora()
@@ -82,7 +90,24 @@ export function ProfessorasPage() {
 
   return (
     <div>
-      <form onSubmit={adicionar} className="mb-5 flex flex-col gap-2">
+      <Tabs
+        value={aba}
+        onChange={setAba}
+        size="lg"
+        variant="marca"
+        items={[
+          { value: 'equipe', label: 'Equipe' },
+          { value: 'remuneracao', label: 'Regras de remuneração' },
+        ]}
+      />
+
+      {aba === 'remuneracao' ? (
+        <div className="mt-5">
+          <RegrasRemuneracao />
+        </div>
+      ) : (
+        <>
+      <form onSubmit={adicionar} className="mb-5 mt-5 flex flex-col gap-2">
         <div className="flex flex-wrap items-end gap-2">
           <input
             value={nome}
@@ -245,6 +270,8 @@ export function ProfessorasPage() {
           </li>
         ))}
       </ul>
+        </>
+      )}
 
       {editando && <RemuneracaoModal professora={editando} onFechar={() => setEditando(null)} />}
       {editandoContato && (

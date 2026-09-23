@@ -28,6 +28,7 @@ export function ClienteForm({
 }) {
   const [form, setForm] = useState<ClienteInsert>({
     nome: cliente?.nome ?? '',
+    email: cliente?.email ?? null,
     telefone: cliente?.telefone ?? null,
     instagram: cliente?.instagram ?? null,
     origem: cliente?.origem ?? 'whatsapp',
@@ -84,6 +85,28 @@ export function ClienteForm({
               value={form.nome}
               onChange={(e) => set('nome', e.target.value)}
             />
+          </div>
+
+          {/*
+            O e-mail é o único canal por onde o sistema fala com o aluno:
+            aula cancelada, vaga na fila, vencimento, confirmação de
+            cancelamento de plano. Faltava aqui, então todo aluno criado
+            pela gestão nascia mudo. `matricular_produto()` recusa plano
+            sem e-mail — o asterisco avisa antes de a pessoa esbarrar lá.
+          */}
+          <div className="sm:col-span-2">
+            <label className={labelCls}>E-mail *</label>
+            <input
+              type="email"
+              className={inputCls}
+              value={form.email ?? ''}
+              onChange={(e) => set('email', texto(e.target.value))}
+              placeholder="para avisos de aula, cobrança e acesso ao portal"
+            />
+            <p className="mt-1 text-[11px] text-neutral-400">
+              Obrigatório para contratar plano — é por onde saem aviso de aula cancelada,
+              vencimento e confirmação de cancelamento.
+            </p>
           </div>
 
           <div>

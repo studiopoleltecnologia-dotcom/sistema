@@ -54,10 +54,20 @@ export async function listarTurmasDoCliente(clienteId: string) {
 // assento — a trava é do banco, não desta camada.
 // ------------------------------------------------------------
 
-export async function matricular(clienteId: string, produtoId: string) {
+/**
+ * `justificativa` só é aceita pelo banco quando quem chama é gestão e a
+ * elegibilidade do produto recusou (§8 e §10 do regulamento). A venda
+ * passa e a autorização fica gravada em `auditoria`.
+ */
+export async function matricular(
+  clienteId: string,
+  produtoId: string,
+  justificativa?: string,
+) {
   const { data, error } = await requireSupabase().rpc('matricular', {
     p_cliente: clienteId,
     p_plano: produtoId,
+    p_justificativa: justificativa,
   })
   if (error) throw error
   return data
@@ -67,11 +77,13 @@ export async function matricularTurmaFixa(
   clienteId: string,
   produtoId: string,
   turmaIds: string[],
+  justificativa?: string,
 ) {
   const { data, error } = await requireSupabase().rpc('matricular_turma_fixa', {
     p_cliente: clienteId,
     p_produto: produtoId,
     p_turmas: turmaIds,
+    p_justificativa: justificativa,
   })
   if (error) throw error
   return data
