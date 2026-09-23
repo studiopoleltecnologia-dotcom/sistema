@@ -230,14 +230,12 @@ Existem e **nascem desligados** (`config_financeiro.multa_atraso_pct` e
 enviado ao Asaas e atrasar não custa dinheiro — a única consequência é o
 bloqueio.
 
-Para ligar:
+Para ligar: **Financeiro → Configurações**, bloco *Atraso no pagamento*.
 
-```sql
-update config_financeiro
-set multa_atraso_pct = 2, juros_mes_atraso_pct = 1;
-```
-
-O Asaas aplica sozinho quando o aluno paga depois do vencimento.
+O Asaas aplica sozinho quando o aluno paga depois do vencimento, e o que
+entra a mais vira um lançamento próprio em `outros` — a receita de
+`mensalista` continua sendo o preço do plano, e o total do caixa inclui
+a multa. Os dois números ficam verdadeiros.
 
 ⚠️ **Antes de ligar, isto precisa estar no regulamento que o aluno
 aceitou.** Cobrar multa que ninguém combinou é problema, não automação.

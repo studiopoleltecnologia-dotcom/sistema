@@ -154,11 +154,16 @@ Deno.serve(async (req) => {
         ? new Date(`${pagamento.paymentDate}T12:00:00-03:00`).toISOString()
         : new Date().toISOString()
       const forma = String(pagamento.billingType ?? '').toLowerCase()
+      // `value` já vem com multa e juros somados quando o aluno pagou
+      // atrasado; `originalValue` guarda o combinado. Mandar o recebido
+      // é o que faz a diferença virar receita em vez de sumir.
+      const recebido = Math.round(Number(pagamento.value ?? 0) * 100)
       const { data, error } = await sb.rpc('cobranca_paga', {
         p_provider: 'asaas',
         p_provider_ref: ref,
         p_forma: forma === 'undefined' ? null : forma,
         p_pago_em: quando,
+        p_valor_pago_centavos: recebido > 0 ? recebido : null,
       })
       if (error) throw error
       return ok(String(data), { evento })

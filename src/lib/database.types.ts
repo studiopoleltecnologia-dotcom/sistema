@@ -679,6 +679,7 @@ export type Database = {
           status: Database["public"]["Enums"]["status_cobranca"]
           url_pagamento: string | null
           valor_centavos: number
+          valor_pago_centavos: number | null
           vencimento: string
         }
         Insert: {
@@ -697,6 +698,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_cobranca"]
           url_pagamento?: string | null
           valor_centavos: number
+          valor_pago_centavos?: number | null
           vencimento: string
         }
         Update: {
@@ -715,6 +717,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_cobranca"]
           url_pagamento?: string | null
           valor_centavos?: number
+          valor_pago_centavos?: number | null
           vencimento?: string
         }
         Relationships: [
@@ -4345,6 +4348,7 @@ export type Database = {
           p_pago_em: string
           p_provider: string
           p_provider_ref: string
+          p_valor_pago_centavos?: number
         }
         Returns: string
       }
