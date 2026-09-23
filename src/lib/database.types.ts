@@ -3972,7 +3972,7 @@ export type Database = {
       is_socia: { Args: never; Returns: boolean }
       marcar_inadimplente: { Args: { p_matricula: string }; Returns: boolean }
       matricular: {
-        Args: { p_cliente: string; p_plano: string }
+        Args: { p_cliente: string; p_justificativa?: string; p_plano: string }
         Returns: string
       }
       matricular_produto: {
@@ -3980,8 +3980,23 @@ export type Database = {
         Returns: string
       }
       matricular_turma_fixa: {
-        Args: { p_cliente: string; p_produto: string; p_turmas: string[] }
+        Args: {
+          p_cliente: string
+          p_justificativa?: string
+          p_produto: string
+          p_turmas: string[]
+        }
         Returns: string
+      }
+      meu_cadastro_previo: {
+        Args: never
+        Returns: {
+          contato_emergencia_nome: string
+          contato_emergencia_telefone: string
+          data_nascimento: string
+          nome: string
+          telefone: string
+        }[]
       }
       meus_planos: {
         Args: never

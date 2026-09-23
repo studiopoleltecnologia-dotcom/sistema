@@ -24,6 +24,23 @@ export async function souEquipe() {
   return data
 }
 
+/**
+ * O cadastro que a equipe já deixou pronto para este e-mail, se houver.
+ *
+ * Quem chega aqui pode ter sido cadastrado pela gestão semanas antes —
+ * com telefone, nascimento e contato de emergência já preenchidos. Pedir
+ * tudo de novo não só é retrabalho: é como o cadastro divergia, porque o
+ * que ele redigitava passava a valer.
+ *
+ * Não tem parâmetro de propósito: o banco resolve pelo e-mail da própria
+ * sessão, então não dá para perguntar pelo cadastro de outra pessoa.
+ */
+export async function meuCadastroPrevio() {
+  const { data, error } = await requireSupabase().rpc('meu_cadastro_previo')
+  if (error) throw error
+  return data?.[0] ?? null
+}
+
 export async function criarContaAluna(args: {
   nome: string
   telefone: string

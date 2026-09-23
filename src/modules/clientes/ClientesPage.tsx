@@ -41,6 +41,10 @@ export function ClientesPage() {
       (c) =>
         c.nome.toLowerCase().includes(termo) ||
         c.telefone?.includes(termo) ||
+        // O e-mail virou o identificador do aluno, e é por ele que a
+        // recepção acha o cadastro que já existe quando a criação de um
+        // novo é recusada por duplicidade.
+        c.email?.toLowerCase().includes(termo) ||
         c.instagram?.toLowerCase().includes(termo),
     )
   }, [clientes, busca])
@@ -64,6 +68,10 @@ export function ClientesPage() {
   function fecharForm() {
     setFormAberto(false)
     setEditando(null)
+    // O erro mora na mutation, que sobrevive ao modal: sem isto, o aviso
+    // da tentativa anterior reaparece na próxima vez que o form abrir.
+    criar.reset()
+    atualizar.reset()
   }
 
   if (error) {
@@ -100,7 +108,7 @@ export function ClientesPage() {
               <input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nome, telefone ou @…"
+                placeholder="Buscar por nome, e-mail, telefone ou @…"
                 className="w-full min-w-0 rounded-md border border-neutral-300 bg-white py-2 pl-8 pr-3 text-sm outline-none transition hover:border-neutral-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
             </div>
@@ -139,6 +147,11 @@ export function ClientesPage() {
           onSalvar={salvar}
           onFechar={fecharForm}
           salvando={criar.isPending || atualizar.isPending}
+          erro={
+            (criar.error as Error | null)?.message ??
+            (atualizar.error as Error | null)?.message ??
+            null
+          }
         />
       )}
     </div>
