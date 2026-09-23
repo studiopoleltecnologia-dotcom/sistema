@@ -74,7 +74,23 @@ export function RemuneracaoModal({
             <X className="size-4" />
           </button>
         </div>
-        <p className="mb-5 text-xs text-neutral-400">{professora.nome}</p>
+        <p className="mb-4 text-xs text-neutral-400">{professora.nome}</p>
+
+        {/*
+          A folha passou a calcular por `regras_remuneracao`, que têm
+          vigência — é o que impede a tabela de outubro de recalcular
+          setembro. Estes campos viraram a semente da regra pessoal e
+          continuam valendo para quem não tem regra mais específica, mas
+          mexer aqui NÃO altera a tabela do Pole que entra em 01/10.
+          Sem este aviso, a gestão editaria um valor e veria a folha não
+          mudar, sem entender por quê.
+        */}
+        <p className="mb-5 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-700">
+          A folha agora calcula por <strong>regras com vigência</strong>. Estes valores valem
+          como a regra pessoal dela e só se aplicam onde não houver regra mais específica —
+          nas aulas de Pole a partir de 01/10 vale a tabela da modalidade (piso R$45, teto
+          R$90), e mexer aqui não a altera.
+        </p>
 
         <div className="flex flex-col gap-4">
           <div>
