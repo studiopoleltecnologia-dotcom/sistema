@@ -2086,6 +2086,7 @@ export type Database = {
           preco_centavos: number
           produto_sucessor_id: string | null
           renova_automaticamente: boolean
+          status: Database["public"]["Enums"]["status_produto"]
           teto_acumulo_ciclos: number
           tipo_produto: Database["public"]["Enums"]["tipo_produto"]
           turmas_fixas: number
@@ -2115,6 +2116,7 @@ export type Database = {
           preco_centavos: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
+          status?: Database["public"]["Enums"]["status_produto"]
           teto_acumulo_ciclos?: number
           tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
           turmas_fixas?: number
@@ -2144,6 +2146,7 @@ export type Database = {
           preco_centavos?: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
+          status?: Database["public"]["Enums"]["status_produto"]
           teto_acumulo_ciclos?: number
           tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
           turmas_fixas?: number
@@ -3972,7 +3975,7 @@ export type Database = {
       is_socia: { Args: never; Returns: boolean }
       marcar_inadimplente: { Args: { p_matricula: string }; Returns: boolean }
       matricular: {
-        Args: { p_cliente: string; p_plano: string }
+        Args: { p_cliente: string; p_justificativa?: string; p_plano: string }
         Returns: string
       }
       matricular_produto: {
@@ -3980,8 +3983,23 @@ export type Database = {
         Returns: string
       }
       matricular_turma_fixa: {
-        Args: { p_cliente: string; p_produto: string; p_turmas: string[] }
+        Args: {
+          p_cliente: string
+          p_justificativa?: string
+          p_produto: string
+          p_turmas: string[]
+        }
         Returns: string
+      }
+      meu_cadastro_previo: {
+        Args: never
+        Returns: {
+          contato_emergencia_nome: string
+          contato_emergencia_telefone: string
+          data_nascimento: string
+          nome: string
+          telefone: string
+        }[]
       }
       meus_planos: {
         Args: never
@@ -4217,6 +4235,7 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      status_produto: "venda" | "interno" | "legado" | "arquivado"
       status_saida: "prevista" | "paga" | "cancelada"
       status_solicitacao_cancelamento: "pendente" | "confirmada" | "retirada"
       tipo_ajuste_folha:
@@ -4441,6 +4460,7 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      status_produto: ["venda", "interno", "legado", "arquivado"],
       status_saida: ["prevista", "paga", "cancelada"],
       status_solicitacao_cancelamento: ["pendente", "confirmada", "retirada"],
       tipo_ajuste_folha: [

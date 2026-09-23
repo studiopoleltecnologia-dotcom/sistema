@@ -1,5 +1,5 @@
 import { requireSupabase } from '../../../lib/supabase'
-import type { ProdutoInsert, ProdutoUpdate, TipoRequisito } from '../types'
+import type { ProdutoInsert, ProdutoUpdate, StatusProduto, TipoRequisito } from '../types'
 
 /**
  * Catálogo visto pela equipe — inclui os ocultos (plano personalizado,
@@ -50,7 +50,20 @@ export async function atualizarProduto(id: string, patch: ProdutoUpdate) {
 export async function arquivarProduto(id: string) {
   const { error } = await requireSupabase()
     .from('produtos')
-    .update({ ativo: false })
+    .update({ status: 'arquivado' })
+    .eq('id', id)
+  if (error) throw error
+}
+
+/**
+ * Muda o estado de venda (item 05). O banco deriva `ativo` e
+ * `visivel_no_catalogo` daqui por gatilho, então esta é a única escrita
+ * necessária — e não dá para deixar os três em desacordo.
+ */
+export async function definirStatusProduto(id: string, status: StatusProduto) {
+  const { error } = await requireSupabase()
+    .from('produtos')
+    .update({ status })
     .eq('id', id)
   if (error) throw error
 }
@@ -64,7 +77,7 @@ export async function arquivarProduto(id: string) {
 export async function reativarProduto(id: string) {
   const { error } = await requireSupabase()
     .from('produtos')
-    .update({ ativo: true })
+    .update({ status: 'venda' })
     .eq('id', id)
   if (error) throw error
 }

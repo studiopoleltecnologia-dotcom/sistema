@@ -5,12 +5,24 @@ import { Select } from '../../../components/ui/Select'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { useClientes } from '../../clientes/hooks/useClientes'
 import { useProdutos } from '../../produtos/hooks/useProdutos'
-import { GRUPOS, grupoDoProduto, descreverEntrega, descreverCobranca } from '../../produtos/types'
+import {
+  GRUPOS,
+  grupoDoProduto,
+  descreverEntrega,
+  descreverCobranca,
+  type Produto,
+} from '../../produtos/types'
 import { useMatricular } from '../hooks/useMatriculas'
 import { NovoAlunoRapido } from './NovoAlunoRapido'
 import { SeletorTurmaFixa } from './SeletorTurmaFixa'
 
 const labelCls = 'mb-1 block text-xs font-medium text-neutral-500'
+
+/** Nome + preço. O estado do produto vira o optgroup, não um sufixo. */
+function rotuloProduto(p: Produto): string {
+  const preco = p.preco_centavos === 0 ? 'cortesia' : fmtCentavos(p.preco_centavos)
+  return `${p.nome} — ${preco}`
+}
 
 /**
  * Contratar um produto para um aluno.
@@ -46,18 +58,27 @@ export function MatriculaForm({
   // instante — o select pareceria voltar para "Escolha…".
   const [recemCriado, setRecemCriado] = useState<{ id: string; nome: string } | null>(null)
   /*
-    A justificativa só aparece quando o banco recusou por elegibilidade
-    (§8 e §10 do regulamento). Só a gestão consegue seguir assim mesmo,
-    e a autorização fica gravada em `auditoria` com quem, quando e por
-    quê — é a "tela de confirmação com histórico" pedida na revisão.
+    A justificativa só aparece quando o banco recusou — por elegibilidade
+    (§8 e §10 do regulamento) ou por ser plano antigo, fora de venda
+    (item 05). Só a gestão consegue seguir assim mesmo, e a autorização
+    fica gravada em `auditoria` com quem, quando e por quê — é a "tela de
+    confirmação com histórico" pedida na revisão.
   */
   const [justificativa, setJustificativa] = useState('')
   const [pedeJustificativa, setPedeJustificativa] = useState(false)
 
-  const vendaveis = useMemo(
-    () => (produtos ?? []).filter((p) => p.ativo),
-    [produtos],
-  )
+  /*
+    Três listas, não uma. Os planos antigos do Wix e o plano interno da
+    equipe são contratáveis pela gestão — por isso continuam no select —,
+    mas misturá-los ao catálogo atual é o que fazia a recepção vender um
+    plano descontinuado sem perceber. Separados em optgroup próprio, e
+    com aviso ao escolher.
+  */
+  const vendaveis = useMemo(() => (produtos ?? []).filter((p) => p.ativo), [produtos])
+  const aVenda = useMemo(() => vendaveis.filter((p) => p.status === 'venda'), [vendaveis])
+  const internos = useMemo(() => vendaveis.filter((p) => p.status === 'interno'), [vendaveis])
+  const legados = useMemo(() => vendaveis.filter((p) => p.status === 'legado'), [vendaveis])
+
   const produto = vendaveis.find((p) => p.id === produtoId) ?? null
   const ehTurmaFixa = (produto?.turmas_fixas ?? 0) > 0
   const faltam = ehTurmaFixa ? produto!.turmas_fixas - turmaIds.length : 0
@@ -145,25 +166,62 @@ export function MatriculaForm({
             >
               <option value="">Escolha…</option>
               {GRUPOS.map((g) => {
-                const doGrupo = vendaveis.filter((p) => grupoDoProduto(p) === g.valor)
+                const doGrupo = aVenda.filter((p) => grupoDoProduto(p) === g.valor)
                 if (doGrupo.length === 0) return null
                 return (
                   <optgroup key={g.valor} label={g.titulo}>
                     {doGrupo.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nome}
-                        {p.preco_centavos === 0
-                          ? ' — cortesia'
-                          : ` — ${fmtCentavos(p.preco_centavos)}`}
-                        {p.visivel_no_catalogo ? '' : ' · só a equipe'}
+                        {rotuloProduto(p)}
                       </option>
                     ))}
                   </optgroup>
                 )
               })}
+
+              {internos.length > 0 && (
+                <optgroup label="— Cortesia da equipe —">
+                  {internos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {rotuloProduto(p)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              {legados.length > 0 && (
+                <optgroup label="— Planos antigos (Wix) · fora de venda —">
+                  {legados.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {rotuloProduto(p)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </Select>
           </div>
         </div>
+
+        {/* O optgroup separa, mas quem vê só a linha escolhida não lê o
+            cabeçalho. O aviso repete o estado onde a decisão acontece. */}
+        {produto?.status === 'legado' && (
+          <div className="rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-xs leading-relaxed text-warning-800">
+            <p className="font-medium">Este é um plano antigo, fora de venda.</p>
+            <p className="mt-0.5">
+              Ele existe para honrar quem contratou no Wix. Para vender assim mesmo, o banco vai
+              pedir uma justificativa, e ela fica registrada.
+            </p>
+          </div>
+        )}
+
+        {produto?.status === 'interno' && (
+          <div className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-xs leading-relaxed text-brand-800">
+            <p className="font-medium">Cortesia da equipe — não é uma venda.</p>
+            <p className="mt-0.5">
+              Não gera cobrança no Financeiro e não entra no faturamento. Só a gestão concede.
+            </p>
+          </div>
+        )}
 
         {produto && (
           <div className="rounded-md border border-neutral-200 bg-neutral-50/70 px-3 py-2 text-xs leading-relaxed text-neutral-600">
@@ -207,7 +265,7 @@ export function MatriculaForm({
               rows={2}
               value={justificativa}
               onChange={(e) => setJustificativa(e.target.value)}
-              placeholder="Ex.: cortesia combinada na recepção; aluna voltou depois de 3 anos"
+              placeholder="Ex.: aluna migrando do Wix, contrato em andamento; voltou depois de 3 anos"
               className="w-full rounded-md border border-warning-200 bg-white px-2.5 py-1.5 text-sm outline-none transition focus:border-warning-400"
             />
             <p className="mt-1 text-[11px] text-warning-700">

@@ -10,13 +10,26 @@ export async function listarClientes() {
   return data
 }
 
+/**
+ * O e-mail é único desde `20260923120000` — é ele que liga o aluno à conta
+ * dele no portal. A violação do índice vem com a mensagem do Postgres, que
+ * fala em "constraint" e não ajuda ninguém na recepção: troca pelo que a
+ * pessoa precisa fazer, que é procurar o cadastro que já existe.
+ */
+function traduzirErroCliente(error: { code?: string; message?: string }): Error {
+  if (error.code === '23505' && error.message?.includes('clientes_email_unico')) {
+    return new Error('Já existe um aluno cadastrado com este e-mail — procure por ele na lista.')
+  }
+  return new Error(error.message ?? 'Não foi possível salvar o cadastro.')
+}
+
 export async function criarCliente(input: ClienteInsert) {
   const { data, error } = await requireSupabase()
     .from('clientes')
     .insert(input)
     .select()
     .single()
-  if (error) throw error
+  if (error) throw traduzirErroCliente(error)
   return data
 }
 
@@ -27,7 +40,7 @@ export async function atualizarCliente(id: string, patch: ClienteUpdate) {
     .eq('id', id)
     .select()
     .single()
-  if (error) throw error
+  if (error) throw traduzirErroCliente(error)
   return data
 }
 

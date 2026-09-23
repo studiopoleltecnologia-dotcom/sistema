@@ -5,13 +5,14 @@ import {
   criarProduto,
   definirModalidadesDoProduto,
   definirRequisitosDoProduto,
+  definirStatusProduto,
   listarProdutoModalidades,
   listarProdutos,
   listarRequisitos,
   reativarProduto,
   type RequisitoInput,
 } from '../api/produtos'
-import type { ProdutoInsert, ProdutoUpdate } from '../types'
+import type { ProdutoInsert, ProdutoUpdate, StatusProduto } from '../types'
 
 export function useProdutos() {
   return useQuery({ queryKey: ['produtos'], queryFn: listarProdutos })
@@ -67,4 +68,13 @@ export function useArquivarProduto() {
 export function useReativarProduto() {
   const invalidar = useInvalidarCatalogo()
   return useMutation({ mutationFn: reativarProduto, onSuccess: invalidar })
+}
+
+export function useDefinirStatusProduto() {
+  const invalidar = useInvalidarCatalogo()
+  return useMutation({
+    mutationFn: (a: { id: string; status: StatusProduto }) =>
+      definirStatusProduto(a.id, a.status),
+    onSuccess: invalidar,
+  })
 }

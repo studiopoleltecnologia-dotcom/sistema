@@ -46,7 +46,7 @@ export function ProdutoCard({
   onAbrir: () => void
 }) {
   const apoio = linhaDeApoio(p, porId)
-  const arquivado = !p.ativo
+  const arquivado = p.status === 'arquivado'
   const semestral = recorrenciaDoProduto(p) === 'semestral' && p.renova_automaticamente
   const economia = semestral ? economiaMensal(p, porId) : null
 
@@ -103,14 +103,33 @@ export function ProdutoCard({
         </span>
       )}
 
-      {(arquivado || !p.visivel_no_catalogo) && (
+      {(p.status !== 'venda' || !p.visivel_no_catalogo) && (
         <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {arquivado && (
             <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-500">
               arquivado
             </span>
           )}
-          {!p.visivel_no_catalogo && (
+          {/* O estado de venda precisa aparecer no cartão, não só na aba:
+              o painel de detalhe abre a partir daqui, e o legado se
+              parece com um plano normal em tudo mais. */}
+          {p.status === 'legado' && (
+            <span
+              title="Plano antigo do Wix — quem já tem continua, mas não se contrata mais"
+              className="rounded-full bg-warning-100 px-2 py-0.5 text-[10px] font-medium text-warning-700"
+            >
+              plano antigo
+            </span>
+          )}
+          {p.status === 'interno' && (
+            <span
+              title="Cortesia da equipe — só a gestão concede, não gera cobrança"
+              className="rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-medium text-brand-700"
+            >
+              interno
+            </span>
+          )}
+          {!p.visivel_no_catalogo && p.status === 'venda' && (
             <span
               title="Só a equipe vende — o aluno não vê no portal"
               className="flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-500"

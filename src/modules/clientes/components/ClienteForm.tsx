@@ -19,12 +19,22 @@ export function ClienteForm({
   onSalvar,
   onFechar,
   salvando,
+  erro,
 }: {
   cliente: Cliente | null
   socias: Socia[]
   onSalvar: (dados: ClienteInsert) => void
   onFechar: () => void
   salvando: boolean
+  /**
+   * Por que o formulário recebe o erro em vez de só fechar: quando o
+   * banco recusava (e-mail repetido, contato de emergência apagado), o
+   * `mutate` falhava sem `onError` e a tela não dizia nada. O modal
+   * continuava aberto e o botão voltava a "Salvar" — do lado de cá era
+   * idêntico a um clique que não pegou, e a conclusão razoável é que o
+   * cadastro não deixa editar.
+   */
+  erro?: string | null
 }) {
   const [form, setForm] = useState<ClienteInsert>({
     nome: cliente?.nome ?? '',
@@ -273,6 +283,12 @@ export function ClienteForm({
             Cliente VIP (cadência personalizada de follow-up)
           </label>
         </div>
+
+        {erro && (
+          <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {erro}
+          </p>
+        )}
 
         <div className="mt-5 flex justify-end gap-2">
           <button
