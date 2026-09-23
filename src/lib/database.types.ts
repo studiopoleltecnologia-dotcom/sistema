@@ -29,6 +29,7 @@ export type Database = {
             | null
           status: Database["public"]["Enums"]["status_agendamento"]
           turma_id: string
+          wellhub_booking_number: string | null
         }
         Insert: {
           atualizada_em?: string
@@ -44,6 +45,7 @@ export type Database = {
             | null
           status?: Database["public"]["Enums"]["status_agendamento"]
           turma_id: string
+          wellhub_booking_number?: string | null
         }
         Update: {
           atualizada_em?: string
@@ -59,6 +61,7 @@ export type Database = {
             | null
           status?: Database["public"]["Enums"]["status_agendamento"]
           turma_id?: string
+          wellhub_booking_number?: string | null
         }
         Relationships: [
           {
@@ -161,6 +164,42 @@ export type Database = {
           },
         ]
       }
+      auditoria: {
+        Row: {
+          acao: string
+          antes: Json | null
+          autor: string | null
+          criado_em: string
+          depois: Json | null
+          id: string
+          motivo: string | null
+          registro_id: string | null
+          tabela: string
+        }
+        Insert: {
+          acao: string
+          antes?: Json | null
+          autor?: string | null
+          criado_em?: string
+          depois?: Json | null
+          id?: string
+          motivo?: string | null
+          registro_id?: string | null
+          tabela: string
+        }
+        Update: {
+          acao?: string
+          antes?: Json | null
+          autor?: string | null
+          criado_em?: string
+          depois?: Json | null
+          id?: string
+          motivo?: string | null
+          registro_id?: string | null
+          tabela?: string
+        }
+        Relationships: []
+      }
       aulas_canceladas: {
         Row: {
           agendamentos_app: number
@@ -220,6 +259,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aulas_canceladas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
           },
         ]
       }
@@ -1118,6 +1164,94 @@ export type Database = {
             referencedRelation: "fechamentos_professora"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fechamento_ajustes_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fechamento_total"
+            referencedColumns: ["fechamento_id"]
+          },
+        ]
+      }
+      fechamento_aulas: {
+        Row: {
+          ajustado_em: string | null
+          ajustado_por: string | null
+          criado_em: string
+          data_aula: string
+          fechamento_id: string
+          id: string
+          motivo_ajuste: string | null
+          presentes: number
+          regra_id: string | null
+          turma_id: string
+          valor_ajustado_centavos: number | null
+          valor_calculado_centavos: number
+        }
+        Insert: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
+          criado_em?: string
+          data_aula: string
+          fechamento_id: string
+          id?: string
+          motivo_ajuste?: string | null
+          presentes?: number
+          regra_id?: string | null
+          turma_id: string
+          valor_ajustado_centavos?: number | null
+          valor_calculado_centavos: number
+        }
+        Update: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
+          criado_em?: string
+          data_aula?: string
+          fechamento_id?: string
+          id?: string
+          motivo_ajuste?: string | null
+          presentes?: number
+          regra_id?: string | null
+          turma_id?: string
+          valor_ajustado_centavos?: number | null
+          valor_calculado_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamento_aulas_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "fechamentos_professora"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_aulas_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fechamento_total"
+            referencedColumns: ["fechamento_id"]
+          },
+          {
+            foreignKeyName: "fechamento_aulas_regra_id_fkey"
+            columns: ["regra_id"]
+            isOneToOne: false
+            referencedRelation: "regras_remuneracao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_aulas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_aulas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
+          },
         ]
       }
       fechamentos_professora: {
@@ -1511,11 +1645,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "matricula_turmas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matricula_turmas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
             foreignKeyName: "matricula_turmas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_turmas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
           },
         ]
       }
@@ -1620,6 +1775,7 @@ export type Database = {
           id: string
           nome: string
           ordem: number
+          wellhub_class_id: string | null
         }
         Insert: {
           ativa?: boolean
@@ -1629,6 +1785,7 @@ export type Database = {
           id?: string
           nome: string
           ordem?: number
+          wellhub_class_id?: string | null
         }
         Update: {
           ativa?: boolean
@@ -1638,6 +1795,7 @@ export type Database = {
           id?: string
           nome?: string
           ordem?: number
+          wellhub_class_id?: string | null
         }
         Relationships: [
           {
@@ -2068,6 +2226,153 @@ export type Database = {
         }
         Relationships: []
       }
+      regras_remuneracao: {
+        Row: {
+          base_percentual: Database["public"]["Enums"]["base_percentual"] | null
+          criada_em: string
+          criada_por: string | null
+          id: string
+          modalidade_id: string | null
+          observacao: string | null
+          percentual: number | null
+          piso_centavos: number | null
+          professora_id: string | null
+          teto_centavos: number | null
+          tipo: Database["public"]["Enums"]["tipo_remuneracao"]
+          turma_id: string | null
+          valor_centavos: number
+          valor_sem_alunos_centavos: number
+          vigencia_fim: string | null
+          vigencia_inicio: string
+        }
+        Insert: {
+          base_percentual?:
+            | Database["public"]["Enums"]["base_percentual"]
+            | null
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          modalidade_id?: string | null
+          observacao?: string | null
+          percentual?: number | null
+          piso_centavos?: number | null
+          professora_id?: string | null
+          teto_centavos?: number | null
+          tipo: Database["public"]["Enums"]["tipo_remuneracao"]
+          turma_id?: string | null
+          valor_centavos?: number
+          valor_sem_alunos_centavos?: number
+          vigencia_fim?: string | null
+          vigencia_inicio: string
+        }
+        Update: {
+          base_percentual?:
+            | Database["public"]["Enums"]["base_percentual"]
+            | null
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          modalidade_id?: string | null
+          observacao?: string | null
+          percentual?: number | null
+          piso_centavos?: number | null
+          professora_id?: string | null
+          teto_centavos?: number | null
+          tipo?: Database["public"]["Enums"]["tipo_remuneracao"]
+          turma_id?: string | null
+          valor_centavos?: number
+          valor_sem_alunos_centavos?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regras_remuneracao_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "modalidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regras_remuneracao_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_modalidade"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
+            foreignKeyName: "regras_remuneracao_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
+            foreignKeyName: "regras_remuneracao_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regras_remuneracao_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
+          },
+          {
+            foreignKeyName: "regras_remuneracao_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regras_remuneracao_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regras_remuneracao_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
+          },
+        ]
+      }
+      regras_remuneracao_faixas: {
+        Row: {
+          id: string
+          min_alunos: number
+          regra_id: string
+          valor_centavos: number
+        }
+        Insert: {
+          id?: string
+          min_alunos: number
+          regra_id: string
+          valor_centavos: number
+        }
+        Update: {
+          id?: string
+          min_alunos?: number
+          regra_id?: string
+          valor_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regras_remuneracao_faixas_regra_id_fkey"
+            columns: ["regra_id"]
+            isOneToOne: false
+            referencedRelation: "regras_remuneracao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reserva_movimentos: {
         Row: {
           criada_em: string
@@ -2164,6 +2469,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "saidas_financeiras_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fechamento_total"
+            referencedColumns: ["fechamento_id"]
+          },
+          {
             foreignKeyName: "saidas_financeiras_recorrente_id_fkey"
             columns: ["recorrente_id"]
             isOneToOne: false
@@ -2199,18 +2511,21 @@ export type Database = {
       socias: {
         Row: {
           criada_em: string
+          email: string | null
           funcao: Database["public"]["Enums"]["funcao_interna"]
           id: string
           nome: string
         }
         Insert: {
           criada_em?: string
+          email?: string | null
           funcao?: Database["public"]["Enums"]["funcao_interna"]
           id: string
           nome: string
         }
         Update: {
           criada_em?: string
+          email?: string | null
           funcao?: Database["public"]["Enums"]["funcao_interna"]
           id?: string
           nome?: string
@@ -2296,11 +2611,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "solicitacoes_cancelamento_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_cancelamento_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
             foreignKeyName: "solicitacoes_cancelamento_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_cancelamento_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_cancelamento_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "solicitacoes_cancelamento_produto_id_fkey"
@@ -2539,6 +2882,45 @@ export type Database = {
           },
         ]
       }
+      turmas_wellhub_slots: {
+        Row: {
+          data: string
+          id: string
+          publicado_em: string
+          turma_id: string
+          wellhub_slot_id: string
+        }
+        Insert: {
+          data: string
+          id?: string
+          publicado_em?: string
+          turma_id: string
+          wellhub_slot_id: string
+        }
+        Update: {
+          data?: string
+          id?: string
+          publicado_em?: string
+          turma_id?: string
+          wellhub_slot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turmas_wellhub_slots_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_wellhub_slots_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
+          },
+        ]
+      }
     }
     Views: {
       vw_alertas: {
@@ -2562,29 +2944,6 @@ export type Database = {
           presente: boolean | null
           turma_fixa: boolean | null
           turma_id: string | null
-        }
-        Relationships: []
-      }
-      vw_matricula_turmas: {
-        Row: {
-          capacidade: number | null
-          cliente_id: string | null
-          dia_semana: number | null
-          duracao_minutos: number | null
-          fim: string | null
-          futuro: boolean | null
-          horario: string | null
-          inicio: string | null
-          matricula_id: string | null
-          modalidade: string | null
-          modalidade_id: string | null
-          motivo_saida: string | null
-          professora: string | null
-          professora_id: string | null
-          sala: string | null
-          turma_id: string | null
-          vigente: boolean | null
-          vinculo_id: string | null
         }
         Relationships: []
       }
@@ -2928,7 +3287,59 @@ export type Database = {
           id: string | null
           nome: string | null
         }
+        Insert: {
+          criada_em?: string | null
+          email?: string | null
+          funcao?: Database["public"]["Enums"]["funcao_interna"] | null
+          id?: string | null
+          nome?: string | null
+        }
+        Update: {
+          criada_em?: string | null
+          email?: string | null
+          funcao?: Database["public"]["Enums"]["funcao_interna"] | null
+          id?: string | null
+          nome?: string | null
+        }
         Relationships: []
+      }
+      vw_fechamento_total: {
+        Row: {
+          ajustes_centavos: number | null
+          alunas_presentes: number | null
+          aulas: number | null
+          aulas_ajustadas: number | null
+          aulas_centavos: number | null
+          calculado_centavos: number | null
+          competencia: string | null
+          fechamento_id: string | null
+          professora_id: string | null
+          status: Database["public"]["Enums"]["status_fechamento"] | null
+          total_centavos: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamentos_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamentos_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
+          },
+          {
+            foreignKeyName: "fechamentos_professora_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_grade_publica: {
         Row: {
@@ -2946,7 +3357,151 @@ export type Database = {
           sala_nome: string | null
           turma_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "modalidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_modalidade"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["modalidade_id"]
+          },
+        ]
+      }
+      vw_matricula_turmas: {
+        Row: {
+          capacidade: number | null
+          cliente_id: string | null
+          dia_semana: number | null
+          duracao_minutos: number | null
+          fim: string | null
+          futuro: boolean | null
+          horario: string | null
+          inicio: string | null
+          matricula_id: string | null
+          modalidade: string | null
+          modalidade_id: string | null
+          motivo_saida: string | null
+          professora: string | null
+          professora_id: string | null
+          sala: string | null
+          turma_id: string | null
+          vigente: boolean | null
+          vinculo_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matricula_turmas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_turmas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matricula_turmas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matricula_turmas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_turmas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_grade_publica"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "matriculas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "modalidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_modalidade"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
+            foreignKeyName: "turmas_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["modalidade_id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_professora"
+            referencedColumns: ["professora_id"]
+          },
+          {
+            foreignKeyName: "turmas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "vw_professoras_nomes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_mei_acumulado: {
         Row: {
@@ -3189,25 +3744,14 @@ export type Database = {
           ocupadas: number | null
           turma_id: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "agendamentos_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agendamentos_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_grade_publica"
-            referencedColumns: ["turma_id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
+      adicionar_turma_fixa: {
+        Args: { p_matricula: string; p_turma: string }
+        Returns: string
+      }
       agendar_aula: {
         Args: {
           p_canal: Database["public"]["Enums"]["canal_aula"]
@@ -3216,6 +3760,18 @@ export type Database = {
           p_turma: string
         }
         Returns: string
+      }
+      ajustar_aula_fechamento: {
+        Args: { p_aula: string; p_motivo: string; p_valor_centavos: number }
+        Returns: undefined
+      }
+      assentos_fixos_ocupados: {
+        Args: { p_data: string; p_turma: string }
+        Returns: number
+      }
+      avisar_aula_cancelada: {
+        Args: { p_cancelamento: string; p_cliente: string; p_dados: Json }
+        Returns: undefined
       }
       buscar_aluna: {
         Args: { p_termo: string }
@@ -3231,6 +3787,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cancelar_assinatura: {
+        Args: { p_matricula: string; p_motivo?: string }
+        Returns: string
+      }
       cancelar_aulas: {
         Args: {
           p_data: string
@@ -3240,10 +3800,6 @@ export type Database = {
           p_turmas: string[]
         }
         Returns: number
-      }
-      cancelar_assinatura: {
-        Args: { p_matricula: string; p_motivo?: string }
-        Returns: string
       }
       cliente_atual: { Args: never; Returns: string }
       cobrar_ciclo: {
@@ -3260,10 +3816,6 @@ export type Database = {
         }
         Returns: string
       }
-      confirmar_cancelamento_plano: {
-        Args: { p_observacao?: string; p_solicitacao: string }
-        Returns: string
-      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string
@@ -3271,6 +3823,10 @@ export type Database = {
           p_valor_total_centavos: number
         }
         Returns: number
+      }
+      confirmar_cancelamento_plano: {
+        Args: { p_observacao?: string; p_solicitacao: string }
+        Returns: string
       }
       confirmar_pagamento_inscricao: {
         Args: {
@@ -3310,6 +3866,16 @@ export type Database = {
         }
         Returns: string
       }
+      data_renovacao: {
+        Args: {
+          p_base: string
+          p_ciclos: number
+          p_dia: number
+          p_dias: number
+          p_meses: number
+        }
+        Returns: string
+      }
       definir_funcao: {
         Args: {
           p_funcao: Database["public"]["Enums"]["funcao_interna"]
@@ -3317,6 +3883,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      desfazer_ajuste_aula: { Args: { p_aula: string }; Returns: undefined }
       devolver_credito: {
         Args: {
           p_agendamento?: string
@@ -3327,6 +3894,19 @@ export type Database = {
         Returns: string
       }
       disparar_emails: { Args: never; Returns: undefined }
+      disparar_publicacao_grade_wellhub: { Args: never; Returns: undefined }
+      elegivel_para_produto: {
+        Args: { p_cliente: string; p_produto: string }
+        Returns: {
+          motivo: string
+          ok: boolean
+        }[]
+      }
+      emails_gestao: { Args: never; Returns: string[] }
+      encerrar_turma_fixa: {
+        Args: { p_imediato?: boolean; p_motivo?: string; p_vinculo: string }
+        Returns: string
+      }
       enfileirar_email: {
         Args: {
           p_dados?: Json
@@ -3395,104 +3975,79 @@ export type Database = {
         Args: { p_cliente: string; p_plano: string }
         Returns: string
       }
+      matricular_produto: {
+        Args: { p_cliente: string; p_justificativa?: string; p_plano: string }
+        Returns: string
+      }
       matricular_turma_fixa: {
         Args: { p_cliente: string; p_produto: string; p_turmas: string[] }
-        Returns: string
-      }
-      adicionar_turma_fixa: {
-        Args: { p_matricula: string; p_turma: string }
-        Returns: string
-      }
-      encerrar_turma_fixa: {
-        Args: { p_vinculo: string; p_imediato?: boolean; p_motivo?: string }
-        Returns: string
-      }
-      trocar_turma_fixa: {
-        Args: { p_vinculo: string; p_turma_nova: string; p_imediato?: boolean }
-        Returns: string
-      }
-      assentos_fixos_ocupados: {
-        Args: { p_turma: string; p_data: string }
-        Returns: number
-      }
-      tem_assento_fixo: {
-        Args: { p_cliente: string; p_turma: string; p_data: string }
-        Returns: boolean
-      }
-      data_renovacao: {
-        Args: {
-          p_base: string
-          p_ciclos: number
-          p_dia: number
-          p_dias: number
-          p_meses: number
-        }
         Returns: string
       }
       meus_planos: {
         Args: never
         Returns: {
           acumula_creditos: boolean
-          cancelada_em: string | null
-          cancelamento_efetivo_em: string | null
+          cancelada_em: string
+          cancelamento_efetivo_em: string
           ciclo_atual: number
           ciclos_compromisso: number
-          ciclos_utilizados_se_cancelar: number | null
+          ciclos_utilizados_se_cancelar: number
           convidados_por_ciclo: number
           creditos_por_ciclo: number
           creditos_usados_ciclo: number
           data_contratacao: string
           data_fim: string
           data_inicio: string
-          dentro_prazo_cancelamento: boolean | null
+          dentro_prazo_cancelamento: boolean
           desconto_eventos_pct: number
-          devolucao_desconto_centavos: number | null
+          devolucao_desconto_centavos: number
           dia_renovacao: number
-          dias_antecedencia_agendamento: number | null
-          dias_antecedencia_cancelamento: number | null
-          fim_compromisso: string | null
+          dias_antecedencia_agendamento: number
+          dias_antecedencia_cancelamento: number
+          fim_compromisso: string
           gera_credito: boolean
           horas_cancelamento: number
           matricula_id: string
-          max_agendamentos_simultaneos: number | null
-          modalidades: string[] | null
-          pagamento_pendente_desde: string | null
+          max_agendamentos_simultaneos: number
+          modalidades: string[]
+          pagamento_pendente_desde: string
           periodicidade_dias: number
-          periodicidade_meses: number | null
+          periodicidade_meses: number
           plano_nome: string
-          prazo_cancelamento: string | null
+          prazo_cancelamento: string
           preco_centavos: number
           produto_id: string
-          proxima_renovacao: string | null
-          proxima_validade: string | null
-          proximo_plano_nome: string | null
-          proximo_plano_preco_centavos: number | null
+          proxima_renovacao: string
+          proxima_validade: string
+          proximo_plano_nome: string
+          proximo_plano_preco_centavos: number
           renova_automaticamente: boolean
-          saida_antecipada: boolean | null
+          saida_antecipada: boolean
           saldo: number
-          solicitacao_dentro_prazo: boolean | null
-          solicitacao_devolucao_centavos: number | null
-          solicitacao_em: string | null
-          solicitacao_id: string | null
-          solicitacao_motivo: string | null
-          solicitacao_prazo_limite: string | null
-          solicitacao_proxima_renovacao: string | null
-          solicitacao_status: Database["public"]["Enums"]["status_solicitacao_cancelamento"] | null
-          solicitacao_vigente_ate: string | null
+          solicitacao_dentro_prazo: boolean
+          solicitacao_devolucao_centavos: number
+          solicitacao_em: string
+          solicitacao_id: string
+          solicitacao_motivo: string
+          solicitacao_prazo_limite: string
+          solicitacao_proxima_renovacao: string
+          solicitacao_status: Database["public"]["Enums"]["status_solicitacao_cancelamento"]
+          solicitacao_vigente_ate: string
           status: Database["public"]["Enums"]["status_matricula"]
           teto_acumulo_ciclos: number
           tipo_produto: Database["public"]["Enums"]["tipo_produto"]
           turmas_fixas: number
-          vigente_ate_se_cancelar: string | null
+          vigente_ate_se_cancelar: string
         }[]
       }
       minha_funcao: {
         Args: never
         Returns: Database["public"]["Enums"]["funcao_interna"]
       }
-      processar_assinaturas: { Args: never; Returns: Json }
-      processar_listas_espera: { Args: never; Returns: number }
-      professora_atual: { Args: never; Returns: string }
+      montar_fechamento: {
+        Args: { p_competencia: string; p_professora: string }
+        Returns: number
+      }
       previa_cancelamento_aulas: {
         Args: { p_data: string; p_turmas: string[] }
         Returns: {
@@ -3504,6 +4059,9 @@ export type Database = {
           turma_id: string
         }[]
       }
+      processar_assinaturas: { Args: never; Returns: Json }
+      processar_listas_espera: { Args: never; Returns: number }
+      professora_atual: { Args: never; Returns: string }
       promover_lista_espera: {
         Args: { p_data: string; p_turma: string }
         Returns: string
@@ -3527,10 +4085,31 @@ export type Database = {
         }
         Returns: string
       }
+      regras_cancelamento_plano: {
+        Args: { p_em?: string; p_matricula: string }
+        Returns: {
+          ciclos_utilizados: number
+          dentro_prazo: boolean
+          devolucao_desconto_centavos: number
+          dias_antecedencia: number
+          fim_compromisso: string
+          prazo_limite: string
+          proxima_renovacao: string
+          proximo_plano_nome: string
+          proximo_plano_preco_centavos: number
+          renova: boolean
+          saida_antecipada: boolean
+          vigente_ate: string
+        }[]
+      }
       remover_acesso: { Args: { p_id: string }; Returns: undefined }
       renovar_ciclo: { Args: { p_matricula: string }; Returns: number }
       resolver_checkin_pendente: {
         Args: { p_observacao?: string; p_pendencia: string; p_turma: string }
+        Returns: string
+      }
+      resolver_regra_remuneracao: {
+        Args: { p_data: string; p_professora: string; p_turma: string }
         Returns: string
       }
       retirar_solicitacao_cancelamento: {
@@ -3540,6 +4119,10 @@ export type Database = {
       revogar_suspensao: {
         Args: { p_motivo?: string; p_suspensao: string }
         Returns: boolean
+      }
+      rotulo_motivo_cancelamento_aula: {
+        Args: { p: Database["public"]["Enums"]["motivo_cancelamento_aula"] }
+        Returns: string
       }
       sair_lista_espera: { Args: { p_id: string }; Returns: boolean }
       saldo_disponivel: {
@@ -3551,8 +4134,31 @@ export type Database = {
         Returns: string
       }
       suspensao_vigente: { Args: { p_cliente: string }; Returns: string }
+      tem_assento_fixo: {
+        Args: { p_cliente: string; p_data: string; p_turma: string }
+        Returns: boolean
+      }
+      trocar_turma_fixa: {
+        Args: { p_imediato?: boolean; p_turma_nova: string; p_vinculo: string }
+        Returns: string
+      }
+      validar_assento_fixo: {
+        Args: { p_data: string; p_turma: string }
+        Returns: undefined
+      }
+      valor_da_aula: {
+        Args: {
+          p_data: string
+          p_duracao_minutos?: number
+          p_presentes: number
+          p_professora: string
+          p_turma: string
+        }
+        Returns: number
+      }
     }
     Enums: {
+      base_percentual: "mensalidade_contratada"
       canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
       categoria_entrada:
         | "mensalista"
@@ -3611,8 +4217,8 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
-      status_solicitacao_cancelamento: "pendente" | "confirmada" | "retirada"
       status_saida: "prevista" | "paga" | "cancelada"
+      status_solicitacao_cancelamento: "pendente" | "confirmada" | "retirada"
       tipo_ajuste_folha:
         | "bonus"
         | "desconto"
@@ -3632,6 +4238,12 @@ export type Database = {
       tipo_interacao: "nota" | "whatsapp" | "conversa" | "mudanca_estagio"
       tipo_movimento_reserva: "aporte" | "retirada"
       tipo_produto: "plano" | "pacote" | "servico"
+      tipo_remuneracao:
+        | "por_aluna"
+        | "por_hora"
+        | "fixo_aula"
+        | "fixo_mes"
+        | "percentual"
       tipo_requisito_produto:
         | "nunca_treinou"
         | "plano_ativo"
@@ -3652,12 +4264,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3681,11 +4293,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3706,11 +4318,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3731,11 +4343,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3748,11 +4360,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3764,6 +4376,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      base_percentual: ["mensalidade_contratada"],
       canal_aula: ["mensalista", "wellhub", "classpass", "avulsa"],
       categoria_entrada: [
         "mensalista",
@@ -3828,8 +4441,8 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
-      status_solicitacao_cancelamento: ["pendente", "confirmada", "retirada"],
       status_saida: ["prevista", "paga", "cancelada"],
+      status_solicitacao_cancelamento: ["pendente", "confirmada", "retirada"],
       tipo_ajuste_folha: [
         "bonus",
         "desconto",
@@ -3851,6 +4464,13 @@ export const Constants = {
       tipo_interacao: ["nota", "whatsapp", "conversa", "mudanca_estagio"],
       tipo_movimento_reserva: ["aporte", "retirada"],
       tipo_produto: ["plano", "pacote", "servico"],
+      tipo_remuneracao: [
+        "por_aluna",
+        "por_hora",
+        "fixo_aula",
+        "fixo_mes",
+        "percentual",
+      ],
       tipo_requisito_produto: [
         "nunca_treinou",
         "plano_ativo",

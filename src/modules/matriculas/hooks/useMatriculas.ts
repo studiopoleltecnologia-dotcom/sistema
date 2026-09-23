@@ -132,10 +132,16 @@ export function useArquivarSolicitacao() {
 export function useMatricular() {
   const invalidar = useInvalidarMatriculas()
   return useMutation({
-    mutationFn: (a: { clienteId: string; produtoId: string; turmaIds: string[] }) =>
+    mutationFn: (a: {
+      clienteId: string
+      produtoId: string
+      turmaIds: string[]
+      /** Só a gestão usa: libera venda que a elegibilidade recusou (D9). */
+      justificativa?: string
+    }) =>
       a.turmaIds.length > 0
-        ? matricularTurmaFixa(a.clienteId, a.produtoId, a.turmaIds)
-        : matricular(a.clienteId, a.produtoId),
+        ? matricularTurmaFixa(a.clienteId, a.produtoId, a.turmaIds, a.justificativa)
+        : matricular(a.clienteId, a.produtoId, a.justificativa),
     onSuccess: invalidar,
   })
 }
