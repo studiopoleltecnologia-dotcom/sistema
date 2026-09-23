@@ -202,7 +202,9 @@ export function MatriculasPage() {
           onRenovar={() =>
             confirmar.pedir({
               titulo: 'Adiantar a renovação?',
-              tom: 'arquivar',
+              // Não destrói nada, mas libera crédito e gera cobrança —
+              // difícil de desfazer depois que o aluno já usou.
+              tom: 'confirmar',
               textoConfirmar: 'Renovar agora',
               descricao: (
                 <>
@@ -217,11 +219,35 @@ export function MatriculasPage() {
             })
           }
           onBonus={() => setBonus(aberta)}
-          onInadimplir={() => inadimplir.mutate(aberta.saldo.matricula_id!)}
+          onInadimplir={() =>
+            // Era a única das quatro sem duplo-check: um clique bloqueava
+            // o aluno de agendar. Bloquear quem pagou é um erro que só
+            // aparece quando ele tenta marcar aula e não consegue.
+            confirmar.pedir({
+              titulo: 'Marcar pagamento em aberto?',
+              tom: 'arquivar',
+              textoConfirmar: 'Marcar em aberto',
+              descricao: (
+                <>
+                  {aberta.clienteNome} deixa de conseguir agendar novas aulas até alguém
+                  regularizar. <b>Os créditos não são apagados</b> — as aulas já marcadas
+                  continuam de pé, e o saldo volta a valer quando a situação mudar.
+                </>
+              ),
+              aoConfirmar: () => inadimplir.mutateAsync(aberta.saldo.matricula_id!),
+            })
+          }
           onCancelar={() =>
             confirmar.pedir({
               titulo: 'Cancelar a assinatura?',
-              tom: 'arquivar',
+              // A mais pesada das quatro: encerra o contrato. Vermelho,
+              // para não se confundir com as outras no meio de um dia
+              // cheio na recepção.
+              tom: 'excluir',
+              // Vermelho pelo peso, mas sem o aviso de irreversível: a
+              // assinatura pode ser recontratada, e o histórico registra
+              // o cancelamento e um eventual desfazer.
+              irreversivel: false,
               textoConfirmar: 'Cancelar assinatura',
               descricao: (
                 <>

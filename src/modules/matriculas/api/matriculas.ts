@@ -250,57 +250,29 @@ export async function listarOcupacaoAssentos() {
 export type EventoHistorico = {
   id: string
   quando: string
-  tipo: 'credito' | 'financeiro'
+  tipo: 'credito' | 'financeiro' | 'acao'
   titulo: string
   detalhe: string | null
-  valor: number | null
+  valor_centavos: number | null
+  autor_nome: string | null
 }
 
 /**
- * A linha do tempo da matrícula: o que aconteceu com os créditos e o que
- * aconteceu com o dinheiro, numa lista só.
+ * A linha do tempo da matrícula: crédito, dinheiro e decisão
+ * administrativa numa lista só, com quem fez cada coisa.
  *
- * São duas tabelas porque são dois assuntos (`creditos_eventos` e
- * `entradas_financeiras`), mas para quem atende no balcão é uma pergunta
- * só — "o que houve com essa aluna?". Juntar no cliente evita criar uma
- * view só para ordenar duas listas pequenas por data.
+ * Vem de `vw_historico_matricula` e não de três consultas no cliente
+ * porque é a view que resolve o recorte por papel: `security_invoker`
+ * faz a secretária ver os créditos e não ver as linhas financeiras nem
+ * as de auditoria, sem a tela precisar saber disso.
  */
 export async function listarHistoricoMatricula(matriculaId: string) {
-  const sb = requireSupabase()
-  const [creditos, financeiro] = await Promise.all([
-    sb
-      .from('creditos_eventos')
-      .select('id, criado_em, delta, motivo, detalhe')
-      .eq('matricula_id', matriculaId)
-      .order('criado_em', { ascending: false })
-      .limit(50),
-    sb
-      .from('entradas_financeiras')
-      .select('id, criada_em, descricao, valor_centavos, status, data_caixa')
-      .eq('matricula_id', matriculaId)
-      .order('criada_em', { ascending: false })
-      .limit(50),
-  ])
-  if (creditos.error) throw creditos.error
-  // Secretária não enxerga entradas_financeiras (RLS de gestão): a lista
-  // volta vazia em vez de estourar, e o histórico mostra só os créditos.
-  const linhas: EventoHistorico[] = [
-    ...(creditos.data ?? []).map((c) => ({
-      id: c.id,
-      quando: c.criado_em,
-      tipo: 'credito' as const,
-      titulo: `${c.delta > 0 ? '+' : ''}${c.delta} crédito${Math.abs(c.delta) === 1 ? '' : 's'} · ${c.motivo}`,
-      detalhe: c.detalhe,
-      valor: null,
-    })),
-    ...(financeiro.error ? [] : (financeiro.data ?? [])).map((e) => ({
-      id: e.id,
-      quando: e.criada_em,
-      tipo: 'financeiro' as const,
-      titulo: e.descricao ?? 'Cobrança',
-      detalhe: e.status === 'recebida' ? `recebida${e.data_caixa ? ` em ${e.data_caixa}` : ''}` : e.status,
-      valor: e.valor_centavos,
-    })),
-  ]
-  return linhas.sort((a, b) => b.quando.localeCompare(a.quando))
+  const { data, error } = await requireSupabase()
+    .from('vw_historico_matricula')
+    .select('*')
+    .eq('matricula_id', matriculaId)
+    .order('quando', { ascending: false })
+    .limit(100)
+  if (error) throw error
+  return (data ?? []) as EventoHistorico[]
 }
