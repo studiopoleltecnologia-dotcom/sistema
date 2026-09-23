@@ -3,6 +3,7 @@ import {
   aprovarContratacao,
   cancelarSolicitacao,
   confirmarPagamento,
+  emitirCobranca,
   listarSolicitacoes,
   recusarContratacao,
   solicitarContratacao,
@@ -65,6 +66,11 @@ export function useConfirmarPagamento() {
     mutationFn: (a: { id: string; forma: string }) => confirmarPagamento(a.id, a.forma),
     onSuccess: invalidar,
   })
+}
+
+export function useEmitirCobranca() {
+  const invalidar = useInvalidar()
+  return useMutation({ mutationFn: emitirCobranca, onSuccess: invalidar })
 }
 
 export function useCancelarSolicitacao() {

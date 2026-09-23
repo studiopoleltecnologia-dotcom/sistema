@@ -79,3 +79,37 @@ export async function cancelarSolicitacao(id: string) {
   })
   if (error) throw error
 }
+
+/**
+ * Emite a cobrança no gateway e devolve o link de pagamento.
+ *
+ * Primeiro uso de Edge Function pelo front. É função e não RPC porque a
+ * chave do Asaas não pode chegar ao navegador (CLAUDE.md §3): quem fala
+ * com a API deles é o servidor, e o front só pede e recebe a URL.
+ *
+ * A função é idempotente do lado de lá: se já existir cobrança em
+ * aberto para a solicitação, ela devolve o link que já existe em vez de
+ * emitir uma segunda — duas cobranças do mesmo plano é o erro que o
+ * aluno percebe.
+ */
+export async function emitirCobranca(solicitacaoId: string) {
+  const { data, error } = await requireSupabase().functions.invoke('asaas-cobranca', {
+    body: { solicitacao_id: solicitacaoId },
+  })
+  if (error) {
+    // `FunctionsHttpError` guarda o corpo da resposta, que é onde está a
+    // mensagem útil ("aluno está sem CPF"). Sem isto, a tela mostraria
+    // só "Edge Function returned a non-2xx status code".
+    const resposta = (error as { context?: Response }).context
+    if (resposta) {
+      try {
+        const corpo = await resposta.json()
+        if (corpo?.erro) throw new Error(corpo.erro)
+      } catch (e) {
+        if (e instanceof Error && e.message) throw e
+      }
+    }
+    throw error
+  }
+  return data as { cobranca_id: string; url: string; vencimento: string; ja_existia?: boolean }
+}

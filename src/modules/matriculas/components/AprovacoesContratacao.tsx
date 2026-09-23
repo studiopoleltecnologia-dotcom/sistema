@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Clock, ShieldAlert, User, Wallet } from 'lucide-react'
+import { CheckCircle2, Clock, Link2, ShieldAlert, User, Wallet } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { EmptyState } from '../../../components/ui/EmptyState'
@@ -11,6 +11,7 @@ import {
   useAprovarContratacao,
   useCancelarSolicitacao,
   useConfirmarPagamento,
+  useEmitirCobranca,
   useRecusarContratacao,
 } from '../hooks/useContratacoes'
 import type { Solicitacao } from '../api/contratacoes'
@@ -208,11 +209,7 @@ function Cartao({
               Aprovar
             </Button>
           )}
-          {onPagar && (
-            <Button size="sm" onClick={onPagar}>
-              Registrar pagamento
-            </Button>
-          )}
+          {onPagar && <CobrancaOuBaixa s={s} onPagar={onPagar} />}
           {onRecusar && (
             <button
               onClick={onRecusar}
@@ -338,5 +335,87 @@ function Resolver({
         </div>
       </div>
     </Modal>
+  )
+}
+
+/**
+ * Os dois caminhos de receber, lado a lado.
+ *
+ * O link do gateway é o caminho padrão — o aluno escolhe Pix ou cartão
+ * na própria página, e o webhook conclui a contratação sozinho, sem
+ * ninguém voltar aqui. A baixa manual continua existindo para o que
+ * acontece no balcão: dinheiro, maquininha, Pix na chave do MEI.
+ *
+ * Nenhum dos dois é "o certo": um estúdio pequeno recebe das duas
+ * formas, e esconder a manual faria a gestão lançar por fora.
+ */
+function CobrancaOuBaixa({ s, onPagar }: { s: Solicitacao; onPagar: () => void }) {
+  const emitir = useEmitirCobranca()
+  const [erro, setErro] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+
+  const link = s.url_pagamento
+
+  async function copiar() {
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      // Área de transferência bloqueada (http, permissão): abrir a
+      // página é a saída — dali a pessoa copia da barra do navegador.
+      window.open(link, '_blank', 'noopener')
+    }
+  }
+
+  return (
+    <div className="flex w-full flex-col gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {link ? (
+          <>
+            <Button size="sm" onClick={copiar}>
+              <Link2 className="size-3.5" />
+              {copiado ? 'Link copiado!' : 'Copiar link de pagamento'}
+            </Button>
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md px-2.5 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50"
+            >
+              abrir
+            </a>
+          </>
+        ) : (
+          <Button
+            size="sm"
+            loading={emitir.isPending}
+            onClick={() => {
+              setErro(null)
+              emitir.mutate(s.id!, { onError: (e) => setErro((e as Error).message) })
+            }}
+          >
+            <Link2 className="size-3.5" />
+            Gerar link de pagamento
+          </Button>
+        )}
+        <button
+          onClick={onPagar}
+          title="Recebeu em dinheiro, maquininha ou Pix direto na chave"
+          className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800"
+        >
+          recebi por fora
+        </button>
+      </div>
+
+      {link && (
+        <p className="text-[11px] text-neutral-400">
+          O aluno escolhe Pix ou cartão no link. Quando pagar, a matrícula é criada sozinha —
+          não precisa voltar aqui.
+        </p>
+      )}
+      {erro && <p className="text-[11px] text-danger-600">{erro}</p>}
+    </div>
   )
 }

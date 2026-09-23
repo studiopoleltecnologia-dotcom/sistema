@@ -472,10 +472,12 @@ export type Database = {
       }
       clientes: {
         Row: {
+          asaas_customer_id: string | null
           atualizada_em: string
           contato_emergencia_nome: string | null
           contato_emergencia_parentesco: string | null
           contato_emergencia_telefone: string | null
+          cpf: string | null
           criada_em: string
           data_nascimento: string | null
           email: string | null
@@ -495,10 +497,12 @@ export type Database = {
           vip: boolean
         }
         Insert: {
+          asaas_customer_id?: string | null
           atualizada_em?: string
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
+          cpf?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
@@ -518,10 +522,12 @@ export type Database = {
           vip?: boolean
         }
         Update: {
+          asaas_customer_id?: string | null
           atualizada_em?: string
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
+          cpf?: string | null
           criada_em?: string
           data_nascimento?: string | null
           email?: string | null
@@ -553,6 +559,120 @@ export type Database = {
             columns: ["responsavel_id"]
             isOneToOne: false
             referencedRelation: "vw_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cobrancas: {
+        Row: {
+          atualizada_em: string
+          ciclo: number | null
+          cliente_id: string
+          criada_em: string
+          descricao: string | null
+          forma_pagamento: string | null
+          id: string
+          matricula_id: string | null
+          pago_em: string | null
+          provider: string
+          provider_ref: string | null
+          solicitacao_id: string | null
+          status: Database["public"]["Enums"]["status_cobranca"]
+          url_pagamento: string | null
+          valor_centavos: number
+          vencimento: string
+        }
+        Insert: {
+          atualizada_em?: string
+          ciclo?: number | null
+          cliente_id: string
+          criada_em?: string
+          descricao?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          matricula_id?: string | null
+          pago_em?: string | null
+          provider?: string
+          provider_ref?: string | null
+          solicitacao_id?: string | null
+          status?: Database["public"]["Enums"]["status_cobranca"]
+          url_pagamento?: string | null
+          valor_centavos: number
+          vencimento: string
+        }
+        Update: {
+          atualizada_em?: string
+          ciclo?: number | null
+          cliente_id?: string
+          criada_em?: string
+          descricao?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          matricula_id?: string | null
+          pago_em?: string | null
+          provider?: string
+          provider_ref?: string | null
+          solicitacao_id?: string | null
+          status?: Database["public"]["Enums"]["status_cobranca"]
+          url_pagamento?: string | null
+          valor_centavos?: number
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cobrancas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobrancas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobrancas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "cobrancas_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_contratacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobrancas_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "vw_solicitacoes"
             referencedColumns: ["id"]
           },
         ]
@@ -3872,6 +3992,9 @@ export type Database = {
           cliente_email: string | null
           cliente_id: string | null
           cliente_nome: string | null
+          cobranca_id: string | null
+          cobranca_status: Database["public"]["Enums"]["status_cobranca"] | null
+          cobranca_vencimento: string | null
           decidida_em: string | null
           decisor_nome: string | null
           forma_pagamento: string | null
@@ -3890,6 +4013,7 @@ export type Database = {
           status: Database["public"]["Enums"]["status_solicitacao"] | null
           tipo_produto: Database["public"]["Enums"]["tipo_produto"] | null
           turmas: string[] | null
+          url_pagamento: string | null
         }
         Relationships: [
           {
@@ -4024,6 +4148,27 @@ export type Database = {
         Returns: undefined
       }
       cliente_atual: { Args: never; Returns: string }
+      cobranca_cancelada: {
+        Args: {
+          p_estorno?: boolean
+          p_provider: string
+          p_provider_ref: string
+        }
+        Returns: string
+      }
+      cobranca_paga: {
+        Args: {
+          p_forma: string
+          p_pago_em: string
+          p_provider: string
+          p_provider_ref: string
+        }
+        Returns: string
+      }
+      cobranca_vencida: {
+        Args: { p_provider: string; p_provider_ref: string }
+        Returns: string
+      }
       cobrar_ciclo: {
         Args: { p_ciclo: number; p_matricula: string; p_vencimento: string }
         Returns: string
@@ -4327,6 +4472,21 @@ export type Database = {
         }
         Returns: Json
       }
+      registrar_cobranca: {
+        Args: {
+          p_ciclo: number
+          p_cliente: string
+          p_descricao: string
+          p_matricula: string
+          p_provider: string
+          p_provider_ref: string
+          p_solicitacao: string
+          p_url: string
+          p_valor_centavos: number
+          p_vencimento: string
+        }
+        Returns: string
+      }
       registrar_presenca: {
         Args: {
           p_canal?: Database["public"]["Enums"]["canal_aula"]
@@ -4467,6 +4627,12 @@ export type Database = {
       plano_tipo: "creditos" | "semanal"
       rotina_checklist: "abertura" | "fechamento"
       status_agendamento: "agendado" | "cancelado"
+      status_cobranca:
+        | "pendente"
+        | "paga"
+        | "vencida"
+        | "cancelada"
+        | "estornada"
       status_email: "pendente" | "enviado" | "erro"
       status_entrada: "prevista" | "recebida" | "cancelada"
       status_fechamento: "aberto" | "aprovado"
@@ -4697,6 +4863,13 @@ export const Constants = {
       plano_tipo: ["creditos", "semanal"],
       rotina_checklist: ["abertura", "fechamento"],
       status_agendamento: ["agendado", "cancelado"],
+      status_cobranca: [
+        "pendente",
+        "paga",
+        "vencida",
+        "cancelada",
+        "estornada",
+      ],
       status_email: ["pendente", "enviado", "erro"],
       status_entrada: ["prevista", "recebida", "cancelada"],
       status_fechamento: ["aberto", "aprovado"],
