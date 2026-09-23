@@ -7,6 +7,7 @@ import { useClientes } from '../../clientes/hooks/useClientes'
 import { useProdutos } from '../../produtos/hooks/useProdutos'
 import { GRUPOS, grupoDoProduto, descreverEntrega, descreverCobranca } from '../../produtos/types'
 import { useMatricular } from '../hooks/useMatriculas'
+import { NovoAlunoRapido } from './NovoAlunoRapido'
 import { SeletorTurmaFixa } from './SeletorTurmaFixa'
 
 const labelCls = 'mb-1 block text-xs font-medium text-neutral-500'
@@ -39,6 +40,19 @@ export function MatriculaForm({
   const [produtoId, setProdutoId] = useState('')
   const [turmaIds, setTurmaIds] = useState<string[]>([])
   const [erro, setErro] = useState<string | null>(null)
+  const [novoAluno, setNovoAluno] = useState(false)
+  // Nome do aluno recém-criado: a lista de clientes é revalidada em
+  // segundo plano, e sem isto o <option> dele não existiria por um
+  // instante — o select pareceria voltar para "Escolha…".
+  const [recemCriado, setRecemCriado] = useState<{ id: string; nome: string } | null>(null)
+  /*
+    A justificativa só aparece quando o banco recusou por elegibilidade
+    (§8 e §10 do regulamento). Só a gestão consegue seguir assim mesmo,
+    e a autorização fica gravada em `auditoria` com quem, quando e por
+    quê — é a "tela de confirmação com histórico" pedida na revisão.
+  */
+  const [justificativa, setJustificativa] = useState('')
+  const [pedeJustificativa, setPedeJustificativa] = useState(false)
 
   const vendaveis = useMemo(
     () => (produtos ?? []).filter((p) => p.ativo),
@@ -60,8 +74,22 @@ export function MatriculaForm({
     }
 
     matricular.mutate(
-      { clienteId, produtoId: produto.id, turmaIds: ehTurmaFixa ? turmaIds : [] },
-      { onSuccess: onFechar, onError: (e) => setErro((e as Error).message) },
+      {
+        clienteId,
+        produtoId: produto.id,
+        turmaIds: ehTurmaFixa ? turmaIds : [],
+        justificativa: justificativa.trim() || undefined,
+      },
+      {
+        onSuccess: onFechar,
+        onError: (e) => {
+          const msg = (e as Error).message
+          setErro(msg)
+          // O banco devolve esta frase quando a gestão pode excepcionar
+          // mas não escreveu o motivo. É o gatilho para abrir o campo.
+          if (msg.includes('informe a justificativa')) setPedeJustificativa(true)
+        },
+      },
     )
   }
 
@@ -78,10 +106,20 @@ export function MatriculaForm({
             ) : (
               <Select
                 value={clienteId}
-                onChange={(e) => setClienteId(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === '__novo__') {
+                    setNovoAluno(true)
+                    return
+                  }
+                  setClienteId(e.target.value)
+                }}
                 required
               >
                 <option value="">Escolha…</option>
+                <option value="__novo__">+ Cadastrar novo aluno…</option>
+                {recemCriado && !(clientes ?? []).some((c) => c.id === recemCriado.id) && (
+                  <option value={recemCriado.id}>{recemCriado.nome}</option>
+                )}
                 {(clientes ?? []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nome}
@@ -159,6 +197,25 @@ export function MatriculaForm({
 
         {erro && <p className="text-sm text-danger-600">{erro}</p>}
 
+        {pedeJustificativa && (
+          <div className="rounded-md border border-warning-200 bg-warning-50 px-3 py-2.5">
+            <label className="mb-1 block text-xs font-semibold text-warning-700">
+              Autorizar mesmo assim — por quê?
+            </label>
+            <textarea
+              autoFocus
+              rows={2}
+              value={justificativa}
+              onChange={(e) => setJustificativa(e.target.value)}
+              placeholder="Ex.: cortesia combinada na recepção; aluna voltou depois de 3 anos"
+              className="w-full rounded-md border border-warning-200 bg-white px-2.5 py-1.5 text-sm outline-none transition focus:border-warning-400"
+            />
+            <p className="mt-1 text-[11px] text-warning-700">
+              Fica registrado com seu nome e a data, junto da matrícula.
+            </p>
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-2 border-t border-neutral-100 pt-4">
           <Button type="button" variant="ghost" onClick={onFechar}>
             Cancelar
@@ -166,12 +223,29 @@ export function MatriculaForm({
           <Button
             type="submit"
             loading={matricular.isPending}
-            disabled={!clienteId || !produto || (ehTurmaFixa && faltam !== 0)}
+            disabled={
+              !clienteId ||
+              !produto ||
+              (ehTurmaFixa && faltam !== 0) ||
+              (pedeJustificativa && justificativa.trim().length === 0)
+            }
           >
-            Matricular
+            {pedeJustificativa ? 'Autorizar e matricular' : 'Matricular'}
           </Button>
         </div>
       </form>
+
+      {novoAluno && (
+        <NovoAlunoRapido
+          onFechar={() => setNovoAluno(false)}
+          onCriado={(c) => {
+            setRecemCriado(c)
+            setClienteId(c.id)
+            setNovoAluno(false)
+            setErro(null)
+          }}
+        />
+      )}
     </Modal>
   )
 }
