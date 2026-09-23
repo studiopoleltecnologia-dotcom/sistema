@@ -182,11 +182,7 @@ export function PlanosPage() {
 
   if (contratado) {
     return (
-      <Contratado
-        produto={contratado}
-        onAgendar={() => navigate('../agenda')}
-        onInicio={() => navigate('..')}
-      />
+      <Contratado produto={contratado} onInicio={() => navigate('..')} />
     )
   }
 
@@ -359,42 +355,35 @@ export function PlanosPage() {
 }
 
 /**
- * Tela de sucesso. O texto depende do que foi comprado: aula particular
- * e treino livre não liberam crédito nenhum, e "suas aulas já estão
- * liberadas" mandaria a pessoa para uma Agenda onde não há o que agendar.
+ * Tela de sucesso — de um PEDIDO, não de uma compra concluída.
+ *
+ * Contratar pelo portal não matricula mais ninguém: cria uma
+ * solicitação que a gestão aprova e que só vira matrícula quando o
+ * pagamento é confirmado. Por isso não existe mais o botão "agendar
+ * primeira aula" — não há crédito, e o atalho levaria a uma Agenda que
+ * responderia "sem créditos".
  */
-function Contratado({
-  produto: p,
-  onAgendar,
-  onInicio,
-}: {
-  produto: Produto
-  onAgendar: () => void
-  onInicio: () => void
-}) {
-  const liberaAulas = p.gera_credito && p.creditos_por_ciclo > 0
-  const ehPlano = lugarDoProduto(p) !== 'avulso'
-
+function Contratado({ produto: p, onInicio }: { produto: Produto; onInicio: () => void }) {
+  // Antes esta tela dizia "Plano ativado! Suas aulas já estão
+  // liberadas", porque contratar de fato matriculava na hora. Agora o
+  // pedido espera a confirmação do estúdio, e prometer aula liberada
+  // aqui mandaria o aluno para a agenda receber "sem créditos".
   return (
     <div className="pt-10 text-center">
-      <div className="mb-3 text-4xl">🎉</div>
-      <h1 className="mb-2 text-xl font-semibold text-neutral-900">
-        {ehPlano ? 'Plano ativado!' : 'Compra confirmada!'}
-      </h1>
+      <div className="mb-3 text-4xl">✅</div>
+      <h1 className="mb-2 text-xl font-semibold text-neutral-900">Pedido enviado!</h1>
       <p className="mb-1 text-sm text-neutral-600">
-        {liberaAulas
-          ? 'Suas aulas já estão liberadas.'
-          : 'Agora é só combinar o horário com o estúdio.'}
+        O estúdio vai confirmar o <b>{p.nome}</b> e combinar o pagamento com você.
       </p>
       <p className="mb-8 text-xs text-neutral-400">
-        O pagamento é combinado direto com o estúdio (PIX ou na recepção). Em breve você poderá
-        pagar por aqui, no cartão recorrente.
+        Suas aulas são liberadas assim que o pagamento for confirmado. Você recebe um e-mail a
+        cada passo, e pode acompanhar em “Meu plano”.
       </p>
       <button
-        onClick={liberaAulas ? onAgendar : onInicio}
+        onClick={onInicio}
         className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
       >
-        {liberaAulas ? 'Agendar primeira aula' : 'Voltar ao início'}
+        Voltar ao início
       </button>
     </div>
   )
