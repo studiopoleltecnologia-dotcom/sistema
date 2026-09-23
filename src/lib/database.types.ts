@@ -2657,6 +2657,119 @@ export type Database = {
           },
         ]
       }
+      solicitacoes_contratacao: {
+        Row: {
+          atualizada_em: string
+          cliente_id: string
+          criada_em: string
+          decidida_em: string | null
+          decidida_por: string | null
+          forma_pagamento: string | null
+          id: string
+          justificativa: string | null
+          matricula_id: string | null
+          motivo_decisao: string | null
+          origem: string
+          pago_em: string | null
+          preco_centavos: number
+          produto_id: string
+          solicitada_em: string
+          solicitada_por: string | null
+          status: Database["public"]["Enums"]["status_solicitacao"]
+          turmas: string[]
+        }
+        Insert: {
+          atualizada_em?: string
+          cliente_id: string
+          criada_em?: string
+          decidida_em?: string | null
+          decidida_por?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          justificativa?: string | null
+          matricula_id?: string | null
+          motivo_decisao?: string | null
+          origem: string
+          pago_em?: string | null
+          preco_centavos: number
+          produto_id: string
+          solicitada_em?: string
+          solicitada_por?: string | null
+          status?: Database["public"]["Enums"]["status_solicitacao"]
+          turmas?: string[]
+        }
+        Update: {
+          atualizada_em?: string
+          cliente_id?: string
+          criada_em?: string
+          decidida_em?: string | null
+          decidida_por?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          justificativa?: string | null
+          matricula_id?: string | null
+          motivo_decisao?: string | null
+          origem?: string
+          pago_em?: string | null
+          preco_centavos?: number
+          produto_id?: string
+          solicitada_em?: string
+          solicitada_por?: string | null
+          status?: Database["public"]["Enums"]["status_solicitacao"]
+          turmas?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_contratacao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suspensoes_agendamento: {
         Row: {
           cliente_id: string
@@ -3741,6 +3854,80 @@ export type Database = {
           },
         ]
       }
+      vw_solicitacoes: {
+        Row: {
+          cliente_email: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          decidida_em: string | null
+          forma_pagamento: string | null
+          id: string | null
+          justificativa: string | null
+          matricula_id: string | null
+          motivo_decisao: string | null
+          origem: string | null
+          pago_em: string | null
+          preco_centavos: number | null
+          produto_id: string | null
+          produto_nome: string | null
+          produto_status: Database["public"]["Enums"]["status_produto"] | null
+          solicitada_em: string | null
+          status: Database["public"]["Enums"]["status_solicitacao"] | null
+          tipo_produto: Database["public"]["Enums"]["tipo_produto"] | null
+          turmas: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_contratacao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_ranking"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_analise_clientes_risco"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_saldo_creditos"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_contratacao_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_vagas_turma: {
         Row: {
           data: string | null
@@ -3768,9 +3955,22 @@ export type Database = {
         Args: { p_aula: string; p_motivo: string; p_valor_centavos: number }
         Returns: undefined
       }
+      aprovar_contratacao: {
+        Args: { p_motivo?: string; p_solicitacao: string }
+        Returns: Database["public"]["Enums"]["status_solicitacao"]
+      }
       assentos_fixos_ocupados: {
         Args: { p_data: string; p_turma: string }
         Returns: number
+      }
+      avisar_aluno_contratacao: {
+        Args: {
+          p_cliente: string
+          p_dados: Json
+          p_ref: string
+          p_tipo: string
+        }
+        Returns: undefined
       }
       avisar_aula_cancelada: {
         Args: { p_cancelamento: string; p_cliente: string; p_dados: Json }
@@ -3804,6 +4004,10 @@ export type Database = {
         }
         Returns: number
       }
+      cancelar_solicitacao: {
+        Args: { p_solicitacao: string }
+        Returns: undefined
+      }
       cliente_atual: { Args: never; Returns: string }
       cobrar_ciclo: {
         Args: { p_ciclo: number; p_matricula: string; p_vencimento: string }
@@ -3829,6 +4033,10 @@ export type Database = {
       }
       confirmar_cancelamento_plano: {
         Args: { p_observacao?: string; p_solicitacao: string }
+        Returns: string
+      }
+      confirmar_pagamento_contratacao: {
+        Args: { p_forma?: string; p_pago_em?: string; p_solicitacao: string }
         Returns: string
       }
       confirmar_pagamento_inscricao: {
@@ -3968,6 +4176,13 @@ export type Database = {
         }[]
       }
       gerar_followups: { Args: never; Returns: number }
+      impedimento_para_contratar: {
+        Args: { p_cliente: string; p_produto: string }
+        Returns: {
+          excepcionavel: boolean
+          motivo: string
+        }[]
+      }
       is_cliente: { Args: never; Returns: boolean }
       is_gestao: { Args: never; Returns: boolean }
       is_operacional: { Args: never; Returns: boolean }
@@ -4085,6 +4300,10 @@ export type Database = {
         Returns: string
       }
       reabrir_aula: { Args: { p_cancelamento: string }; Returns: undefined }
+      recusar_contratacao: {
+        Args: { p_motivo: string; p_solicitacao: string }
+        Returns: undefined
+      }
       registrar_checkin_wellhub: {
         Args: {
           p_cliente: string
@@ -4149,6 +4368,15 @@ export type Database = {
       }
       solicitar_cancelamento_plano: {
         Args: { p_matricula: string; p_motivo?: string }
+        Returns: string
+      }
+      solicitar_contratacao: {
+        Args: {
+          p_cliente: string
+          p_justificativa?: string
+          p_produto: string
+          p_turmas?: string[]
+        }
         Returns: string
       }
       suspensao_vigente: { Args: { p_cliente: string }; Returns: string }
@@ -4237,6 +4465,12 @@ export type Database = {
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
       status_produto: "venda" | "interno" | "legado" | "arquivado"
       status_saida: "prevista" | "paga" | "cancelada"
+      status_solicitacao:
+        | "aguardando_aprovacao"
+        | "aguardando_pagamento"
+        | "concluida"
+        | "recusada"
+        | "cancelada"
       status_solicitacao_cancelamento: "pendente" | "confirmada" | "retirada"
       tipo_ajuste_folha:
         | "bonus"
@@ -4462,6 +4696,13 @@ export const Constants = {
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
       status_produto: ["venda", "interno", "legado", "arquivado"],
       status_saida: ["prevista", "paga", "cancelada"],
+      status_solicitacao: [
+        "aguardando_aprovacao",
+        "aguardando_pagamento",
+        "concluida",
+        "recusada",
+        "cancelada",
+      ],
       status_solicitacao_cancelamento: ["pendente", "confirmada", "retirada"],
       tipo_ajuste_folha: [
         "bonus",

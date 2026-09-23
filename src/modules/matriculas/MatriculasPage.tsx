@@ -10,6 +10,7 @@ import { useAbaUrl } from '../../lib/aba'
 import { fmtData } from '../../lib/datas'
 import { fmtCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
+import { AprovacoesContratacao } from './components/AprovacoesContratacao'
 import { BonusCreditos } from './components/BonusCreditos'
 import { MatriculaDetalhe } from './components/MatriculaDetalhe'
 import { MatriculaForm } from './components/MatriculaForm'
@@ -21,11 +22,13 @@ import {
   useRenovarCiclo,
   useSolicitacoesPendentes,
 } from './hooks/useMatriculas'
+import { useContratacoesAbertas } from './hooks/useContratacoes'
 import type { MatriculaCompleta } from './types'
 
-type Filtro = 'todas' | 'creditos' | 'turma_fixa' | 'em_aberto' | 'cancelamentos'
+type Filtro = 'todas' | 'contratacoes' | 'creditos' | 'turma_fixa' | 'em_aberto' | 'cancelamentos'
 const FILTROS = [
   'todas',
+  'contratacoes',
   'creditos',
   'turma_fixa',
   'em_aberto',
@@ -44,6 +47,7 @@ const FILTROS = [
 export function MatriculasPage() {
   const { data: matriculas, isLoading } = useMatriculasCompletas()
   const { data: pedidos } = useSolicitacoesPendentes()
+  const { data: contratacoes } = useContratacoesAbertas()
   const { data: funcao } = useMinhaFuncao()
   // Secretária acompanha a operação (quem está ativo, em qual turma)
   // mas não mexe em cobrança nem cancela. A RLS já recusa; aqui é só
@@ -73,8 +77,9 @@ export function MatriculasPage() {
       turma_fixa: l.filter((m) => m.ehTurmaFixa).length,
       em_aberto: l.filter((m) => m.saldo.status === 'inadimplente').length,
       cancelamentos: pedidos?.length ?? 0,
+      contratacoes: contratacoes?.length ?? 0,
     }
-  }, [matriculas, pedidos])
+  }, [matriculas, pedidos, contratacoes])
 
   const comPedido = useMemo(() => new Set((pedidos ?? []).map((p) => p.matricula_id)), [pedidos])
 
@@ -85,6 +90,8 @@ export function MatriculasPage() {
     if (filtro === 'em_aberto') return l.filter((m) => m.saldo.status === 'inadimplente')
     // Os pedidos têm cartão próprio (SolicitacoesCancelamento), acima.
     if (filtro === 'cancelamentos') return []
+    // Idem para a fila de contratações (AprovacoesContratacao).
+    if (filtro === 'contratacoes') return []
     return l
   }, [matriculas, filtro])
 
@@ -108,13 +115,24 @@ export function MatriculasPage() {
         }
       />
 
-      {contagens.todas > 0 && (
+      {/* Também quando ainda não há matrícula nenhuma: é exatamente o
+          estado em que existe contratação esperando pagamento e nada
+          na lista — esconder as abas aqui deixaria a fila inalcançável. */}
+      {(contagens.todas > 0 || contagens.contratacoes > 0) && (
         <Tabs
           value={filtro}
           onChange={setFiltro}
           size="sm"
           items={[
             { value: 'todas', label: `Todas (${contagens.todas})` },
+            // Permanente, e não só quando há fila: é onde a gestão
+            // confere se alguma contratação ficou parada esperando
+            // pagamento. Uma aba que some quando esvazia esconderia
+            // justamente a resposta "não há nada pendente".
+            {
+              value: 'contratacoes' as Filtro,
+              label: `Contratações (${contagens.contratacoes})`,
+            },
             { value: 'creditos', label: `Por créditos (${contagens.creditos})` },
             { value: 'turma_fixa', label: `Turma fixa (${contagens.turma_fixa})` },
             ...(contagens.em_aberto > 0
@@ -134,13 +152,20 @@ export function MatriculasPage() {
         />
       )}
 
+      {filtro === 'contratacoes' && (
+        <AprovacoesContratacao solicitacoes={contratacoes ?? []} gestao={ehGestao} />
+      )}
+
       {filtro === 'cancelamentos' && (
         <SolicitacoesCancelamento solicitacoes={pedidos ?? []} gestao={ehGestao} />
       )}
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      {!isLoading && contagens.todas === 0 && (
+      {/* Só nas abas que listam matrícula. Na fila de contratações, um
+          "nenhuma matrícula ativa" embaixo dos pedidos diria o oposto do
+          que a tela mostra: há gente contratando, só não pagou ainda. */}
+      {!isLoading && contagens.todas === 0 && filtro !== 'contratacoes' && filtro !== 'cancelamentos' && (
         <EmptyState
           icon={Users}
           title="Nenhuma matrícula ativa"
