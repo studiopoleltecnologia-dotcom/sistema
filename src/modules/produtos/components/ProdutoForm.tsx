@@ -3,15 +3,18 @@ import { CalendarRange, Coins, Tag } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
+import { Select } from '../../../components/ui/Select'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { useModalidades } from '../../agenda/hooks/useAgenda'
 import type { RequisitoInput } from '../api/produtos'
 import { useSalvarProduto } from '../hooks/useProdutos'
 import {
   REQUISITOS,
+  STATUS_PRODUTO,
   TIPOS_PRODUTO,
   descreverCobranca,
   type Produto,
+  type StatusProduto,
   type TipoProduto,
   type TipoRequisito,
 } from '../types'
@@ -127,6 +130,7 @@ export function ProdutoForm({
   )
   const [convidados, setConvidados] = useState(String(produto?.convidados_por_ciclo ?? 0))
   const [visivel, setVisivel] = useState(produto?.visivel_no_catalogo ?? true)
+  const [status, setStatus] = useState<StatusProduto>(produto?.status ?? 'venda')
 
   const [modalidadeIds, setModalidadeIds] = useState<string[]>(modalidadesIniciais)
   const [requisitos, setRequisitos] = useState<RequisitoInput[]>(requisitosIniciais)
@@ -222,6 +226,7 @@ export function ProdutoForm({
           desconto_eventos_pct: Number(descontoEventos) || 0,
           convidados_por_ciclo: Number(convidados) || 0,
           visivel_no_catalogo: visivel,
+          status,
         },
         modalidadeIds,
         requisitos,
@@ -656,6 +661,26 @@ export function ProdutoForm({
               É assim que se faz um <strong>plano personalizado</strong> (valor negociado para uma
               pessoa) ou um <strong>pacote de cortesia</strong>. O aluno não vê nem consegue
               contratar pelo portal — a trava está no banco, não só nesta tela.
+            </p>
+          </div>
+
+          {/*
+            Estado de venda (item 05). Separado da visibilidade de
+            propósito: "o aluno não vê" e "não vendemos mais" eram a
+            mesma coisa antes, e era por isso que os planos do Wix
+            apareciam no meio do catálogo atual.
+          */}
+          <div className="mt-4 border-t border-neutral-100 pt-3">
+            <label className={labelCls}>Estado</label>
+            <Select value={status} onChange={(e) => setStatus(e.target.value as StatusProduto)}>
+              {STATUS_PRODUTO.map((s) => (
+                <option key={s.valor} value={s.valor}>
+                  {s.label}
+                </option>
+              ))}
+            </Select>
+            <p className={ajudaCls}>
+              {STATUS_PRODUTO.find((s) => s.valor === status)?.ajuda}
             </p>
           </div>
         </Secao>

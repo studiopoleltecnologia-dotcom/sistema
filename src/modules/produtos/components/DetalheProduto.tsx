@@ -5,6 +5,8 @@ import { fmtCentavos } from '../../../lib/dinheiro'
 import { useModalidades } from '../../agenda/hooks/useAgenda'
 import {
   REQUISITO_LABEL,
+  STATUS_PRODUTO,
+  STATUS_PRODUTO_LABEL,
   TIPO_PRODUTO_LABEL,
   beneficiosDoProduto,
   custoPorAula,
@@ -79,16 +81,35 @@ export function DetalheProduto({
         <p className="mt-1 text-xs text-neutral-500">{descreverCobranca(p)}</p>
 
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <Badge variant={p.ativo ? 'success' : 'neutral'}>
-            {p.ativo ? 'ativo' : 'arquivado'}
+          <Badge
+            variant={
+              p.status === 'venda' ? 'success' : p.status === 'legado' ? 'warning' : 'neutral'
+            }
+          >
+            {STATUS_PRODUTO_LABEL[p.status]}
           </Badge>
           <Badge variant="neutral">{TIPO_PRODUTO_LABEL[p.tipo_produto]}</Badge>
-          {!p.visivel_no_catalogo && (
+          {!p.visivel_no_catalogo && p.status === 'venda' && (
             <Badge variant="neutral" className="gap-1">
               <EyeOff className="size-3" /> só a equipe
             </Badge>
           )}
         </div>
+
+        {/* O que cada estado significa na prática, onde a decisão é
+            tomada — o rótulo sozinho não diz se a matrícula de quem já
+            tem continua valendo, que é a dúvida real. */}
+        {p.status !== 'venda' && (
+          <p
+            className={`mt-2 rounded-md px-3 py-2 text-xs leading-relaxed ${
+              p.status === 'legado'
+                ? 'bg-warning-50 text-warning-800'
+                : 'bg-neutral-50 text-neutral-600'
+            }`}
+          >
+            {STATUS_PRODUTO.find((s) => s.valor === p.status)?.ajuda}
+          </p>
+        )}
 
         {p.descricao && (
           <p className="mt-3 rounded-md bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-600">
@@ -199,7 +220,7 @@ export function DetalheProduto({
             <Pencil className="size-3.5" />
             Editar
           </button>
-          {p.ativo ? (
+          {p.status !== 'arquivado' ? (
             <button
               onClick={onArquivar}
               title="Arquivar produto"

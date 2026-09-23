@@ -2086,6 +2086,7 @@ export type Database = {
           preco_centavos: number
           produto_sucessor_id: string | null
           renova_automaticamente: boolean
+          status: Database["public"]["Enums"]["status_produto"]
           teto_acumulo_ciclos: number
           tipo_produto: Database["public"]["Enums"]["tipo_produto"]
           turmas_fixas: number
@@ -2115,6 +2116,7 @@ export type Database = {
           preco_centavos: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
+          status?: Database["public"]["Enums"]["status_produto"]
           teto_acumulo_ciclos?: number
           tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
           turmas_fixas?: number
@@ -2144,6 +2146,7 @@ export type Database = {
           preco_centavos?: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
+          status?: Database["public"]["Enums"]["status_produto"]
           teto_acumulo_ciclos?: number
           tipo_produto?: Database["public"]["Enums"]["tipo_produto"]
           turmas_fixas?: number
@@ -4232,6 +4235,7 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      status_produto: "venda" | "interno" | "legado" | "arquivado"
       status_saida: "prevista" | "paga" | "cancelada"
       status_solicitacao_cancelamento: "pendente" | "confirmada" | "retirada"
       tipo_ajuste_folha:
@@ -4456,6 +4460,7 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      status_produto: ["venda", "interno", "legado", "arquivado"],
       status_saida: ["prevista", "paga", "cancelada"],
       status_solicitacao_cancelamento: ["pendente", "confirmada", "retirada"],
       tipo_ajuste_folha: [

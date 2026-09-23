@@ -41,6 +41,55 @@ export const TIPO_PRODUTO_LABEL: Record<TipoProduto, string> = {
   servico: 'Serviço',
 }
 
+export type StatusProduto = Enums<'status_produto'>
+
+/**
+ * O estado de venda do produto (item 05).
+ *
+ * Antes isso era `ativo` + `visivel_no_catalogo` — dois booleanos, quatro
+ * combinações, três significados —, e "o Wix vendia isto, nós não" só
+ * existia escrito na descrição. Os planos antigos apareciam na mesma
+ * lista dos atuais, separados por um "· só a equipe" no fim da linha.
+ *
+ * `ativo` e `visivel_no_catalogo` continuam existindo, derivados deste
+ * campo por gatilho no banco (20260923130000).
+ */
+export const STATUS_PRODUTO: {
+  valor: StatusProduto
+  label: string
+  ajuda: string
+}[] = [
+  {
+    valor: 'venda',
+    label: 'À venda',
+    ajuda: 'No catálogo. O aluno vê no portal e a equipe vende normalmente.',
+  },
+  {
+    valor: 'interno',
+    label: 'Interno',
+    ajuda:
+      'Cortesia da equipe. Não aparece como venda, não gera cobrança e só a gestão pode conceder.',
+  },
+  {
+    valor: 'legado',
+    label: 'Antigo',
+    ajuda:
+      'Quem já tem continua até o fim do contrato. Contratar de novo é recusado — a gestão passa por cima com justificativa registrada.',
+  },
+  {
+    valor: 'arquivado',
+    label: 'Arquivado',
+    ajuda: 'Fora de tudo. O histórico de quem contratou permanece.',
+  },
+]
+
+export const STATUS_PRODUTO_LABEL: Record<StatusProduto, string> = {
+  venda: 'À venda',
+  interno: 'Interno',
+  legado: 'Antigo',
+  arquivado: 'Arquivado',
+}
+
 export const REQUISITOS: { valor: TipoRequisito; label: string; ajuda: string }[] = [
   {
     valor: 'nunca_treinou',

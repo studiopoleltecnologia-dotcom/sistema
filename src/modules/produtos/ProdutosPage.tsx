@@ -31,9 +31,23 @@ import {
   type Recorrencia,
 } from './types'
 
-/** Aba de nível 1: os três grupos + o depósito de arquivados. */
-type Aba = GrupoProduto | 'arquivados'
-const ABAS = ['creditos', 'turma_fixa', 'outros', 'arquivados'] as const satisfies readonly Aba[]
+/**
+ * Aba de nível 1: os três grupos do catálogo à venda, mais dois
+ * depósitos — o que saiu de venda mas ainda vale para quem contratou
+ * (legado e cortesia da equipe) e o que foi arquivado.
+ *
+ * Os legados ficavam misturados aos grupos normais, porque continuam
+ * `ativo = true` (e precisam: `renovar_ciclo()` exige produto ativo).
+ * Quem olhasse "Créditos" via o plano novo e o do Wix lado a lado.
+ */
+type Aba = GrupoProduto | 'antigos' | 'arquivados'
+const ABAS = [
+  'creditos',
+  'turma_fixa',
+  'outros',
+  'antigos',
+  'arquivados',
+] as const satisfies readonly Aba[]
 
 /**
  * Catálogo do estúdio.
@@ -74,8 +88,18 @@ export function ProdutosPage() {
   const [abertoId, setAbertoId] = useState<string | null>(null)
   const [form, setForm] = useState<{ produto: Produto | null } | null>(null)
 
-  const ativos = useMemo(() => (produtos ?? []).filter((p) => p.ativo), [produtos])
-  const arquivados = useMemo(() => (produtos ?? []).filter((p) => !p.ativo), [produtos])
+  const ativos = useMemo(
+    () => (produtos ?? []).filter((p) => p.status === 'venda'),
+    [produtos],
+  )
+  const antigos = useMemo(
+    () => (produtos ?? []).filter((p) => p.status === 'legado' || p.status === 'interno'),
+    [produtos],
+  )
+  const arquivados = useMemo(
+    () => (produtos ?? []).filter((p) => p.status === 'arquivado'),
+    [produtos],
+  )
   const porId = useMemo(() => new Map((produtos ?? []).map((p) => [p.id, p])), [produtos])
 
   const porGrupo = useMemo(() => {
@@ -89,9 +113,10 @@ export function ProdutosPage() {
   const temCiclo = aba === 'creditos' || aba === 'turma_fixa'
 
   const visiveis = useMemo(() => {
-    const daAba = aba === 'arquivados' ? arquivados : (porGrupo.get(aba) ?? [])
+    const daAba =
+      aba === 'arquivados' ? arquivados : aba === 'antigos' ? antigos : (porGrupo.get(aba) ?? [])
     return temCiclo ? daAba.filter((p) => recorrenciaDoProduto(p) === ciclo) : daAba
-  }, [aba, arquivados, porGrupo, temCiclo, ciclo])
+  }, [aba, antigos, arquivados, porGrupo, temCiclo, ciclo])
 
   /**
    * Títulos que aparecem mais de uma vez na aba. O título do cartão é
@@ -160,6 +185,9 @@ export function ProdutosPage() {
                   value: g.valor as Aba,
                   label: `${g.aba} (${contar(g.valor)})`,
                 })),
+                ...(antigos.length > 0
+                  ? [{ value: 'antigos' as Aba, label: `Fora de venda (${antigos.length})` }]
+                  : []),
                 ...(arquivados.length > 0
                   ? [{ value: 'arquivados' as Aba, label: `Arquivados (${arquivados.length})` }]
                   : []),
