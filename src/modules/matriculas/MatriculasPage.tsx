@@ -162,7 +162,10 @@ export function MatriculasPage() {
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      {!isLoading && contagens.todas === 0 && (
+      {/* Só nas abas que listam matrícula. Na fila de contratações, um
+          "nenhuma matrícula ativa" embaixo dos pedidos diria o oposto do
+          que a tela mostra: há gente contratando, só não pagou ainda. */}
+      {!isLoading && contagens.todas === 0 && filtro !== 'contratacoes' && filtro !== 'cancelamentos' && (
         <EmptyState
           icon={Users}
           title="Nenhuma matrícula ativa"
