@@ -171,11 +171,31 @@ export async function listarPlanos() {
   return data
 }
 
+/**
+ * Contratar pelo portal cria um PEDIDO, não uma matrícula.
+ *
+ * Nada é liberado aqui: sem aprovação da gestão e sem pagamento
+ * confirmado não existe matrícula, e portanto não existe crédito para
+ * agendar. O aluno acompanha o pedido em “Meu plano”.
+ */
 export async function contratarPlano(args: { clienteId: string; planoId: string }) {
-  const { data, error } = await requireSupabase().rpc('matricular', {
+  const { data, error } = await requireSupabase().rpc('solicitar_contratacao', {
     p_cliente: args.clienteId,
-    p_plano: args.planoId,
+    p_produto: args.planoId,
   })
+  if (error) throw error
+  return data
+}
+
+/** O pedido em aberto do aluno, se houver — para “Meu plano” mostrar em que pé está. */
+export async function minhaSolicitacaoAberta() {
+  const { data, error } = await requireSupabase()
+    .from('vw_solicitacoes')
+    .select('*')
+    .in('status', ['aguardando_aprovacao', 'aguardando_pagamento'])
+    .order('solicitada_em', { ascending: false })
+    .limit(1)
+    .maybeSingle()
   if (error) throw error
   return data
 }

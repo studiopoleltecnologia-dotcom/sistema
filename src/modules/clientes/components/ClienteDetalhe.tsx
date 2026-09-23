@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, Pencil } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
+import { PainelLateral } from '../../../components/ui/PainelLateral'
 import { TempoDeCasa } from './TempoDeCasa'
 import { PlanoDoCliente } from './PlanoDoCliente'
 import { fmtData, fmtDataHora } from '../../../lib/datas'
@@ -86,46 +87,38 @@ export function ClienteDetalhe({
   )
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-10 flex w-96 flex-col border-l border-neutral-100 bg-white shadow-xl">
-      <div className="flex items-start justify-between border-b border-neutral-100 px-5 py-4">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900">
-            {cliente.nome}
-            {cliente.vip && (
-              <span className="rounded bg-brand-50 px-1.5 text-[10px] font-semibold text-brand-600">
-                VIP
-              </span>
-            )}
-            {acessoPortal && (
-              <span
-                title={`Acesso ao portal desde ${fmtData(acessoPortal.criada_em)}`}
-                className="flex items-center gap-0.5 rounded bg-success-50 px-1.5 text-[10px] font-semibold text-success-700"
-              >
-                <KeyRound className="size-2.5" /> portal
-              </span>
-            )}
-          </h2>
-          <p className="mt-0.5 text-xs text-neutral-400">
-            {ORIGEM_LABEL[cliente.origem]} · desde {fmtData(cliente.primeiro_contato)}
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <button
-            onClick={onEditar}
-            className="rounded-md px-2 py-1 text-xs text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-800"
-          >
-            Editar
-          </button>
-          <button
-            onClick={onFechar}
-            className="rounded-md px-2 py-1 text-xs text-neutral-400 transition hover:bg-neutral-50 hover:text-neutral-700"
-          >
-            Fechar
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+    <PainelLateral
+      onFechar={onFechar}
+      titulo={
+        <span className="flex items-center gap-2">
+          {cliente.nome}
+          {cliente.vip && (
+            <span className="rounded bg-brand-50 px-1.5 text-[10px] font-semibold text-brand-600">
+              VIP
+            </span>
+          )}
+          {acessoPortal && (
+            <span
+              title={`Acesso ao portal desde ${fmtData(acessoPortal.criada_em)}`}
+              className="flex items-center gap-0.5 rounded bg-success-50 px-1.5 text-[10px] font-semibold text-success-700"
+            >
+              <KeyRound className="size-2.5" /> portal
+            </span>
+          )}
+        </span>
+      }
+      subtitulo={`${ORIGEM_LABEL[cliente.origem]} · desde ${fmtData(cliente.primeiro_contato)}`}
+      acoes={
+        <button
+          onClick={onEditar}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50"
+        >
+          <Pencil className="size-3" />
+          Editar
+        </button>
+      }
+    >
+      <div>
         <label className="mb-1 block text-xs font-medium text-neutral-500">
           Estágio no funil
         </label>
@@ -279,6 +272,6 @@ export function ClienteDetalhe({
           )}
         </ul>
       </div>
-    </aside>
+    </PainelLateral>
   )
 }

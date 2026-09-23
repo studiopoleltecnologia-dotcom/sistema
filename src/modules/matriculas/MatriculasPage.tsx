@@ -10,10 +10,11 @@ import { useAbaUrl } from '../../lib/aba'
 import { fmtData } from '../../lib/datas'
 import { fmtCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
+import { AprovacoesContratacao } from './components/AprovacoesContratacao'
 import { BonusCreditos } from './components/BonusCreditos'
+import { MatriculaDetalhe } from './components/MatriculaDetalhe'
 import { MatriculaForm } from './components/MatriculaForm'
 import { SolicitacoesCancelamento } from './components/SolicitacoesCancelamento'
-import { TurmasVinculadas } from './components/TurmasVinculadas'
 import {
   useCancelarAssinatura,
   useMarcarInadimplente,
@@ -21,11 +22,13 @@ import {
   useRenovarCiclo,
   useSolicitacoesPendentes,
 } from './hooks/useMatriculas'
+import { useContratacoesAbertas } from './hooks/useContratacoes'
 import type { MatriculaCompleta } from './types'
 
-type Filtro = 'todas' | 'creditos' | 'turma_fixa' | 'em_aberto' | 'cancelamentos'
+type Filtro = 'todas' | 'contratacoes' | 'creditos' | 'turma_fixa' | 'em_aberto' | 'cancelamentos'
 const FILTROS = [
   'todas',
+  'contratacoes',
   'creditos',
   'turma_fixa',
   'em_aberto',
@@ -44,6 +47,7 @@ const FILTROS = [
 export function MatriculasPage() {
   const { data: matriculas, isLoading } = useMatriculasCompletas()
   const { data: pedidos } = useSolicitacoesPendentes()
+  const { data: contratacoes } = useContratacoesAbertas()
   const { data: funcao } = useMinhaFuncao()
   // Secretária acompanha a operação (quem está ativo, em qual turma)
   // mas não mexe em cobrança nem cancela. A RLS já recusa; aqui é só
@@ -57,6 +61,10 @@ export function MatriculasPage() {
 
   const [novo, setNovo] = useState(false)
   const [bonus, setBonus] = useState<MatriculaCompleta | null>(null)
+  // Por id e não pelo objeto: a lista é revalidada em segundo plano, e
+  // guardar a matrícula congelada deixaria o painel mostrando o saldo
+  // de antes da ação que acabou de acontecer dentro dele.
+  const [abertaId, setAbertaId] = useState<string | null>(null)
   // Na URL (?aba=em_aberto): o menu lateral aponta direto para cada recorte,
   // e o alerta de inadimplência do painel pode linkar 'Em aberto' de uma vez.
   const [filtro, setFiltro] = useAbaUrl(FILTROS, 'todas')
@@ -69,8 +77,9 @@ export function MatriculasPage() {
       turma_fixa: l.filter((m) => m.ehTurmaFixa).length,
       em_aberto: l.filter((m) => m.saldo.status === 'inadimplente').length,
       cancelamentos: pedidos?.length ?? 0,
+      contratacoes: contratacoes?.length ?? 0,
     }
-  }, [matriculas, pedidos])
+  }, [matriculas, pedidos, contratacoes])
 
   const comPedido = useMemo(() => new Set((pedidos ?? []).map((p) => p.matricula_id)), [pedidos])
 
@@ -81,8 +90,15 @@ export function MatriculasPage() {
     if (filtro === 'em_aberto') return l.filter((m) => m.saldo.status === 'inadimplente')
     // Os pedidos têm cartão próprio (SolicitacoesCancelamento), acima.
     if (filtro === 'cancelamentos') return []
+    // Idem para a fila de contratações (AprovacoesContratacao).
+    if (filtro === 'contratacoes') return []
     return l
   }, [matriculas, filtro])
+
+  // Derivada da lista viva, não guardada: uma ação feita dentro do painel
+  // (renovar, dar crédito) revalida a lista, e o painel precisa refletir
+  // o resultado em vez de continuar mostrando o retrato da abertura.
+  const aberta = visiveis.find((m) => m.saldo.matricula_id === abertaId) ?? null
 
   return (
     <div className="flex flex-col gap-5">
@@ -99,13 +115,24 @@ export function MatriculasPage() {
         }
       />
 
-      {contagens.todas > 0 && (
+      {/* Também quando ainda não há matrícula nenhuma: é exatamente o
+          estado em que existe contratação esperando pagamento e nada
+          na lista — esconder as abas aqui deixaria a fila inalcançável. */}
+      {(contagens.todas > 0 || contagens.contratacoes > 0) && (
         <Tabs
           value={filtro}
           onChange={setFiltro}
           size="sm"
           items={[
             { value: 'todas', label: `Todas (${contagens.todas})` },
+            // Permanente, e não só quando há fila: é onde a gestão
+            // confere se alguma contratação ficou parada esperando
+            // pagamento. Uma aba que some quando esvazia esconderia
+            // justamente a resposta "não há nada pendente".
+            {
+              value: 'contratacoes' as Filtro,
+              label: `Contratações (${contagens.contratacoes})`,
+            },
             { value: 'creditos', label: `Por créditos (${contagens.creditos})` },
             { value: 'turma_fixa', label: `Turma fixa (${contagens.turma_fixa})` },
             ...(contagens.em_aberto > 0
@@ -125,13 +152,20 @@ export function MatriculasPage() {
         />
       )}
 
+      {filtro === 'contratacoes' && (
+        <AprovacoesContratacao solicitacoes={contratacoes ?? []} gestao={ehGestao} />
+      )}
+
       {filtro === 'cancelamentos' && (
         <SolicitacoesCancelamento solicitacoes={pedidos ?? []} gestao={ehGestao} />
       )}
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      {!isLoading && contagens.todas === 0 && (
+      {/* Só nas abas que listam matrícula. Na fila de contratações, um
+          "nenhuma matrícula ativa" embaixo dos pedidos diria o oposto do
+          que a tela mostra: há gente contratando, só não pagou ainda. */}
+      {!isLoading && contagens.todas === 0 && filtro !== 'contratacoes' && filtro !== 'cancelamentos' && (
         <EmptyState
           icon={Users}
           title="Nenhuma matrícula ativa"
@@ -154,54 +188,64 @@ export function MatriculasPage() {
             matricula={m}
             gestao={ehGestao}
             pedidoCancelamento={comPedido.has(m.saldo.matricula_id ?? '')}
-            onRenovar={() =>
-              confirmar.pedir({
-                titulo: 'Adiantar a renovação?',
-                tom: 'arquivar',
-                textoConfirmar: 'Renovar agora',
-                descricao: (
-                  <>
-                    A virada acontece sozinha quando o ciclo termina. Renovar agora começa o
-                    próximo ciclo já
-                    {m.ehTurmaFixa
-                      ? ' — use quando o pagamento entrou por fora e você quer liberar na frente do aluno.'
-                      : ` e, se o plano não acumula, o saldo restante de ${m.clienteNome} expira.`}
-                  </>
-                ),
-                aoConfirmar: () => renovar.mutateAsync(m.saldo.matricula_id!),
-              })
-            }
-            onBonus={() => setBonus(m)}
-            onInadimplir={() => inadimplir.mutate(m.saldo.matricula_id!)}
-            onCancelar={() =>
-              confirmar.pedir({
-                titulo: 'Cancelar a assinatura?',
-                tom: 'arquivar',
-                textoConfirmar: 'Cancelar assinatura',
-                descricao: (
-                  <>
-                    A cobrança automática de {m.clienteNome} para.{' '}
-                    {m.ehTurmaFixa ? (
-                      <>
-                        A vaga na turma continua sendo dela até {fmtData(m.saldo.data_fim)} e só
-                        depois volta para a grade.
-                      </>
-                    ) : (
-                      <>
-                        Os créditos já pagos continuam valendo até {fmtData(m.saldo.data_fim)} —
-                        nada é apagado.
-                      </>
-                    )}
-                  </>
-                ),
-                aoConfirmar: async () => {
-                  await cancelar.mutateAsync({ matriculaId: m.saldo.matricula_id! })
-                },
-              })
-            }
+            onAbrir={() => setAbertaId(m.saldo.matricula_id ?? null)}
           />
         ))}
       </div>
+
+      {aberta && (
+        <MatriculaDetalhe
+          matricula={aberta}
+          gestao={ehGestao}
+          pedidoCancelamento={comPedido.has(aberta.saldo.matricula_id ?? '')}
+          onFechar={() => setAbertaId(null)}
+          onRenovar={() =>
+            confirmar.pedir({
+              titulo: 'Adiantar a renovação?',
+              tom: 'arquivar',
+              textoConfirmar: 'Renovar agora',
+              descricao: (
+                <>
+                  A virada acontece sozinha quando o ciclo termina. Renovar agora começa o
+                  próximo ciclo já
+                  {aberta.ehTurmaFixa
+                    ? ' — use quando o pagamento entrou por fora e você quer liberar na frente do aluno.'
+                    : ` e, se o plano não acumula, o saldo restante de ${aberta.clienteNome} expira.`}
+                </>
+              ),
+              aoConfirmar: () => renovar.mutateAsync(aberta.saldo.matricula_id!),
+            })
+          }
+          onBonus={() => setBonus(aberta)}
+          onInadimplir={() => inadimplir.mutate(aberta.saldo.matricula_id!)}
+          onCancelar={() =>
+            confirmar.pedir({
+              titulo: 'Cancelar a assinatura?',
+              tom: 'arquivar',
+              textoConfirmar: 'Cancelar assinatura',
+              descricao: (
+                <>
+                  A cobrança automática de {aberta.clienteNome} para.{' '}
+                  {aberta.ehTurmaFixa ? (
+                    <>
+                      A vaga na turma continua sendo dela até {fmtData(aberta.saldo.data_fim)} e
+                      só depois volta para a grade.
+                    </>
+                  ) : (
+                    <>
+                      Os créditos já pagos continuam valendo até {fmtData(aberta.saldo.data_fim)}{' '}
+                      — nada é apagado.
+                    </>
+                  )}
+                </>
+              ),
+              aoConfirmar: async () => {
+                await cancelar.mutateAsync({ matriculaId: aberta.saldo.matricula_id! })
+              },
+            })
+          }
+        />
+      )}
 
       {novo && <MatriculaForm onFechar={() => setNovo(false)} />}
       {bonus && <BonusCreditos matricula={bonus} onFechar={() => setBonus(null)} />}
@@ -214,19 +258,13 @@ function CartaoMatricula({
   matricula: m,
   gestao,
   pedidoCancelamento,
-  onRenovar,
-  onBonus,
-  onInadimplir,
-  onCancelar,
+  onAbrir,
 }: {
   matricula: MatriculaCompleta
   gestao: boolean
   /** O aluno pediu cancelamento pelo portal e ninguém respondeu ainda. */
   pedidoCancelamento: boolean
-  onRenovar: () => void
-  onBonus: () => void
-  onInadimplir: () => void
-  onCancelar: () => void
+  onAbrir: () => void
 }) {
   const s = m.saldo
   const emAberto = s.status === 'inadimplente'
@@ -234,7 +272,16 @@ function CartaoMatricula({
 
   return (
     <article
-      className={`flex flex-col gap-3 rounded-lg border bg-white p-4 shadow-sm transition ${
+      onClick={onAbrir}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onAbrir()
+        }
+      }}
+      className={`flex cursor-pointer flex-col gap-3 rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-neutral-300 hover:shadow-md ${
         emAberto ? 'border-danger-300' : 'border-neutral-200/80'
       }`}
     >
@@ -301,58 +348,21 @@ function CartaoMatricula({
         )}
       </div>
 
+      {/* Só a contagem. A lista com os botões de trocar/encerrar turma
+          mora no painel: dentro de um cartão que virou clicável, cada
+          botão ali seria um alvo competindo com o clique de abrir. */}
       {m.ehTurmaFixa && (
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-            {m.turmas.length + m.turmasFuturas.length === 1
-              ? 'Turma vinculada'
-              : 'Turmas vinculadas'}
-          </p>
-          <TurmasVinculadas matricula={m} gestao={gestao} />
-        </div>
+        <p className="text-xs text-neutral-500">
+          {m.turmas.length + m.turmasFuturas.length === 1
+            ? '1 turma vinculada'
+            : `${m.turmas.length + m.turmasFuturas.length} turmas vinculadas`}
+        </p>
       )}
 
       {gestao && (
-        <div className="flex flex-wrap gap-1.5 border-t border-neutral-100 pt-2.5">
-          {!cancelando && (
-            <button
-              onClick={onRenovar}
-              title="Recebeu por fora e quer liberar o próximo ciclo sem esperar a virada"
-              className="rounded-md bg-success-50 px-2.5 py-1 text-xs font-medium text-success-700 transition hover:bg-success-100"
-            >
-              renovar agora
-            </button>
-          )}
-          {/*
-            Vale também para turma fixa: é assim que a aluna de assento
-            fixo ganha uma aula extra fora da turma dela.
-          */}
-          <button
-            onClick={onBonus}
-            title="Cortesia ou reposição — entra no saldo dela com prazo e motivo"
-            className="rounded-md px-2.5 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50"
-          >
-            dar crédito
-          </button>
-          {s.status === 'ativa' && (
-            <button
-              onClick={onInadimplir}
-              title="Mensalidade não entrou: bloqueia novos agendamentos até regularizar"
-              className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition hover:bg-danger-50 hover:text-danger-600"
-            >
-              não pagou
-            </button>
-          )}
-          {!cancelando && (
-            <button
-              onClick={onCancelar}
-              title="Desliga a renovação no fim do ciclo pago"
-              className="ml-auto rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
-            >
-              cancelar assinatura
-            </button>
-          )}
-        </div>
+        <p className="border-t border-neutral-100 pt-2.5 text-[11px] text-neutral-400">
+          Abrir para ver o histórico e agir
+        </p>
       )}
     </article>
   )

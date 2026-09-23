@@ -3,6 +3,7 @@ import { Check, Landmark, RotateCcw, X } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { Input } from '../../../components/ui/Input'
+import { PainelLateral } from '../../../components/ui/PainelLateral'
 import { Select } from '../../../components/ui/Select'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { fmtDataHora } from '../../../lib/datas'
@@ -92,21 +93,12 @@ export function FechamentoDetalhe({
   const linha = 'flex items-center justify-between text-sm'
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-10 flex w-96 flex-col border-l border-neutral-100 bg-white shadow-xl">
-      <div className="flex items-start justify-between border-b border-neutral-100 px-5 py-4">
-        <div>
-          <h2 className="text-base font-semibold text-neutral-900">{professora.nome}</h2>
-          <p className="mt-0.5 text-xs text-neutral-400">Fechamento · {competencia}</p>
-        </div>
-        <button
-          onClick={onFechar}
-          className="rounded-md px-2 py-1 text-xs text-neutral-400 transition hover:bg-neutral-50 hover:text-neutral-700"
-        >
-          Fechar
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+    <PainelLateral
+      titulo={professora.nome}
+      subtitulo={`Fechamento · ${competencia}`}
+      onFechar={onFechar}
+    >
+      <div>
         {/* Resumo */}
         <div className="mb-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-lg bg-neutral-50 py-2">
@@ -263,6 +255,6 @@ export function FechamentoDetalhe({
         )}
       </div>
       {confirmar.dialogo}
-    </aside>
+    </PainelLateral>
   )
 }

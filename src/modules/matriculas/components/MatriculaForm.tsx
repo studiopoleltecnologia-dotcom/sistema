@@ -12,7 +12,7 @@ import {
   descreverCobranca,
   type Produto,
 } from '../../produtos/types'
-import { useMatricular } from '../hooks/useMatriculas'
+import { useSolicitarContratacao } from '../hooks/useContratacoes'
 import { NovoAlunoRapido } from './NovoAlunoRapido'
 import { SeletorTurmaFixa } from './SeletorTurmaFixa'
 
@@ -46,7 +46,7 @@ export function MatriculaForm({
 }) {
   const { data: clientes } = useClientes()
   const { data: produtos } = useProdutos()
-  const matricular = useMatricular()
+  const matricular = useSolicitarContratacao()
 
   const [clienteId, setClienteId] = useState(clienteFixo?.id ?? '')
   const [produtoId, setProdutoId] = useState('')
@@ -115,7 +115,7 @@ export function MatriculaForm({
   }
 
   return (
-    <Modal title="Nova matrícula" onFechar={onFechar} size={ehTurmaFixa ? 'lg' : 'md'}>
+    <Modal title="Nova contratação" onFechar={onFechar} size={ehTurmaFixa ? 'lg' : 'md'}>
       <form onSubmit={submeter} className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -253,6 +253,16 @@ export function MatriculaForm({
           </div>
         )}
 
+        {/* O que acontece ao enviar, dito antes de enviar. Era a dúvida
+            da gestão: "apertou vender e o aluno já apareceu matriculado —
+            e o pagamento?". Agora não aparece, e a tela diz por quê. */}
+        {produto && (produto.preco_centavos ?? 0) > 0 && (
+          <p className="rounded-md bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-600">
+            A matrícula e os créditos saem quando o pagamento for confirmado. Até lá, a
+            contratação fica em <b>Matrículas → Contratações</b>.
+          </p>
+        )}
+
         {erro && <p className="text-sm text-danger-600">{erro}</p>}
 
         {pedeJustificativa && (
@@ -288,7 +298,7 @@ export function MatriculaForm({
               (pedeJustificativa && justificativa.trim().length === 0)
             }
           >
-            {pedeJustificativa ? 'Autorizar e matricular' : 'Matricular'}
+            {pedeJustificativa ? 'Autorizar e registrar' : 'Registrar contratação'}
           </Button>
         </div>
       </form>
