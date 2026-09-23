@@ -828,10 +828,12 @@ export type Database = {
         Row: {
           atualizada_em: string
           id: boolean
+          juros_mes_atraso_pct: number
           limite_mei_centavos: number
           meta_faturamento_anual_centavos: number
           meta_faturamento_mensal_centavos: number
           meta_reserva_meses: number
+          multa_atraso_pct: number
           percentual_reserva: number
           saldo_inicial_centavos: number
           saldo_inicial_data: string
@@ -839,10 +841,12 @@ export type Database = {
         Insert: {
           atualizada_em?: string
           id?: boolean
+          juros_mes_atraso_pct?: number
           limite_mei_centavos?: number
           meta_faturamento_anual_centavos?: number
           meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
+          multa_atraso_pct?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number
           saldo_inicial_data?: string
@@ -850,10 +854,12 @@ export type Database = {
         Update: {
           atualizada_em?: string
           id?: boolean
+          juros_mes_atraso_pct?: number
           limite_mei_centavos?: number
           meta_faturamento_anual_centavos?: number
           meta_faturamento_mensal_centavos?: number
           meta_reserva_meses?: number
+          multa_atraso_pct?: number
           percentual_reserva?: number
           saldo_inicial_centavos?: number
           saldo_inicial_data?: string

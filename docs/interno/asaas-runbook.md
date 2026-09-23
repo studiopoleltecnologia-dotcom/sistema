@@ -204,3 +204,42 @@ CNAE compatível.
 Quando liberar, ele substitui o caminho do cartão: muda o corpo enviado
 em `asaas-cobranca`, e `cobrancas` / `assinaturas_gateway` / webhook
 continuam iguais.
+
+## Inadimplência — o que acontece quando não paga
+
+| Momento | O que o sistema faz |
+|---|---|
+| D-`dias_antecedencia_cobranca` | emite a cobrança do ciclo seguinte e manda o link |
+| Ciclo termina **sem pagamento** | `marcar_inadimplente()` — a matrícula sai de "ativa" |
+| Enquanto inadimplente | **não recebe os créditos do mês novo** e `agendar_aula()` recusa |
+| Paga atrasado (link, cartão ou baixa manual) | volta para "ativa" e os créditos são liberados |
+
+Os créditos do ciclo **já pago** não são apagados — mas também não são
+usáveis, porque agendar exige matrícula ativa. É essa a alavanca.
+
+⚠️ O desbloqueio no pagamento atrasado é feito por **gatilho em
+`entradas_financeiras`** (`20260928120000`), não dentro do webhook. Pagar
+atrasado acontece por mais de uma porta — gateway, baixa manual no
+Financeiro, acerto no banco — e resolver só no webhook deixaria as
+outras com o mesmo defeito.
+
+## Multa e juros de atraso
+
+Existem e **nascem desligados** (`config_financeiro.multa_atraso_pct` e
+`juros_mes_atraso_pct`, ambos `0`). Enquanto estiverem em zero, nada é
+enviado ao Asaas e atrasar não custa dinheiro — a única consequência é o
+bloqueio.
+
+Para ligar:
+
+```sql
+update config_financeiro
+set multa_atraso_pct = 2, juros_mes_atraso_pct = 1;
+```
+
+O Asaas aplica sozinho quando o aluno paga depois do vencimento.
+
+⚠️ **Antes de ligar, isto precisa estar no regulamento que o aluno
+aceitou.** Cobrar multa que ninguém combinou é problema, não automação.
+Os tetos do CDC para mensalidade são 2% de multa e 1% de juros ao mês, e
+há um `check` no banco que impede passar disso por erro de digitação.

@@ -68,6 +68,27 @@ async function asaas(caminho: string, init?: RequestInit) {
   return { ok: r.ok, status: r.status, corpo }
 }
 
+
+/**
+ * Multa e juros de atraso, do jeito que o Asaas espera.
+ *
+ * Nascem em zero na config: cobrar multa precisa estar no regulamento
+ * que o aluno aceitou. Enquanto estiverem zeradas, nada é enviado e o
+ * atraso não custa nada — a consequência é só o bloqueio.
+ */
+async function encargosDeAtraso(sb: ReturnType<typeof createClient>) {
+  const { data } = await sb
+    .from('config_financeiro')
+    .select('multa_atraso_pct, juros_mes_atraso_pct')
+    .maybeSingle()
+  const multa = Number(data?.multa_atraso_pct ?? 0)
+  const juros = Number(data?.juros_mes_atraso_pct ?? 0)
+  return {
+    ...(multa > 0 ? { fine: { value: multa } } : {}),
+    ...(juros > 0 ? { interest: { value: juros } } : {}),
+  }
+}
+
 /** Só dígitos — o Asaas recusa CPF com pontuação. */
 const digitos = (s: string | null | undefined) => (s ?? '').replace(/\D/g, '')
 
@@ -247,6 +268,7 @@ Deno.serve(async (req) => {
       dueDate: venc,
       description: `${sol.produto_nome} — Studio Pole L`,
       externalReference: sol.id, // amarra o webhook de volta à solicitação
+      ...(await encargosDeAtraso(sb)),
     }),
   })
   if (!r.ok) return json({ erro: 'Asaas recusou a cobrança', detalhe: r.corpo }, 502)
@@ -298,6 +320,8 @@ async function emitirPendentes(sb: ReturnType<typeof createClient>) {
     .limit(200)
   if (error) return json({ erro: error.message }, 500)
 
+  // Lido uma vez, não por aluno: é config do estúdio, igual para todos.
+  const encargos = await encargosDeAtraso(sb)
   const resultado = { emitidas: 0, falhas: [] as { aluno: string; erro: string }[] }
 
   for (const p of pendentes ?? []) {
@@ -320,6 +344,7 @@ async function emitirPendentes(sb: ReturnType<typeof createClient>) {
           dueDate: p.vencimento,
           description: p.descricao ?? 'Studio Pole L',
           externalReference: p.entrada_id,
+          ...encargos,
         }),
       })
       if (!r.ok) throw new Error(JSON.stringify(r.corpo))
