@@ -3497,6 +3497,19 @@ export type Database = {
           },
         ]
       }
+      vw_historico_matricula: {
+        Row: {
+          autor_nome: string | null
+          detalhe: string | null
+          id: string | null
+          matricula_id: string | null
+          quando: string | null
+          tipo: string | null
+          titulo: string | null
+          valor_centavos: number | null
+        }
+        Relationships: []
+      }
       vw_matricula_turmas: {
         Row: {
           capacidade: number | null
@@ -3860,6 +3873,7 @@ export type Database = {
           cliente_id: string | null
           cliente_nome: string | null
           decidida_em: string | null
+          decisor_nome: string | null
           forma_pagamento: string | null
           id: string | null
           justificativa: string | null
@@ -3872,6 +3886,7 @@ export type Database = {
           produto_nome: string | null
           produto_status: Database["public"]["Enums"]["status_produto"] | null
           solicitada_em: string | null
+          solicitante_nome: string | null
           status: Database["public"]["Enums"]["status_solicitacao"] | null
           tipo_produto: Database["public"]["Enums"]["tipo_produto"] | null
           turmas: string[] | null

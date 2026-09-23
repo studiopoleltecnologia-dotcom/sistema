@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Clock, ShieldAlert, Wallet } from 'lucide-react'
+import { CheckCircle2, Clock, ShieldAlert, User, Wallet } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { EmptyState } from '../../../components/ui/EmptyState'
@@ -184,10 +184,22 @@ function Cartao({
         </p>
       )}
 
-      <p className="mt-2 text-[11px] text-neutral-400">
-        Pedido em {fmtDataHora(s.solicitada_em!)}
-        {s.decidida_em && ` · aprovado em ${fmtDataHora(s.decidida_em)}`}
-      </p>
+      {/* Quem pediu e quem aprovou, com nome. Os ids já estavam na
+          tabela desde o começo; sem o nome, a informação existia e não
+          respondia a pergunta que se faz olhando a fila. */}
+      <div className="mt-2 flex flex-col gap-0.5 text-[11px] text-neutral-400">
+        <p className="flex items-center gap-1">
+          <User className="size-2.5" />
+          Pedido por {s.solicitante_nome ?? (s.origem === 'portal' ? 'ele mesmo' : 'equipe')} em{' '}
+          {fmtDataHora(s.solicitada_em!)}
+        </p>
+        {s.decidida_em && (
+          <p className="flex items-center gap-1">
+            <CheckCircle2 className="size-2.5" />
+            Aprovado por {s.decisor_nome ?? 'sistema'} em {fmtDataHora(s.decidida_em)}
+          </p>
+        )}
+      </div>
 
       {gestao && (
         <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-neutral-100 pt-2">

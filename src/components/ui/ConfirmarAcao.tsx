@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react'
-import { AlertTriangle, Archive } from 'lucide-react'
+import { AlertTriangle, Archive, CheckCircle2 } from 'lucide-react'
 import { Button } from './Button'
 import { Modal } from './Modal'
 
@@ -12,12 +12,16 @@ import { Modal } from './Modal'
  * separar "isto arquiva, dá para voltar" de "isto apaga para sempre" — e
  * essa diferença é a informação mais importante do diálogo.
  *
- * Dois tons, porque as duas ações não têm o mesmo peso:
+ * Três tons, porque as ações não têm o mesmo peso:
  *   arquivar — some da tela, o histórico continua de pé, dá para reverter
  *   excluir  — a linha deixa de existir. Só para o que não é referenciado
  *              por histórico (ver comentário em cada chamada).
+ *   confirmar — não destrói nada, mas move dinheiro ou libera acesso
+ *              (renovar ciclo, dar baixa em pagamento). Ganhou o mesmo
+ *              duplo-check porque é tão difícil de desfazer na prática
+ *              quanto excluir: o crédito já foi para a mão do aluno.
  */
-export type TomConfirmacao = 'excluir' | 'arquivar'
+export type TomConfirmacao = 'excluir' | 'arquivar' | 'confirmar'
 
 export type PedidoConfirmacao = {
   titulo: string
@@ -26,6 +30,13 @@ export type PedidoConfirmacao = {
   tom?: TomConfirmacao
   /** Rótulo do botão destrutivo. O padrão vem do tom. */
   textoConfirmar?: string
+  /**
+   * Se a tela deve avisar "não pode ser desfeita". Por padrão segue o
+   * tom (`excluir` avisa), mas os dois são separáveis: cancelar uma
+   * assinatura merece o vermelho de uma ação pesada **e** é reversível.
+   * Afirmar o contrário seria mentir para ganhar cautela.
+   */
+  irreversivel?: boolean
   aoConfirmar: () => void | Promise<void>
 }
 
@@ -74,6 +85,10 @@ export function useConfirmar() {
 const PADRAO: Record<TomConfirmacao, { rotulo: string; icone: typeof AlertTriangle }> = {
   excluir: { rotulo: 'Excluir', icone: AlertTriangle },
   arquivar: { rotulo: 'Arquivar', icone: Archive },
+  // Não destrói nada, mas move dinheiro ou libera acesso — e é tão
+  // difícil de desfazer na prática quanto excluir, porque o crédito já
+  // foi para a mão do aluno. Mesmo duplo-check, sinal visual diferente.
+  confirmar: { rotulo: 'Confirmar', icone: CheckCircle2 },
 }
 
 export function ConfirmarAcao({
@@ -95,12 +110,16 @@ export function ConfirmarAcao({
       <div className="flex gap-3">
         <Icone
           className={`mt-0.5 size-5 shrink-0 ${
-            tom === 'excluir' ? 'text-danger-600' : 'text-warning-600'
+            tom === 'excluir'
+              ? 'text-danger-600'
+              : tom === 'confirmar'
+                ? 'text-success-600'
+                : 'text-warning-600'
           }`}
         />
         <div className="min-w-0 flex-1 text-sm text-neutral-600">
           {pedido.descricao}
-          {tom === 'excluir' && (
+          {(pedido.irreversivel ?? tom === 'excluir') && (
             <p className="mt-2 font-medium text-danger-700">Esta ação não pode ser desfeita.</p>
           )}
         </div>
