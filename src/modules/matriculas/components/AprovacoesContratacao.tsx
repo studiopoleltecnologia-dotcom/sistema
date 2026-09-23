@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Clock, Link2, ShieldAlert, User, Wallet } from 'lucide-react'
+import { CheckCircle2, Clock, CreditCard, Link2, ShieldAlert, User, Wallet } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { EmptyState } from '../../../components/ui/EmptyState'
@@ -388,17 +388,47 @@ function CobrancaOuBaixa({ s, onPagar }: { s: Solicitacao; onPagar: () => void }
             </a>
           </>
         ) : (
-          <Button
-            size="sm"
-            loading={emitir.isPending}
-            onClick={() => {
-              setErro(null)
-              emitir.mutate(s.id!, { onError: (e) => setErro((e as Error).message) })
-            }}
-          >
-            <Link2 className="size-3.5" />
-            Gerar link de pagamento
-          </Button>
+          <>
+            {/*
+              Dois links, e a diferença não é técnica — é quanto custa e
+              quem age todo mês:
+
+                Pix     R$1,99 por cobrança, e o ALUNO paga a cada ciclo
+                Cartão  ~3%, e debita sozinho depois da 1ª autorização
+
+              Por isso os dois textos dizem a consequência em vez de só
+              nomear o meio de pagamento.
+            */}
+            <Button
+              size="sm"
+              loading={emitir.isPending && !emitir.variables?.cartao}
+              onClick={() => {
+                setErro(null)
+                emitir.mutate(
+                  { id: s.id! },
+                  { onError: (e) => setErro((e as Error).message) },
+                )
+              }}
+            >
+              <Link2 className="size-3.5" />
+              Cobrar no Pix
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={emitir.isPending && emitir.variables?.cartao === true}
+              onClick={() => {
+                setErro(null)
+                emitir.mutate(
+                  { id: s.id!, cartao: true },
+                  { onError: (e) => setErro((e as Error).message) },
+                )
+              }}
+            >
+              <CreditCard className="size-3.5" />
+              Assinar no cartão
+            </Button>
+          </>
         )}
         <button
           onClick={onPagar}
@@ -409,10 +439,14 @@ function CobrancaOuBaixa({ s, onPagar }: { s: Solicitacao; onPagar: () => void }
         </button>
       </div>
 
-      {link && (
+      {link ? (
         <p className="text-[11px] text-neutral-400">
-          O aluno escolhe Pix ou cartão no link. Quando pagar, a matrícula é criada sozinha —
-          não precisa voltar aqui.
+          Quando o aluno pagar, a matrícula é criada sozinha — não precisa voltar aqui.
+        </p>
+      ) : (
+        <p className="text-[11px] text-neutral-400">
+          <b>Pix</b> custa R$1,99 e o aluno paga todo mês (o link do próximo ciclo vai por
+          e-mail sozinho). <b>Cartão</b> custa ~3% e debita sozinho depois da 1ª autorização.
         </p>
       )}
       {erro && <p className="text-[11px] text-danger-600">{erro}</p>}

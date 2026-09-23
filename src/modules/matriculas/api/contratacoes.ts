@@ -92,9 +92,9 @@ export async function cancelarSolicitacao(id: string) {
  * emitir uma segunda — duas cobranças do mesmo plano é o erro que o
  * aluno percebe.
  */
-export async function emitirCobranca(solicitacaoId: string) {
+export async function emitirCobranca(solicitacaoId: string, cartao = false) {
   const { data, error } = await requireSupabase().functions.invoke('asaas-cobranca', {
-    body: { solicitacao_id: solicitacaoId },
+    body: { solicitacao_id: solicitacaoId, cartao },
   })
   if (error) {
     // `FunctionsHttpError` guarda o corpo da resposta, que é onde está a
@@ -111,5 +111,13 @@ export async function emitirCobranca(solicitacaoId: string) {
     }
     throw error
   }
-  return data as { cobranca_id: string; url: string; vencimento: string; ja_existia?: boolean }
+  return data as {
+    cobranca_id?: string
+    assinatura_id?: string
+    url: string
+    vencimento?: string
+    recorrente?: boolean
+    expira_em_horas?: number
+    ja_existia?: boolean
+  }
 }

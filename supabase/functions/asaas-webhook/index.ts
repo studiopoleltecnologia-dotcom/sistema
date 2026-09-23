@@ -67,7 +67,11 @@ Deno.serve(async (req) => {
     return new Response('unauthorized', { status: 401 })
   }
 
-  let payload: { event?: string; payment?: Record<string, unknown> }
+  let payload: {
+    event?: string
+    payment?: Record<string, unknown>
+    checkout?: Record<string, unknown>
+  }
   try {
     payload = await req.json()
   } catch {
@@ -75,6 +79,45 @@ Deno.serve(async (req) => {
   }
 
   const evento = payload.event ?? ''
+
+  const sbCheckout = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
+  // ---- Checkout de assinatura (o caminho do cartão) ----
+  // É aqui que a cobrança do cartão deixa de ser nossa: a partir de
+  // CHECKOUT_PAID quem gera cada ciclo é o Asaas, e o nosso emissor
+  // para de listar essa matrícula (vw_cobrancas_a_emitir).
+  if (evento.startsWith('CHECKOUT_')) {
+    const chk = payload.checkout
+    if (!chk?.id) return ok('sem_checkout', { evento })
+    try {
+      if (evento === 'CHECKOUT_PAID') {
+        const { data, error } = await sbCheckout.rpc('assinatura_ativada', {
+          p_provider: 'asaas',
+          p_checkout_ref: String(chk.id),
+          p_provider_ref: chk.subscription ? String(chk.subscription) : null,
+        })
+        if (error) throw error
+        return ok(String(data), { evento })
+      }
+      if (evento === 'CHECKOUT_CANCELED' || evento === 'CHECKOUT_EXPIRED') {
+        const { data, error } = await sbCheckout.rpc('assinatura_encerrada', {
+          p_provider: 'asaas',
+          p_checkout_ref: String(chk.id),
+          p_status: evento === 'CHECKOUT_EXPIRED' ? 'expirada' : 'cancelada',
+        })
+        if (error) throw error
+        return ok(String(data), { evento })
+      }
+      return ok('ignorado', { evento })
+    } catch (e) {
+      console.error('asaas-webhook erro no checkout', evento, chk.id, e)
+      return new Response('erro ao processar', { status: 500 })
+    }
+  }
+
   const pagamento = payload.payment
   if (!pagamento?.id) return ok('sem_pagamento', { evento })
 
@@ -87,6 +130,22 @@ Deno.serve(async (req) => {
   )
 
   try {
+    // Cobrança que a ASSINATURA do cartão gerou. Nasce lá, então
+    // precisa ser registrada aqui antes que a baixa consiga achá-la.
+    // `payment.subscription` é o campo que identifica a origem.
+    if (evento === 'PAYMENT_CREATED' && pagamento.subscription) {
+      const { data, error } = await sb.rpc('registrar_cobranca_de_assinatura', {
+        p_provider: 'asaas',
+        p_assinatura_ref: String(pagamento.subscription),
+        p_provider_ref: ref,
+        p_valor_centavos: Math.round(Number(pagamento.value ?? 0) * 100),
+        p_vencimento: String(pagamento.dueDate ?? '').slice(0, 10),
+        p_descricao: String(pagamento.description ?? 'Mensalidade'),
+      })
+      if (error) throw error
+      return ok(String(data), { evento })
+    }
+
     if (PAGOS.has(evento)) {
       // `paymentDate` é o dia que o dinheiro entrou; sem ele, agora.
       // A data importa: é ela que vai para `data_caixa` e conta no

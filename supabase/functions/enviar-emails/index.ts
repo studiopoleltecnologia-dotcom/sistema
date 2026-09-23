@@ -118,6 +118,24 @@ function render(tipo: string, d: Dados): Render {
           { texto: 'Renovar meu plano', url: PORTAL }),
       }
     }
+    // A cobrança do ciclo, emitida sozinha pelo cron `emitir-cobrancas`.
+    // Diferente de `vencimento`, que só avisa: aqui vai o LINK de
+    // pagamento, e por isso o botão aponta para ele e não para o portal
+    // — é o clique que resolve, sem escala pelo app.
+    case 'cobranca_do_ciclo': {
+      const valor = fmtReais(d.valor_centavos as number)
+      const venc = dataExtenso(d.vencimento as string)
+      const url = (d.url as string) || PORTAL
+      return {
+        assunto: 'Sua mensalidade do Studio Pole L',
+        html: layout('Mensalidade disponível 💜',
+          `Oi, ${nome}! A mensalidade de <strong style="color:#241f33">${d.produto ?? 'seu plano'}</strong> já pode ser paga.<br><br>
+           Valor: <strong>${valor}</strong><br>
+           Vence em: <strong>${venc}</strong><br><br>
+           É só abrir o link e escolher como pagar.`,
+          { texto: 'Pagar agora', url }),
+      }
+    }
     // Regulamento 4.7 + procedimento interno: "quando a terceira falta
     // acontecer, avisar por escrito no mesmo dia e registrar. Não deixar
     // a pessoa descobrir sozinha na hora de agendar." Este e-mail é a

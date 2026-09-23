@@ -70,7 +70,10 @@ export function useConfirmarPagamento() {
 
 export function useEmitirCobranca() {
   const invalidar = useInvalidar()
-  return useMutation({ mutationFn: emitirCobranca, onSuccess: invalidar })
+  return useMutation({
+    mutationFn: (a: { id: string; cartao?: boolean }) => emitirCobranca(a.id, a.cartao),
+    onSuccess: invalidar,
+  })
 }
 
 export function useCancelarSolicitacao() {

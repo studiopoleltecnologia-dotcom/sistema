@@ -16,7 +16,9 @@ Supabase, por alguém com acesso, e que nenhuma migration pode fazer.
 | `registrar_cobranca`, `cobranca_paga`, `cobranca_vencida`, `cobranca_cancelada` | idem |
 | Emissão da cobrança | `supabase/functions/asaas-cobranca` |
 | Recebimento do pagamento | `supabase/functions/asaas-webhook` |
-| Botão "Gerar link de pagamento" | Matrículas → Contratações |
+| Botões **Cobrar no Pix** / **Assinar no cartão** | Matrículas → Contratações |
+| Recorrência (cron `emitir-cobrancas`, 9h) | `20260927120000_cobranca_recorrente.sql` |
+| Assinatura de cartão (`assinaturas_gateway`) | idem |
 
 ## 1. Chaves — uma por ambiente
 
@@ -81,10 +83,13 @@ supabase secrets set ASAAS_WEBHOOK_TOKEN='<o valor gerado>' \
 | URL | `https://nhoircibjcxsakjimisp.supabase.co/functions/v1/asaas-webhook` |
 | Token de autenticação | o mesmo `ASAAS_WEBHOOK_TOKEN` do passo 2 |
 | Versão da API | v3 |
-| Eventos | **Cobranças** |
+| Eventos | **Cobranças** e **Checkout** |
 
 Em produção, a URL é a mesma trocando o `project-ref` por
 `fgvxhwpqsxohqrccrlfn`.
+
+⚠️ **Marcar Checkout também.** Sem esses eventos o cartão nunca ativa:
+é o `CHECKOUT_PAID` que avisa que o aluno autorizou a assinatura.
 
 ### ⚠️ A armadilha dos 15 erros
 
@@ -127,11 +132,15 @@ supabase functions deploy asaas-webhook  --project-ref nhoircibjcxsakjimisp
 1. Cadastre um aluno com **e-mail e CPF** (o Asaas exige CPF — ver
    abaixo).
 2. Matrículas → Nova contratação → escolha um plano pago.
-3. Matrículas → **Contratações** → **Gerar link de pagamento**.
+3. Matrículas → **Contratações** → **Cobrar no Pix** (ou **Assinar no
+   cartão**, para testar a recorrência).
 4. Abra o link. No sandbox dá para marcar como pago sem dinheiro real:
    painel → Cobranças → a cobrança → **Receber em dinheiro**.
 5. Confira que a contratação virou **concluída** sozinha, que a matrícula
    existe e que os créditos foram liberados.
+6. Para testar a recorrência do Pix sem esperar um mês: crie a entrada do
+   ciclo seguinte (`select cobrar_ciclo(<matricula>, 2, current_date)`) e
+   rode `select disparar_cobrancas();` — deve sair cobrança e e-mail.
 
 Se nada acontecer, o log da função diz onde parou:
 
@@ -150,18 +159,48 @@ a emissão da cobrança, dizendo o nome de quem está sem.
 Na prática: **todo aluno que for pagar pelo gateway precisa ter CPF na
 ficha.** Os cadastros antigos não têm.
 
+## Como a recorrência funciona — os dois caminhos
+
+Decisão da gestão em 23/09/2026: oferecer os dois, com o aluno
+escolhendo na contratação.
+
+| | Pix | Cartão |
+|---|---|---|
+| Quem gera a cobrança de cada ciclo | **nosso cron** (`emitir-cobrancas`, 9h) | **o Asaas** (assinatura) |
+| Quem age todo mês | o aluno, pagando | ninguém — debita sozinho |
+| Custo | R$1,99 por cobrança | ~3% |
+| A equipe clica em quê | nada | nada |
+
+Nos dois casos a equipe não faz nada depois da primeira vez. A diferença
+é o **aluno** precisar pagar ativamente no Pix.
+
+### O que impede a cobrança dupla
+
+`vw_cobrancas_a_emitir` exclui matrícula que tem assinatura **ativa** em
+`assinaturas_gateway`. Sem isso, o mesmo mês sairia duas vezes: uma pelo
+nosso cron, outra pela assinatura do Asaas.
+
+### Por que o cartão não usa o nosso cron
+
+`POST /payments` com `creditCardToken` exige `remoteIp`, e a doc do Asaas
+é explícita em que precisa ser **o IP do aparelho do aluno**, não o do
+servidor. Numa cobrança mensal disparada por cron não existe aluno na
+tela, logo não existe esse IP.
+
+O checkout recorrente resolve na raiz: o aluno autoriza na página do
+Asaas, e quem captura o IP é o Asaas.
+
+⚠️ **O link do checkout expira em 24h** (`minutesToExpire`, máximo aceito
+pela API). Se o aluno demorar, é só gerar outro.
+
 ## Pix Automático — não disponível nesta conta
 
-O Pix Automático do Banco Central (`paymentCreationMode: SUBSCRIPTION`)
-deixaria o aluno autorizar uma vez e os ciclos seguintes debitarem
-sozinhos, ao custo fixo de Pix. Ele **não apareceu no painel** desta
-conta em 23/09/2026 — exige CNPJ ativo há 6+ meses, conta aprovada e
+O Pix Automático do Banco Central deixaria o aluno autorizar uma vez e os
+ciclos seguintes debitarem sozinhos **ao custo fixo de Pix** — o melhor
+dos dois mundos. A gestão conferiu em 23/09/2026 e **a opção não aparece
+no painel** desta conta; exige CNPJ ativo há 6+ meses, conta aprovada e
 CNAE compatível.
 
-O que foi feito no lugar: `billingType: UNDEFINED`, que abre uma página
-onde o aluno escolhe **Pix ou cartão**. Funciona hoje, com a diferença
-de que o Pix exige o aluno pagar ativamente cada ciclo — o cartão é que
-cobra sozinho.
-
-Quando o Pix Automático liberar, o que muda é só o `billingType` na
-função `asaas-cobranca`; a tabela `cobrancas` e o webhook não mudam.
+Quando liberar, ele substitui o caminho do cartão: muda o corpo enviado
+em `asaas-cobranca`, e `cobrancas` / `assinaturas_gateway` / webhook
+continuam iguais.
