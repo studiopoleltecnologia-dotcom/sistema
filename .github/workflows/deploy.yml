@@ -42,15 +42,20 @@ jobs:
           version: 2.109.1
       - run: supabase link --project-ref "$REF"
       - run: supabase db push
+      # `--use-api` em TODAS: empacota no servidor, sem Docker. Sem a flag,
+      # a CLI baixa `public.ecr.aws/supabase/edge-runtime` e o ECR público
+      # limita download por IP — runners compartilham IP, e o deploy falha
+      # com `toomanyrequests: Rate exceeded` sem nada ter mudado no código.
+      # Ver o comentário mais longo em dev.yml. Não remover.
       - run: |
-          supabase functions deploy wellhub-webhook --no-verify-jwt --project-ref "$REF"
-          supabase functions deploy enviar-emails --project-ref "$REF"
+          supabase functions deploy --use-api wellhub-webhook --no-verify-jwt --project-ref "$REF"
+          supabase functions deploy --use-api enviar-emails --project-ref "$REF"
           # Sem --no-verify-jwt de propósito: quem chama é o cron do banco
           # (disparar_publicacao_grade_wellhub), com Bearer da anon_key do
           # Vault. A função não checa auth sozinha — Deno.serve ignora o
           # request e usa a service_role —, então liberar o JWT deixaria
           # qualquer um disparando publicação de grade na Wellhub.
-          supabase functions deploy wellhub-publicar-grade --project-ref "$REF"
+          supabase functions deploy --use-api wellhub-publicar-grade --project-ref "$REF"
 
       # Um passo por função a partir daqui — ver o comentário equivalente
       # em dev.yml: com passos nomeados, o painel diz qual função falhou
@@ -60,13 +65,13 @@ jobs:
         # header `asaas-access-token`, não um JWT do Supabase. Com
         # verificação todo webhook levaria 401 — e 15 falhas seguidas
         # PAUSAM a fila inteira da conta no Asaas.
-        run: supabase functions deploy asaas-webhook --no-verify-jwt --project-ref "$REF"
+        run: supabase functions deploy --use-api asaas-webhook --no-verify-jwt --project-ref "$REF"
 
       - name: Edge Function — asaas-cobranca
         # MANTÉM a verificação: é chamada pela tela (JWT da gestão) e pelo
         # cron `emitir-cobrancas` (Bearer da anon_key do Vault). Liberar
         # deixaria qualquer um emitindo cobrança no gateway.
-        run: supabase functions deploy asaas-cobranca --project-ref "$REF"
+        run: supabase functions deploy --use-api asaas-cobranca --project-ref "$REF"
 
   build:
     needs: supabase-prod
