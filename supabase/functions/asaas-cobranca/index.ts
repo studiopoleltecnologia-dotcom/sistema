@@ -29,7 +29,7 @@
 //   ASAAS_API_BASE   base da API. Default sandbox; produção é
 //                    https://api.asaas.com/v3
 // ============================================================
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 
 const API_BASE = Deno.env.get('ASAAS_API_BASE') ?? 'https://api-sandbox.asaas.com/v3'
 const API_KEY = Deno.env.get('ASAAS_API_KEY') ?? ''
@@ -76,7 +76,7 @@ async function asaas(caminho: string, init?: RequestInit) {
  * que o aluno aceitou. Enquanto estiverem zeradas, nada é enviado e o
  * atraso não custa nada — a consequência é só o bloqueio.
  */
-async function encargosDeAtraso(sb: ReturnType<typeof createClient>) {
+async function encargosDeAtraso(sb: SupabaseClient) {
   const { data } = await sb
     .from('config_financeiro')
     .select('multa_atraso_pct, juros_mes_atraso_pct')
@@ -312,7 +312,7 @@ Deno.serve(async (req) => {
  * fim e o resumo diz quantos falharam. Um CPF faltando não pode impedir
  * a cobrança dos demais.
  */
-async function emitirPendentes(sb: ReturnType<typeof createClient>) {
+async function emitirPendentes(sb: SupabaseClient) {
   const { data: pendentes, error } = await sb
     .from('vw_cobrancas_a_emitir')
     .select('*')
@@ -392,7 +392,7 @@ async function emitirPendentes(sb: ReturnType<typeof createClient>) {
 
 /** Cria o aluno no gateway se ainda não existir, e guarda o id. */
 async function garantirCustomer(
-  sb: ReturnType<typeof createClient>,
+  sb: SupabaseClient,
   c: {
     id: string
     nome: string
