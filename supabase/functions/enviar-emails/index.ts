@@ -123,13 +123,14 @@ function render(tipo: string, d: Dados): Render {
     // pagamento, e por isso o botão aponta para ele e não para o portal
     // — é o clique que resolve, sem escala pelo app.
     case 'cobranca_do_ciclo': {
+      const produto = (d.produto as string) || 'seu plano'
       const valor = fmtReais(d.valor_centavos as number)
       const venc = dataExtenso(d.vencimento as string)
       const url = (d.url as string) || PORTAL
       return {
         assunto: 'Sua mensalidade do Studio Pole L',
         html: layout('Mensalidade disponível 💜',
-          `Oi, ${nome}! A mensalidade de <strong style="color:#241f33">${d.produto ?? 'seu plano'}</strong> já pode ser paga.<br><br>
+          `Oi, ${nome}! A mensalidade de <strong style="color:#241f33">${produto}</strong> já pode ser paga.<br><br>
            Valor: <strong>${valor}</strong><br>
            Vence em: <strong>${venc}</strong><br><br>
            É só abrir o link e escolher como pagar.`,
