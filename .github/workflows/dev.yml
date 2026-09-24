@@ -45,3 +45,15 @@ jobs:
           # request e usa a service_role —, então liberar o JWT deixaria
           # qualquer um disparando publicação de grade na Wellhub.
           supabase functions deploy wellhub-publicar-grade --project-ref "$REF"
+
+          # --no-verify-jwt: quem chama é o Asaas, que manda o token DELE
+          # no header `asaas-access-token`, não um JWT do Supabase. Com
+          # verificação de JWT todo webhook levaria 401 — e 15 falhas
+          # seguidas PAUSAM a fila inteira da conta no Asaas.
+          supabase functions deploy asaas-webhook --no-verify-jwt --project-ref "$REF"
+
+          # Esta MANTÉM a verificação: é chamada pela tela (JWT da gestão)
+          # e pelo cron `emitir-cobrancas` (Bearer da anon_key do Vault).
+          # Os dois mandam JWT válido, e liberar deixaria qualquer um
+          # emitindo cobrança no gateway.
+          supabase functions deploy asaas-cobranca --project-ref "$REF"
