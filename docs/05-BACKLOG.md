@@ -426,6 +426,41 @@ Recomendação: oferecer os dois, com **PIX como padrão visível**.
 10. E-mail de **cobrança recusada** (A7) passa a fazer sentido aqui.
 11. Semestral = a mesma assinatura mensal limitada a 6 cobranças.
 
+### 11.4 Achados da homologação em produção (27/09/2026)
+
+Levantados pelo planejamento de três agentes (criador → crítico →
+balizador) e conferidos contra o código. Os que bloqueavam a
+homologação entraram na `feat/validacao-cadastro-e-plano-teste`; estes
+ficaram de fora de propósito:
+
+12. **Cartão recorrente não conclui a contratação.** `CHECKOUT_PAID` →
+    `assinatura_ativada()` só marca a assinatura como `ativa` e nunca
+    chama `confirmar_pagamento_contratacao()`; o `PAYMENT_RECEIVED`
+    seguinte cai em `cobranca_paga` como `desconhecida`. O aluno paga e a
+    matrícula não nasce. **Botão escondido** por `flags.cartaoRecorrente`
+    até corrigir. (O cartão dentro do link do Pix — `billingType
+    UNDEFINED` — funciona.)
+13. **Templates `contratacao_*` não existem** em `enviar-emails`:
+    `contratacao_aguardando_aprovacao`, `_aprovada` e `_concluida` caem
+    em `default: return null` e ficam na fila como `erro`. O link de
+    pagamento já sai (via `cobranca_do_ciclo`); faltam os avisos de
+    "recebemos seu pedido" e "plano ativo".
+14. **Link de pagamento em "Meu plano"** no portal — hoje só por e-mail.
+15. **Estrangeiro sem CPF não é cobrável pelo Asaas.** `foreignCustomer`
+    exige liberação do gerente da conta e só aceita cartão internacional.
+    Hoje a saída é "recebi por fora".
+16. **`wa.me` com número internacional** (`linkWhatsApp`,
+    `SolicitacoesCancelamento`, Follow-up) prefixa 55 e quebra o link de
+    estrangeiro.
+17. **Telefone gravado como digitado.** Não normalizar foi decisão (ver
+    cabeçalho de `20260930120000`); padronizar exige backfill e ajuste
+    das telas que exibem.
+18. **Estorno não desfaz a receita.** `cobranca_cancelada` com estorno
+    muda só a cobrança; a entrada continua `recebida` no MEI. Hoje o
+    acerto é manual no Financeiro.
+19. **Cópias `ASAAS_*` em `vault.secrets` da produção** — a função lê de
+    `Deno.env`, não do Vault. Remover pelo painel (nunca por migration).
+
 ---
 
 ## 12. WhatsApp — passo a passo
