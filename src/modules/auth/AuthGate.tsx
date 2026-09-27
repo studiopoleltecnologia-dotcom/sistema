@@ -99,6 +99,16 @@ type Dono = 'aluno' | 'professora' | 'ambos' | 'nenhum'
  *
  * `replace` e não `href`: o endereço errado não fica no histórico, senão o
  * botão "voltar" do navegador traz a pessoa para cá de novo.
+ *
+ * **Aluno que acabou de confirmar o e-mail (27/09/2026).** Ele ainda não é
+ * "aluno" para o banco — o vínculo em `contas_aluna` só nasce quando ele
+ * completa o cadastro no portal. Se o link de confirmação o trouxe para a
+ * raiz (acontece quando o endereço do portal não está nas Redirect URLs do
+ * Supabase), a consulta acima dá "nenhum" e ele lia "peça para a gestão
+ * liberar". O cadastro pelo portal grava `papel: 'cliente'` nos metadados
+ * da conta; aqui isso decide só PARA QUAL TELA ir — o portal do aluno, que
+ * não dá acesso a nada sem o vínculo. Metadado continua sem decidir
+ * privilégio (CLAUDE.md 5.1).
  */
 function SemFuncaoInterna() {
   const dono = useQuery({
@@ -114,6 +124,9 @@ function SemFuncaoInterna() {
       if (aluno.data && professora.data) return 'ambos'
       if (aluno.data) return 'aluno'
       if (professora.data) return 'professora'
+      // Cadastro pelo portal ainda sem vínculo (ver comentário acima).
+      const { data: u } = await sb.auth.getUser()
+      if (u.user?.user_metadata?.papel === 'cliente') return 'aluno'
       return 'nenhum'
     },
   })
