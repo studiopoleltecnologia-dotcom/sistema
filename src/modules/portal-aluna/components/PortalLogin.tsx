@@ -1,8 +1,26 @@
 import { useState, type FormEvent } from 'react'
+import { MailWarning } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 
 const inputCls =
   'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand-500'
+
+/**
+ * Para onde os links de e-mail (confirmação e senha) devolvem o aluno:
+ * o próprio portal em que ele está — `/agendamentos/` ou o domínio do
+ * aluno.
+ *
+ * Sem isto no `signUp`, o Supabase manda o link de confirmação para a
+ * Site URL do projeto, que é a raiz do ERP. O aluno recém-confirmado caía
+ * na tela da equipe e lia "peça para a gestão liberar o seu e-mail" —
+ * porque o vínculo de aluno só nasce depois, quando ele completa o
+ * cadastro aqui dentro (27/09/2026).
+ *
+ * Só vale se o endereço estiver em Authentication → URL Configuration →
+ * Redirect URLs. Se não estiver, o Supabase ignora e volta para a raiz —
+ * por isso existe também a rede de segurança em `SemFuncaoInterna`.
+ */
+const urlDoPortal = () => window.location.origin + window.location.pathname
 
 export function PortalLogin() {
   const [modo, setModo] = useState<'entrar' | 'cadastro' | 'recuperar'>('entrar')
@@ -11,6 +29,20 @@ export function PortalLogin() {
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  /** E-mail que está esperando confirmação — mostra o aviso de spam e o reenvio. */
+  const [aguardandoConfirmacao, setAguardandoConfirmacao] = useState<string | null>(null)
+  const [reenvio, setReenvio] = useState<'idle' | 'enviando' | 'enviado' | 'erro'>('idle')
+
+  async function reenviarConfirmacao() {
+    if (!supabase || !aguardandoConfirmacao) return
+    setReenvio('enviando')
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: aguardandoConfirmacao,
+      options: { emailRedirectTo: urlDoPortal() },
+    })
+    setReenvio(error ? 'erro' : 'enviado')
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -21,33 +53,38 @@ export function PortalLogin() {
 
     if (modo === 'recuperar') {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname,
+        redirectTo: urlDoPortal(),
       })
       if (error) setError(error.message)
-      else setAviso('Se esse e-mail tiver conta, enviamos um link para redefinir a senha.')
+      else setAviso('Se esse e-mail tiver conta, enviamos um link para redefinir a senha. Confira também o spam.')
     } else if (modo === 'entrar') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        const amigavel =
-          error.message === 'Email not confirmed'
-            ? 'Seu e-mail ainda não foi confirmado. Procure o link na sua caixa de entrada (ou spam).'
-            : 'E-mail ou senha inválidos.'
+        const naoConfirmado = error.message === 'Email not confirmed'
+        const amigavel = naoConfirmado
+          ? 'Seu e-mail ainda não foi confirmado.'
+          : 'E-mail ou senha inválidos.'
         // Em DEV, o motivo real também aparece. "Inválidos" engolia limite de
         // tentativas, projeto Supabase errado e falha de rede na mesma frase —
         // e aí não dá para saber se o problema é a senha ou o ambiente. O aluno
         // em produção continua vendo só a frase amigável.
         setError(import.meta.env.DEV ? `${amigavel} [${error.message}]` : amigavel)
+        if (naoConfirmado) {
+          setAguardandoConfirmacao(email)
+          setReenvio('idle')
+        }
       }
     } else {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { papel: 'cliente' } },
+        options: { data: { papel: 'cliente' }, emailRedirectTo: urlDoPortal() },
       })
       if (error) {
         setError(error.message === 'User already registered' ? 'Este e-mail já tem conta.' : error.message)
       } else if (!data.session) {
-        setAviso('Conta criada! Confirme seu e-mail e depois faça login.')
+        setAguardandoConfirmacao(email)
+        setReenvio('idle')
         setModo('entrar')
       }
     }
@@ -79,6 +116,44 @@ export function PortalLogin() {
             Ambiente de desenvolvimento ·{' '}
             {String(import.meta.env.VITE_SUPABASE_URL).replace('https://', '').split('.')[0]}
           </p>
+        )}
+
+        {/*
+          O e-mail de confirmação tem caído no spam (Hotmail/Outlook
+          principalmente). Enquanto a autenticação do domínio não estiver
+          completa, o aviso fica à vista — um aluno que não acha o e-mail
+          conclui que o cadastro não funcionou e desiste.
+        */}
+        {aguardandoConfirmacao && (
+          <div className="mb-6 rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm text-warning-800">
+            <p className="mb-2 flex items-center gap-2 font-medium">
+              <MailWarning className="size-4 shrink-0" />
+              Confirme seu e-mail para entrar
+            </p>
+            <p className="mb-2 text-xs leading-relaxed">
+              Enviamos um link para <strong>{aguardandoConfirmacao}</strong>.{' '}
+              <strong>Se não estiver na caixa de entrada, procure no spam ou lixo
+              eletrônico</strong> — e marque como "não é spam" para os próximos avisos
+              chegarem certo.
+            </p>
+            <button
+              type="button"
+              onClick={reenviarConfirmacao}
+              disabled={reenvio === 'enviando' || reenvio === 'enviado'}
+              className="text-xs font-medium text-brand-700 underline underline-offset-2 disabled:no-underline disabled:opacity-70"
+            >
+              {reenvio === 'enviando'
+                ? 'Reenviando…'
+                : reenvio === 'enviado'
+                  ? 'E-mail reenviado. Aguarde alguns minutos.'
+                  : 'Não chegou? Reenviar e-mail'}
+            </button>
+            {reenvio === 'erro' && (
+              <p className="mt-1 text-xs text-red-600">
+                Não foi possível reenviar agora. Espere um minuto e tente de novo.
+              </p>
+            )}
+          </div>
         )}
 
         <label className="mb-4 block">
