@@ -92,6 +92,20 @@ async function encargosDeAtraso(sb: SupabaseClient) {
 /** Só dígitos — o Asaas recusa CPF com pontuação. */
 const digitos = (s: string | null | undefined) => (s ?? '').replace(/\D/g, '')
 
+/**
+ * Telefone no campo certo do customer. O cadastro aceita fixo e "+55"
+ * desde 20260930120000, mas o Asaas valida `mobilePhone` como celular:
+ * mandar fixo ali, ou o número com 55 na frente, faz ele recusar o
+ * cadastro do aluno inteiro — e a cobrança não sai.
+ */
+function telefoneAsaas(tel: string | null | undefined) {
+  let d = digitos(tel)
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) d = d.slice(2)
+  if (d.length === 11) return { mobilePhone: d }
+  if (d.length === 10) return { phone: d }
+  return {} // estrangeiro ou fora do padrão: melhor sem telefone que sem cobrança
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ erro: 'method not allowed' }, 405)
@@ -177,7 +191,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         name: cliente.nome,
         email: cliente.email,
-        mobilePhone: digitos(cliente.telefone) || undefined,
+        ...telefoneAsaas(cliente.telefone),
         cpfCnpj: digitos(cliente.cpf) || undefined,
         externalReference: cliente.id,
         notificationDisabled: true, // quem avisa o aluno somos nós (backlog §11.2.3)
@@ -291,10 +305,36 @@ Deno.serve(async (req) => {
     return json({ erro: erroReg.message, asaas_payment_id: r.corpo.id }, 500)
   }
 
+  // O link vai por e-mail também na 1ª cobrança. Antes só o lote do
+  // cron mandava — na contratação, o aluno dependia de a equipe copiar o
+  // link e mandar por WhatsApp. Mesmo template e mesmo `ref` do lote,
+  // então uma cobrança nunca gera dois e-mails.
+  //
+  // Falha aqui NÃO derruba a resposta: a cobrança já existe no Asaas e
+  // no banco, e a tela mostra o link para a equipe mandar à mão.
+  let emailEnfileirado = false
+  if (cliente.email) {
+    const { error: erroEmail } = await sb.rpc('enfileirar_email', {
+      p_tipo: 'cobranca_do_ciclo',
+      p_destinatario: cliente.email,
+      p_dados: {
+        nome: cliente.nome,
+        produto: sol.produto_nome,
+        valor_centavos: sol.preco_centavos,
+        vencimento: venc,
+        url: r.corpo.invoiceUrl,
+      },
+      p_ref: `cobranca:${r.corpo.id}`,
+    })
+    if (erroEmail) console.error('asaas-cobranca: e-mail do link não enfileirado', erroEmail)
+    emailEnfileirado = !erroEmail
+  }
+
   return json({
     cobranca_id: cobrancaId,
     url: r.corpo.invoiceUrl,
     vencimento: venc,
+    email_enfileirado: emailEnfileirado,
   })
 })
 
@@ -369,6 +409,8 @@ async function emitirPendentes(sb: SupabaseClient) {
         p_tipo: 'cobranca_do_ciclo',
         p_destinatario: p.cliente_email,
         p_dados: {
+          // Sem nome o template abre com "Oi, Olá!" (primeiroNome cai no default).
+          nome: p.cliente_nome,
           produto: p.descricao,
           valor_centavos: p.valor_centavos,
           vencimento: p.vencimento,
@@ -410,7 +452,7 @@ async function garantirCustomer(
     body: JSON.stringify({
       name: c.nome,
       email: c.email ?? undefined,
-      mobilePhone: digitos(c.telefone) || undefined,
+      ...telefoneAsaas(c.telefone),
       cpfCnpj: digitos(c.cpf),
       externalReference: c.id,
       notificationDisabled: true,

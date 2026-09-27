@@ -1,4 +1,12 @@
 import { useState, type FormEvent } from 'react'
+import {
+  ESTAGIOS_DO_FUNIL,
+  formatarCpf,
+  temErros,
+  useConfigCadastro,
+  validarCadastro,
+  type ErrosCadastro,
+} from '../../../lib/cadastro'
 import { flags } from '../../../lib/flags'
 import {
   ESTAGIOS,
@@ -12,7 +20,15 @@ const inputCls =
   'w-full rounded-md border border-neutral-200 px-2.5 py-1.5 text-sm outline-none transition focus:border-brand-500'
 const labelCls = 'mb-1 block text-xs font-medium text-neutral-500'
 
-/** Formulário de criar/editar cliente (modal). Só nome é obrigatório. */
+const erroCls = 'mt-1 text-[11px] text-red-600'
+
+/**
+ * Formulário de criar/editar cliente (modal).
+ *
+ * As regras de nome, telefone, CPF e e-mail vêm de `lib/cadastro.ts`,
+ * espelho do gatilho do banco. Na edição, só o campo mexido é validado:
+ * cadastro antigo com telefone sem DDD continua editável no resto.
+ */
 export function ClienteForm({
   cliente,
   socias,
@@ -40,7 +56,8 @@ export function ClienteForm({
     nome: cliente?.nome ?? '',
     email: cliente?.email ?? null,
     telefone: cliente?.telefone ?? null,
-    cpf: cliente?.cpf ?? null,
+    cpf: cliente?.cpf ? formatarCpf(cliente.cpf) : null,
+    estrangeiro: cliente?.estrangeiro ?? false,
     instagram: cliente?.instagram ?? null,
     origem: cliente?.origem ?? 'whatsapp',
     estagio: cliente?.estagio ?? 'lead',
@@ -64,11 +81,23 @@ export function ClienteForm({
 
   const origens = ORIGENS.filter((o) => o.value !== 'classpass' || flags.classpass)
 
+  const cfg = useConfigCadastro()
+  const [erros, setErros] = useState<ErrosCadastro>({})
+
+  // CPF e e-mail obrigatórios para quem já saiu do funil (e para lead,
+  // se a gestão ligou a opção). Na edição, o banco só exige ao criar.
+  const noFunil = (ESTAGIOS_DO_FUNIL as readonly string[]).includes(form.estagio ?? 'lead')
+  const presencaObrigatoria =
+    !cliente && !form.estrangeiro && (!noFunil || cfg.exigir_cpf_email_no_lead)
+
   function submit(e: FormEvent) {
     e.preventDefault()
     if (!form.nome.trim()) return
     // Contato de emergência é obrigatório (estúdio de atividade física).
     if (!form.contato_emergencia_nome?.trim() || !form.contato_emergencia_telefone?.trim()) return
+    const encontrados = validarCadastro(form, cfg, { original: cliente })
+    setErros(encontrados)
+    if (temErros(encontrados)) return
     onSalvar(form)
   }
 
@@ -95,8 +124,21 @@ export function ClienteForm({
               className={inputCls}
               value={form.nome}
               onChange={(e) => set('nome', e.target.value)}
+              placeholder="nome e sobrenome"
             />
+            {erros.nome && <p className={erroCls}>{erros.nome}</p>}
           </div>
+
+          <label className="sm:col-span-2 -mt-1 flex items-center gap-2 text-xs text-neutral-500">
+            <input
+              id="cliente-estrangeiro"
+              type="checkbox"
+              checked={form.estrangeiro ?? false}
+              onChange={(e) => set('estrangeiro', e.target.checked)}
+              className="accent-brand-600"
+            />
+            Estrangeiro — sem CPF e com telefone de fora; fica fora das regras de cadastro
+          </label>
 
           {/*
             O e-mail é o único canal por onde o sistema fala com o aluno:
@@ -106,7 +148,7 @@ export function ClienteForm({
             sem e-mail — o asterisco avisa antes de a pessoa esbarrar lá.
           */}
           <div className="sm:col-span-2">
-            <label className={labelCls}>E-mail *</label>
+            <label className={labelCls}>E-mail{presencaObrigatoria ? ' *' : ''}</label>
             <input
               type="email"
               className={inputCls}
@@ -114,10 +156,14 @@ export function ClienteForm({
               onChange={(e) => set('email', texto(e.target.value))}
               placeholder="para avisos de aula, cobrança e acesso ao portal"
             />
-            <p className="mt-1 text-[11px] text-neutral-400">
-              Obrigatório para contratar plano — é por onde saem aviso de aula cancelada,
-              vencimento e confirmação de cancelamento.
-            </p>
+            {erros.email ? (
+              <p className={erroCls}>{erros.email}</p>
+            ) : (
+              <p className="mt-1 text-[11px] text-neutral-400">
+                Obrigatório para contratar plano — é por onde saem aviso de aula cancelada,
+                vencimento e confirmação de cancelamento.
+              </p>
+            )}
           </div>
 
           <div>
@@ -126,28 +172,37 @@ export function ClienteForm({
               className={inputCls}
               value={form.telefone ?? ''}
               onChange={(e) => set('telefone', texto(e.target.value))}
-              placeholder="(21) 9…"
+              placeholder={form.estrangeiro ? '+1 …' : '(21) 98765-4321'}
             />
+            {erros.telefone && <p className={erroCls}>{erros.telefone}</p>}
           </div>
           {/*
-            Não é obrigatório de propósito: lead que ainda não virou
-            aluno não tem por que informar CPF, e exigir aqui colocaria
-            barreira no começo do funil. Quem exige é a cobrança — o
-            gateway recusa emitir sem ele, e a tela avisa lá.
+            Obrigatório só para quem já saiu do funil: lead que ainda está
+            conversando não tem por que informar CPF (decisão de 26/09). A
+            contratação de plano exige de qualquer jeito — o gateway não
+            emite cobrança sem ele.
           */}
-          <div>
-            <label className={labelCls}>CPF</label>
-            <input
-              inputMode="numeric"
-              className={inputCls}
-              value={form.cpf ?? ''}
-              onChange={(e) => set('cpf', texto(e.target.value))}
-              placeholder="só números"
-            />
-            <p className="mt-1 text-[11px] text-neutral-400">
-              Necessário para emitir cobrança. Pode ficar em branco enquanto for lead.
-            </p>
-          </div>
+          {!form.estrangeiro && (
+            <div>
+              <label className={labelCls}>CPF{presencaObrigatoria ? ' *' : ''}</label>
+              <input
+                inputMode="numeric"
+                className={inputCls}
+                value={form.cpf ?? ''}
+                onChange={(e) => set('cpf', texto(formatarCpf(e.target.value)))}
+                placeholder="000.000.000-00"
+              />
+              {erros.cpf ? (
+                <p className={erroCls}>{erros.cpf}</p>
+              ) : (
+                <p className="mt-1 text-[11px] text-neutral-400">
+                  {presencaObrigatoria
+                    ? 'Necessário para emitir cobrança.'
+                    : 'Necessário para emitir cobrança. Pode ficar em branco enquanto estiver no funil.'}
+                </p>
+              )}
+            </div>
+          )}
           <div>
             <label className={labelCls}>Instagram</label>
             <input
@@ -265,8 +320,11 @@ export function ClienteForm({
                   className={inputCls}
                   value={form.contato_emergencia_telefone ?? ''}
                   onChange={(e) => set('contato_emergencia_telefone', texto(e.target.value))}
-                  placeholder="(21) 9…"
+                  placeholder="(21) 98765-4321"
                 />
+                {erros.contato_emergencia_telefone && (
+                  <p className={erroCls}>{erros.contato_emergencia_telefone}</p>
+                )}
               </div>
               {/* Opcional: saber que "João" é o marido faz ligar sem
                   hesitar. Exigir seria mais um campo entre o aluno e a

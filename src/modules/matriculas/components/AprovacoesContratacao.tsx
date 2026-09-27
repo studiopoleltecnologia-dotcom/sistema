@@ -6,6 +6,7 @@ import { EmptyState } from '../../../components/ui/EmptyState'
 import { Modal } from '../../../components/ui/Modal'
 import { Select } from '../../../components/ui/Select'
 import { fmtDataHora } from '../../../lib/datas'
+import { flags } from '../../../lib/flags'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import {
   useAprovarContratacao,
@@ -413,6 +414,8 @@ function CobrancaOuBaixa({ s, onPagar }: { s: Solicitacao; onPagar: () => void }
               <Link2 className="size-3.5" />
               Cobrar no Pix
             </Button>
+            {/* Ver flags.cartaoRecorrente: cobra e não matricula. */}
+            {flags.cartaoRecorrente && (
             <Button
               size="sm"
               variant="secondary"
@@ -428,6 +431,7 @@ function CobrancaOuBaixa({ s, onPagar }: { s: Solicitacao; onPagar: () => void }
               <CreditCard className="size-3.5" />
               Assinar no cartão
             </Button>
+            )}
           </>
         )}
         <button
@@ -445,8 +449,10 @@ function CobrancaOuBaixa({ s, onPagar }: { s: Solicitacao; onPagar: () => void }
         </p>
       ) : (
         <p className="text-[11px] text-neutral-400">
-          <b>Pix</b> custa R$1,99 e o aluno paga todo mês (o link do próximo ciclo vai por
-          e-mail sozinho). <b>Cartão</b> custa ~3% e debita sozinho depois da 1ª autorização.
+          <b>Pix</b> custa R$1,99 e o aluno paga todo mês (o link vai por e-mail sozinho).
+          {flags.cartaoRecorrente && (
+            <> <b>Cartão</b> custa ~3% e debita sozinho depois da 1ª autorização.</>
+          )}
         </p>
       )}
       {erro && <p className="text-[11px] text-danger-600">{erro}</p>}
