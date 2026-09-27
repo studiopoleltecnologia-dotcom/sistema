@@ -17,6 +17,9 @@ export async function listarClientes() {
  * pessoa precisa fazer, que é procurar o cadastro que já existe.
  */
 function traduzirErroCliente(error: { code?: string; message?: string }): Error {
+  if (error.code === '23505' && error.message?.includes('clientes_cpf_unico')) {
+    return new Error('Já existe um aluno cadastrado com este CPF — procure por ele na lista.')
+  }
   if (error.code === '23505' && error.message?.includes('clientes_email_unico')) {
     return new Error('Já existe um aluno cadastrado com este e-mail — procure por ele na lista.')
   }
