@@ -49,6 +49,8 @@ export async function criarContaAluna(args: {
   aceiteLgpd: boolean
   emergenciaNome: string
   emergenciaTelefone: string
+  cpf: string | null
+  estrangeiro: boolean
 }) {
   const { data, error } = await requireSupabase().rpc('criar_conta_aluna', {
     p_nome: args.nome,
@@ -58,7 +60,14 @@ export async function criarContaAluna(args: {
     p_aceite_lgpd: args.aceiteLgpd,
     p_contato_emergencia_nome: args.emergenciaNome,
     p_contato_emergencia_telefone: args.emergenciaTelefone,
+    p_cpf: args.cpf ?? undefined,
+    p_estrangeiro: args.estrangeiro,
   })
+  // CPF que já é de outro cadastro: a mensagem crua do índice fala em
+  // "constraint", e o aluno não tem o que fazer com isso.
+  if (error?.code === '23505' && error.message?.includes('clientes_cpf_unico')) {
+    throw new Error('Este CPF já está em outro cadastro do estúdio. Fale com a gente para acertar.')
+  }
   if (error) throw error
   return data
 }
@@ -78,6 +87,7 @@ export async function atualizarMeuCliente(
   patch: {
     nome?: string
     telefone?: string
+    cpf?: string | null
     data_nascimento?: string | null
     contato_emergencia_nome?: string | null
     contato_emergencia_telefone?: string | null

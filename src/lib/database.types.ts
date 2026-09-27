@@ -581,6 +581,7 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           estagio: Database["public"]["Enums"]["estagio_funil"]
+          estrangeiro: boolean
           gympass_id: string | null
           id: string
           instagram: string | null
@@ -606,6 +607,7 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           estagio?: Database["public"]["Enums"]["estagio_funil"]
+          estrangeiro?: boolean
           gympass_id?: string | null
           id?: string
           instagram?: string | null
@@ -631,6 +633,7 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           estagio?: Database["public"]["Enums"]["estagio_funil"]
+          estrangeiro?: boolean
           gympass_id?: string | null
           id?: string
           instagram?: string | null
@@ -824,6 +827,36 @@ export type Database = {
           minutos_reserva_espera?: number
           minutos_tolerancia_atraso?: number
           valor_checkin_wellhub_centavos?: number
+        }
+        Relationships: []
+      }
+      config_cadastro: {
+        Row: {
+          atualizada_em: string
+          exigir_cpf: boolean
+          exigir_cpf_email_no_lead: boolean
+          exigir_email: boolean
+          exigir_sobrenome: boolean
+          id: boolean
+          validar_telefone_br: boolean
+        }
+        Insert: {
+          atualizada_em?: string
+          exigir_cpf?: boolean
+          exigir_cpf_email_no_lead?: boolean
+          exigir_email?: boolean
+          exigir_sobrenome?: boolean
+          id?: boolean
+          validar_telefone_br?: boolean
+        }
+        Update: {
+          atualizada_em?: string
+          exigir_cpf?: boolean
+          exigir_cpf_email_no_lead?: boolean
+          exigir_email?: boolean
+          exigir_sobrenome?: boolean
+          id?: boolean
+          validar_telefone_br?: boolean
         }
         Relationships: []
       }
@@ -4411,13 +4444,19 @@ export type Database = {
         }
         Returns: string
       }
+      cpf_valido: {
+        Args: { p: string }
+        Returns: boolean
+      }
       criar_conta_aluna: {
         Args: {
           p_aceite_lgpd: boolean
           p_contato_emergencia_nome?: string
           p_contato_emergencia_telefone?: string
+          p_cpf?: string
           p_data_nascimento: string
           p_email: string
+          p_estrangeiro?: boolean
           p_nome: string
           p_telefone: string
           p_versao_termo?: string
@@ -4462,6 +4501,10 @@ export type Database = {
         }[]
       }
       emails_gestao: { Args: never; Returns: string[] }
+      email_valido: {
+        Args: { p: string }
+        Returns: boolean
+      }
       encerrar_turma_fixa: {
         Args: { p_imediato?: boolean; p_motivo?: string; p_vinculo: string }
         Returns: string
@@ -4559,7 +4602,9 @@ export type Database = {
         Returns: {
           contato_emergencia_nome: string
           contato_emergencia_telefone: string
+          cpf: string
           data_nascimento: string
+          estrangeiro: boolean
           nome: string
           telefone: string
         }[]
@@ -4628,6 +4673,10 @@ export type Database = {
       montar_fechamento: {
         Args: { p_competencia: string; p_professora: string }
         Returns: number
+      }
+      nome_completo_valido: {
+        Args: { p: string }
+        Returns: boolean
       }
       previa_cancelamento_aulas: {
         Args: { p_data: string; p_turmas: string[] }
@@ -4765,6 +4814,10 @@ export type Database = {
         Returns: string
       }
       suspensao_vigente: { Args: { p_cliente: string }; Returns: string }
+      telefone_br_valido: {
+        Args: { p: string }
+        Returns: boolean
+      }
       tem_assento_fixo: {
         Args: { p_cliente: string; p_data: string; p_turma: string }
         Returns: boolean
