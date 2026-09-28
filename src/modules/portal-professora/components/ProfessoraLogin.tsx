@@ -44,7 +44,12 @@ export function ProfessoraLogin() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { papel: 'professora' } },
+        // Sem emailRedirectTo o link de confirmação volta para a raiz do
+        // ERP (Site URL). Mesma correção do portal do aluno (27/09/2026).
+        options: {
+          data: { papel: 'professora' },
+          emailRedirectTo: window.location.origin + window.location.pathname,
+        },
       })
       if (error) {
         setError(
