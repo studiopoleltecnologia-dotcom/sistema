@@ -9,24 +9,30 @@
 //   4. chama a Access Control API `validate` p/ confirmar ticket válido no dia
 //   5. se positivo, libera → `registrar_checkin_wellhub()` decide a turma.
 //
-// Fluxo de reserva (Booking API), novo nesta migration (20260823100000):
-//   booking-requested       -> acha o Slot em turmas_wellhub_slots, tenta
-//                              agendar_aula(canal='wellhub'); PATCH RESERVED
-//                              ou REJECTED (turma lotada) na Wellhub.
+// Fluxo de reserva (Booking API), como a Wellhub pediu na homologação
+// (28/09/2026, migration 20261001120000):
+//   booking-requested       -> reservar_wellhub() faz a reserva numa
+//                              transação só; depois, em paralelo, PATCH do
+//                              booking (RESERVED/REJECTED) e PATCH do slot
+//                              com o total_booked novo.
 //   booking-canceled/
-//   booking-late-canceled   -> cancela o agendamento pelo booking_number.
-//   checkin-booking-occurred -> acha o agendamento pelo booking_number e
-//                              registra presença DIRETO, sem heurística
-//                              nem fila checkins_pendentes (é o que a
-//                              Booking API elimina na raiz — ver CLAUDE.md
-//                              9.7 e docs/interno/wellhub-api-referencia.md
-//                              §5.4).
+//   booking-late-canceled   -> cancela o agendamento pelo booking_number e
+//                              manda SÓ o PATCH do slot. O booking quem
+//                              cancela é a Wellhub.
+//   checkin-booking-occurred -> acha o agendamento pelo booking_number,
+//                              chama o validate (obrigatório, confirmado
+//                              pela Wellhub) e registra presença DIRETO,
+//                              sem heurística nem fila checkins_pendentes.
+//
+// Idempotente de propósito: toda reentrega refaz o que faltou (o PATCH que
+// falhou) e nada mais. Por isso falha transitória da API da Wellhub
+// responde 500 — a reentrega deles é a nossa retentativa.
 //
 // Segredos (supabase secrets set …; NUNCA no repo — é público, seção 3):
 //   WELLHUB_WEBHOOK_SECRET  secret HMAC gerado por NÓS e informado à Wellhub
 //                           na ativação (valida o X-Gympass-Signature).
 //   WELLHUB_API_TOKEN       Bearer único p/ Access Control + Booking + Setup.
-//   WELLHUB_GYM_ID          id do estúdio. Sandbox: 548.
+//   WELLHUB_GYM_ID          id do estúdio. Sandbox: 548; produção: runbook.
 //   WELLHUB_API_BASE        base da API. Default sandbox apitesting.*;
 //                           produção: https://api.partners.gympass.com
 // ============================================================
@@ -164,119 +170,163 @@ Deno.serve(async (req) => {
 // Payload-chave (docs/interno/wellhub-api-referencia.md §5.4):
 //   user.unique_token, slot.{id, gym_id, class_id, booking_number}, event_id
 // ------------------------------------------------------------
+
+// Desfecho de reservar_wellhub() -> resposta ao booking. `null` = não
+// mandar PATCH de booking (já confirmado, ou já cancelado).
+const REJEICOES: Record<string, { reason: string; reason_category: string }> = {
+  lotada: { reason: 'Turma sem vaga', reason_category: 'CLASS_IS_FULL' },
+  ja_agendado: { reason: 'Aluno já tem reserva nesta aula', reason_category: 'USER_IS_ALREADY_BOOKED' },
+  aula_cancelada: { reason: 'Aula cancelada pelo estúdio', reason_category: 'CLASS_HAS_BEEN_CANCELED' },
+  fora_da_janela: { reason: 'Aula já aconteceu', reason_category: 'CHECK_IN_AND_CANCELATION_WINDOWS_CLOSED' },
+  slot_desconhecido: { reason: 'Slot não reconhecido', reason_category: 'CLASS_NOT_FOUND' },
+  erro: { reason: 'Erro ao processar reserva', reason_category: 'GENERAL_ERROR' },
+}
+
 async function tratarBookingRequested(
   // deno-lint-ignore no-explicit-any
   sb: any,
   payload: Record<string, unknown>,
 ): Promise<Response> {
-  const eventData = (payload.event_data ?? payload) as Record<string, unknown>
-  const user = eventData.user as Record<string, unknown> | undefined
-  const slot = eventData.slot as Record<string, unknown> | undefined
-  const token = String(user?.unique_token ?? '')
-  const slotId = String(slot?.id ?? '')
-  const bookingNumber = String(slot?.booking_number ?? '')
-
-  if (!token || !slotId || !bookingNumber) {
-    console.warn('booking-requested sem token/slot.id/booking_number — payload incompleto')
-    return new Response('ok (payload incompleto)', { status: 200 })
+  const inicio = Date.now()
+  const ev = lerEventoBooking(payload)
+  const log: Record<string, unknown> = {
+    evento: 'booking-requested',
+    event_id: ev.eventId,
+    booking_number: ev.bookingNumber,
+    slot_id: ev.slotId,
   }
 
-  // Reentrega: já resolvemos esse booking antes? Devolve 200 sem reprocessar.
-  const { data: existente } = await sb
-    .from('agendamentos')
-    .select('id')
-    .eq('wellhub_booking_number', bookingNumber)
-    .maybeSingle()
-  if (existente) {
-    return new Response('ok (booking já processado)', { status: 200 })
+  if (!ev.token || !ev.slotId || !ev.bookingNumber) {
+    return responder(200, { ...log, resultado: 'payload_incompleto' }, inicio)
   }
 
-  const { data: slotRow, error: erroSlot } = await sb
-    .from('turmas_wellhub_slots')
-    .select('turma_id, data')
-    .eq('wellhub_slot_id', slotId)
-    .maybeSingle()
-  if (erroSlot || !slotRow) {
-    console.error(`slot ${slotId} não encontrado em turmas_wellhub_slots`)
-    await patchBooking(bookingNumber, {
-      status: 'REJECTED',
-      reason: 'Slot não reconhecido',
-      reason_category: 'CLASS_NOT_FOUND',
-    })
-    return new Response('ok (slot desconhecido)', { status: 200 })
-  }
-
-  const clienteId = await buscarOuCriarCliente(sb, token, String(user?.name ?? ''))
-  if (!clienteId) {
-    console.error('erro ao achar/criar cliente para booking-requested')
-    return new Response('erro interno', { status: 500 })
-  }
-
-  // agendar_aula() com canal='wellhub' pula as travas de crédito/matrícula
-  // (só 'mensalista' passa por elas — 20260821140000_regras_agendamento.sql)
-  // e o trigger validar_vaga_agendamento é quem decide se a turma está cheia.
-  const { data: agendamentoId, error: erroAgendar } = await sb.rpc('agendar_aula', {
-    p_cliente: clienteId,
-    p_turma: slotRow.turma_id,
-    p_data: slotRow.data,
-    p_canal: 'wellhub',
+  const { data: r, error: erroRpc } = await sb.rpc('reservar_wellhub', {
+    p_token: ev.token,
+    p_nome: ev.nome,
+    p_slot: ev.slotId,
+    p_booking: ev.bookingNumber,
   })
+  if (erroRpc || !r) {
+    console.error('reservar_wellhub falhou:', erroRpc?.message)
+    return responder(500, { ...log, resultado: 'erro_banco', erro: erroRpc?.message }, inicio)
+  }
+  Object.assign(log, {
+    resultado: r.resultado,
+    agendamento_id: r.agendamento_id ?? null,
+    total_booked: r.total_booked ?? null,
+  })
+  if (r.erro) console.error(`reservar_wellhub(${ev.bookingNumber}): ${r.erro}`)
 
-  if (erroAgendar) {
-    const lotada = /turma lotada/i.test(erroAgendar.message ?? '')
-    if (!lotada) {
-      console.error('agendar_aula falhou (booking-requested):', erroAgendar.message)
-    }
-    await patchBooking(bookingNumber, {
-      status: 'REJECTED',
-      reason: lotada ? 'Turma sem vaga' : 'Erro ao processar reserva',
-      reason_category: lotada ? 'CLASS_IS_FULL' : 'GENERAL_ERROR',
-    })
-    return new Response('ok (rejeitado)', { status: 200 })
+  // Reservado agora, ou reentrega de uma reserva cuja confirmação ainda não
+  // chegou lá -> RESERVED. Já confirmado ou já cancelado -> nada.
+  const reservar = (r.resultado === 'reservado' || r.resultado === 'duplicado_ativo') &&
+    !r.confirmado
+  const rejeicao = REJEICOES[r.resultado as string]
+  const corpoBooking = reservar
+    ? { status: 'RESERVED' as const }
+    : rejeicao
+    ? { status: 'REJECTED' as const, ...rejeicao }
+    : null
+
+  const classId = ev.classId || String(r.class_id ?? '')
+  const [pb, ps] = await Promise.all([
+    corpoBooking ? patchBooking(ev.bookingNumber, corpoBooking) : null,
+    r.resultado !== 'slot_desconhecido'
+      ? patchSlot(classId, ev.slotId, Number(r.total_booked ?? 0))
+      : null,
+  ])
+  log.patch_booking = resumo(pb)
+  log.patch_slot = resumo(ps)
+
+  if (reservar && pb?.ok && r.agendamento_id) {
+    const { error } = await sb
+      .from('agendamentos')
+      .update({ wellhub_confirmado_em: new Date().toISOString() })
+      .eq('id', r.agendamento_id)
+      .is('wellhub_confirmado_em', null)
+    if (error) console.error('gravar wellhub_confirmado_em falhou:', error.message)
   }
 
-  await sb
-    .from('agendamentos')
-    .update({ wellhub_booking_number: bookingNumber })
-    .eq('id', agendamentoId)
-
-  await patchBooking(bookingNumber, { status: 'RESERVED' })
-  return new Response('ok (reservado)', { status: 200 })
+  const transitorio = Boolean(pb?.transitorio || ps?.transitorio)
+  return responder(transitorio ? 500 : 200, log, inicio)
 }
 
 // ------------------------------------------------------------
-// Booking API — cancelamento (pelo aluno ou tardio).
+// Booking API — cancelamento (pelo aluno ou tardio). A Wellhub cancela o
+// booking do lado dela; a nós cabe liberar a vaga aqui e atualizar o
+// total_booked do slot lá. Sem PATCH de booking.
 // ------------------------------------------------------------
 async function tratarBookingCancelado(
   // deno-lint-ignore no-explicit-any
   sb: any,
   payload: Record<string, unknown>,
 ): Promise<Response> {
-  const eventData = (payload.event_data ?? payload) as Record<string, unknown>
-  const slot = eventData.slot as Record<string, unknown> | undefined
-  const bookingNumber = String(slot?.booking_number ?? '')
-  if (!bookingNumber) {
-    return new Response('ok (sem booking_number)', { status: 200 })
+  const inicio = Date.now()
+  const ev = lerEventoBooking(payload)
+  const log: Record<string, unknown> = {
+    evento: String(payload.event_type ?? ''),
+    event_id: ev.eventId,
+    booking_number: ev.bookingNumber,
+    slot_id: ev.slotId,
+  }
+  if (!ev.bookingNumber) {
+    return responder(200, { ...log, resultado: 'sem_booking_number' }, inicio)
   }
 
-  const { data: agendamento } = await sb
+  const { data: agendamento, error: erroBusca } = await sb
     .from('agendamentos')
     .select('id, status')
-    .eq('wellhub_booking_number', bookingNumber)
+    .eq('wellhub_booking_number', ev.bookingNumber)
     .maybeSingle()
-  if (!agendamento || agendamento.status === 'cancelado') {
-    return new Response('ok (nada a cancelar)', { status: 200 })
+  if (erroBusca) {
+    console.error('busca do agendamento falhou:', erroBusca.message)
+    return responder(500, { ...log, resultado: 'erro_banco' }, inicio)
   }
 
-  const { error } = await sb.rpc('cancelar_agendamento', {
-    p_agendamento: agendamento.id,
-    p_origem: 'sistema',
-  })
-  if (error) {
-    console.error('cancelar_agendamento falhou:', error.message)
-    return new Response('erro interno', { status: 500 })
+  if (!agendamento) {
+    log.resultado = 'nao_encontrado'
+  } else if (agendamento.status !== 'agendado') {
+    log.resultado = 'ja_cancelado'
+  } else {
+    const { error } = await sb.rpc('cancelar_agendamento', {
+      p_agendamento: agendamento.id,
+      p_origem: 'sistema',
+    })
+    // Duas entregas simultâneas: a segunda perde a corrida no `for update`
+    // de cancelar_agendamento e cai aqui — o desfecho é o mesmo.
+    if (error && !/já cancelado/.test(error.message ?? '')) {
+      console.error('cancelar_agendamento falhou:', error.message)
+      return responder(500, { ...log, resultado: 'erro_banco' }, inicio)
+    }
+    log.resultado = error ? 'ja_cancelado' : 'cancelado'
   }
-  return new Response('ok (cancelado)', { status: 200 })
+  log.agendamento_id = agendamento?.id ?? null
+
+  // Sempre reafirma o número do slot, mesmo sem nada a cancelar aqui: o
+  // valor é absoluto, então corrigir um desvio antigo não custa nada.
+  if (!ev.slotId) {
+    log.patch_slot = 'sem_slot_id'
+    return responder(200, log, inicio)
+  }
+  const { data: ocupacao, error: erroOcup } = await sb.rpc('wellhub_ocupacao_slot', {
+    p_slot: ev.slotId,
+  })
+  if (erroOcup) {
+    console.error('wellhub_ocupacao_slot falhou:', erroOcup.message)
+    return responder(500, { ...log, patch_slot: 'erro_banco' }, inicio)
+  }
+  if (!ocupacao) {
+    log.patch_slot = 'slot_desconhecido'
+    return responder(200, log, inicio)
+  }
+  log.total_booked = ocupacao.total_booked
+  const ps = await patchSlot(
+    ev.classId || String(ocupacao.class_id ?? ''),
+    ev.slotId,
+    Number(ocupacao.total_booked ?? 0),
+  )
+  log.patch_slot = resumo(ps)
+  return responder(ps.transitorio ? 500 : 200, log, inicio)
 }
 
 // ------------------------------------------------------------
@@ -285,43 +335,60 @@ async function tratarBookingCancelado(
 // aponta direto pro agendamento, sem heurística de horário nem fila).
 // Payload-chave: booking.booking_number, user.unique_token, expires_at.
 //
-// Mantemos a chamada a /validate antes de gravar presença, pela mesma razão
-// do check-in avulso — é o que confirma a transação de repasse. A doc não diz
-// explicitamente se esse evento já dispensa o /validate; tratar como
-// suposição a confirmar no teste de sandbox (ver plano de verificação).
+// O /validate é obrigatório aqui (confirmado pela Wellhub em 28/09/2026): é
+// ele que gera a transação de repasse. Sem token, não há como validar —
+// então não registra presença, senão nasceria uma entrada "a reconciliar"
+// que a Wellhub nunca vai pagar.
 // ------------------------------------------------------------
 async function tratarCheckinBookingOccurred(
   // deno-lint-ignore no-explicit-any
   sb: any,
   payload: Record<string, unknown>,
 ): Promise<Response> {
+  const inicio = Date.now()
   const eventData = (payload.event_data ?? payload) as Record<string, unknown>
   const booking = eventData.booking as Record<string, unknown> | undefined
   const user = eventData.user as Record<string, unknown> | undefined
   const bookingNumber = String(booking?.booking_number ?? '')
-  const token = String(user?.unique_token ?? '')
+  const log: Record<string, unknown> = {
+    evento: 'checkin-booking-occurred',
+    event_id: String(eventData.event_id ?? payload.event_id ?? '') || null,
+    booking_number: bookingNumber,
+  }
 
   if (!bookingNumber) {
-    console.warn('checkin-booking-occurred sem booking_number')
-    return new Response('ok (sem booking_number)', { status: 200 })
+    return responder(200, { ...log, resultado: 'sem_booking_number' }, inicio)
   }
 
-  const { data: agendamento } = await sb
+  const { data: agendamento, error: erroBusca } = await sb
     .from('agendamentos')
-    .select('id, turma_id, data, cliente_id')
+    .select('id, turma_id, data, cliente_id, status, clientes ( gympass_id )')
     .eq('wellhub_booking_number', bookingNumber)
     .maybeSingle()
+  if (erroBusca) {
+    console.error('busca do agendamento falhou:', erroBusca.message)
+    return responder(500, { ...log, resultado: 'erro_banco' }, inicio)
+  }
   if (!agendamento) {
-    console.error(`agendamento não encontrado para booking_number ${bookingNumber}`)
-    return new Response('ok (agendamento não encontrado)', { status: 200 })
+    return responder(200, { ...log, resultado: 'agendamento_nao_encontrado' }, inicio)
+  }
+  log.agendamento_id = agendamento.id
+  // Reserva cancelada (pela aluna ou por aula cancelada pelo estúdio) não
+  // vira presença: seria pagar professora por aula que não houve.
+  if (agendamento.status !== 'agendado') {
+    return responder(200, { ...log, resultado: 'agendamento_nao_ativo' }, inicio)
   }
 
-  if (token) {
-    const validacao = await validarAccessControl(token)
-    if (!validacao.ok) {
-      console.warn(`validate negou/erro p/ booking ${bookingNumber}: ${validacao.motivo}`)
-      return new Response('ok (ticket não validado)', { status: 200 })
-    }
+  const token = String(user?.unique_token ?? '') ||
+    String(agendamento.clientes?.gympass_id ?? '')
+  if (!token) {
+    return responder(200, { ...log, resultado: 'sem_token' }, inicio)
+  }
+
+  const validacao = await validarAccessControl(token)
+  log.validate = validacao.ok ? 'ok' : validacao.motivo
+  if (!validacao.ok) {
+    return responder(200, { ...log, resultado: 'ticket_nao_validado' }, inicio)
   }
 
   const { error } = await sb.rpc('registrar_presenca', {
@@ -333,9 +400,40 @@ async function tratarCheckinBookingOccurred(
   })
   if (error) {
     console.error('registrar_presenca falhou (checkin-booking-occurred):', error.message)
-    return new Response('erro interno', { status: 500 })
+    return responder(500, { ...log, resultado: 'erro_banco' }, inicio)
   }
-  return new Response('ok (presenca)', { status: 200 })
+  return responder(200, { ...log, resultado: 'presenca' }, inicio)
+}
+
+// Campos que os eventos de booking trazem em event_data (formato real,
+// conferido no cURL da Wellhub de 28/09/2026).
+function lerEventoBooking(payload: Record<string, unknown>) {
+  const eventData = (payload.event_data ?? payload) as Record<string, unknown>
+  const user = eventData.user as Record<string, unknown> | undefined
+  const slot = eventData.slot as Record<string, unknown> | undefined
+  return {
+    eventId: String(eventData.event_id ?? payload.event_id ?? '') || null,
+    token: String(user?.unique_token ?? ''),
+    nome: String(user?.name ?? ''),
+    slotId: String(slot?.id ?? ''),
+    classId: String(slot?.class_id ?? ''),
+    bookingNumber: String(slot?.booking_number ?? ''),
+  }
+}
+
+// Uma linha de log por evento, sem nome/e-mail/telefone, e o mesmo objeto
+// como corpo da resposta — a Wellhub ignora o corpo; nós lemos nos testes.
+function responder(
+  status: number,
+  corpo: Record<string, unknown>,
+  inicio: number,
+): Response {
+  const saida = { ...corpo, ms: Date.now() - inicio }
+  console.log(JSON.stringify({ fn: 'wellhub-webhook', status, ...saida }))
+  return new Response(JSON.stringify(saida), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 // ------------------------------------------------------------
@@ -373,37 +471,96 @@ async function buscarOuCriarCliente(
 }
 
 // ------------------------------------------------------------
-// PATCH /booking/v2/gyms/:gym_id/bookings/:booking_number — confirma ou
-// recusa a reserva. Precisa responder em até 15 min (aqui é síncrono, no
-// mesmo request do webhook — bem dentro do prazo).
+// Chamadas à Booking API. Devolvem o desfecho em vez de só logar: o
+// webhook precisa saber se a Wellhub aceitou para gravar
+// wellhub_confirmado_em e para decidir entre 200 e 500.
+//
+// `transitorio` = vale tentar de novo (rede, 429, 5xx, secret ausente).
+// 4xx é definitivo: repetir não muda a resposta.
 // ------------------------------------------------------------
-async function patchBooking(
-  bookingNumber: string,
-  body: { status: 'RESERVED' | 'REJECTED'; reason?: string; reason_category?: string },
-): Promise<void> {
+type ResultadoWellhub = {
+  ok: boolean
+  http: number | null
+  corpo: string
+  tentativas: number
+  transitorio: boolean
+}
+
+async function chamarWellhub(path: string, body: unknown): Promise<ResultadoWellhub> {
   const bearer = await getBearer()
   if (!bearer || !GYM_ID) {
-    console.error('WELLHUB_API_TOKEN/WELLHUB_GYM_ID ausentes — não deu pra confirmar booking')
-    return
+    console.error('WELLHUB_API_TOKEN/WELLHUB_GYM_ID ausentes — PATCH não enviado')
+    return { ok: false, http: null, corpo: 'secrets ausentes', tentativas: 0, transitorio: true }
   }
-  try {
-    const res = await fetch(
-      `${API_BASE}/booking/v2/gyms/${GYM_ID}/bookings/${bookingNumber}`,
-      {
+  const esperas = [0, 200, 500]
+  let ultimo: ResultadoWellhub = {
+    ok: false,
+    http: null,
+    corpo: '',
+    tentativas: 0,
+    transitorio: true,
+  }
+  for (let i = 0; i < esperas.length; i++) {
+    if (esperas[i]) await new Promise((r) => setTimeout(r, esperas[i]))
+    try {
+      const res = await fetch(`${API_BASE}${path}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${bearer}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
-      },
-    )
-    if (!res.ok) {
-      console.error(`PATCH booking ${bookingNumber} falhou: HTTP ${res.status}`)
+        signal: AbortSignal.timeout(3000),
+      })
+      const corpo = (await res.text()).slice(0, 300)
+      const transitorio = res.status === 429 || res.status >= 500
+      ultimo = { ok: res.ok, http: res.status, corpo, tentativas: i + 1, transitorio }
+      if (!transitorio) break
+    } catch (e) {
+      ultimo = {
+        ok: false,
+        http: null,
+        corpo: (e as Error).message,
+        tentativas: i + 1,
+        transitorio: true,
+      }
     }
-  } catch (e) {
-    console.error(`PATCH booking ${bookingNumber} falha de rede:`, (e as Error).message)
   }
+  if (!ultimo.ok) {
+    console.error(`PATCH ${path} falhou: HTTP ${ultimo.http ?? '-'} ${ultimo.corpo}`)
+  }
+  return ultimo
+}
+
+// PATCH /booking/v2/gyms/:gym_id/bookings/:booking_number — confirma ou
+// recusa a reserva. A Wellhub dá 15 min; aqui sai no mesmo request.
+function patchBooking(
+  bookingNumber: string,
+  body: { status: 'RESERVED' | 'REJECTED'; reason?: string; reason_category?: string },
+): Promise<ResultadoWellhub> {
+  return chamarWellhub(`/booking/v2/gyms/${GYM_ID}/bookings/${bookingNumber}`, body)
+}
+
+// PATCH /booking/v1/gyms/:gym_id/classes/:class_id/slots/:slot_id — só
+// total_booked. Valor absoluto: reenviar é inofensivo e corrige desvio.
+async function patchSlot(
+  classId: string,
+  slotId: string,
+  totalBooked: number,
+): Promise<ResultadoWellhub> {
+  if (!classId) {
+    console.error(`slot ${slotId} sem class_id (nem no payload, nem no mapa) — total_booked não enviado`)
+    return { ok: false, http: null, corpo: 'sem class_id', tentativas: 0, transitorio: false }
+  }
+  return await chamarWellhub(
+    `/booking/v1/gyms/${GYM_ID}/classes/${classId}/slots/${slotId}`,
+    { total_booked: totalBooked },
+  )
+}
+
+function resumo(r: ResultadoWellhub | null) {
+  if (!r) return null
+  return { http: r.http, tentativas: r.tentativas, ...(r.ok ? {} : { corpo: r.corpo }) }
 }
 
 // ------------------------------------------------------------
