@@ -244,6 +244,10 @@ plataformas parceiras) — referência de comparação, não de cópia de interf
   nunca podem divergir. Modelagem recomendada: uma única tabela de
   agendamentos com coluna de origem (`mensalista` | `wellhub` | `avulsa`...); a
   vaga disponível é sempre `capacidade - count(agendamentos ativos)`.
+- **O número que vai para a Wellhub** (`total_booked` do slot) sai de
+  `wellhub_total_booked()`: agendados de todos os canais **+ vagas de turma
+  fixa** (`assentos_fixos_ocupados()`), limitado à capacidade — o mesmo que o
+  Portal mostra. Reserva segurada pela lista de espera fica de fora.
 
 ### 9.2 Auditoria e histórico de interações
 
@@ -573,6 +577,19 @@ no portal, essa marcação deve chamar o `validate`. **Ainda não implementado**
   `{"resultado":"presenca"|"pendente"|"duplicado", …}`, sempre `200` para
   desfecho de negócio; `500` só em falha de banco (a reentrega é segura agora
   que a idempotência é garantida por índice único parcial).
+- **Eventos de booking** (homologação de 28/09/2026, `20261001120000`):
+  `booking-requested` → `reservar_wellhub()` + PATCH do booking + PATCH do
+  slot (`total_booked`); `booking-canceled`/`booking-late-canceled` → só o
+  PATCH do slot (**a Wellhub cancela o booking**, nós não). Resposta em JSON
+  com o `resultado` e o HTTP de cada PATCH. Responde `500` também quando a
+  API da Wellhub falha de forma transitória (rede, 429, 5xx): a reentrega é
+  segura porque a reserva é travada pelo `booking_number` e só repete o
+  PATCH que faltou. `agendamentos.wellhub_confirmado_em` registra quando a
+  Wellhub aceitou o RESERVED — o log expira, a coluna não.
+- **Reserva + check-in chegam em dois eventos** (check-in avulso e
+  `checkin-booking-occurred`), e o `/validate` é obrigatório no de booking
+  (confirmado pela Wellhub). A presença é idempotente (única por turma, dia
+  e aluno), então os dois eventos não duplicam presença nem receita.
 - ⚠️ **Pré-requisito de ativação em produção:** a grade precisa estar cadastrada
   em `turmas` no Supabase — ativar antes disso faz *todo* check-in cair em
   `sem_turma` e a fila travar a conciliação do mês.
