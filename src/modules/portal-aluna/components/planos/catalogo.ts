@@ -84,6 +84,39 @@ export function entregaDoPlano(p: Produto): string {
     : `${creditos} ${porCiclo(p)}, ${plural(n, 'válido')} até a renovação`
 }
 
+/**
+ * "≈ 2 aulas por semana" — a tradução do número de créditos para a
+ * pergunta que o aluno realmente faz ("dá para eu vir quantas vezes?").
+ *
+ * O mês civil tem 4 semanas e alguma sobra, daí o "≈": 8 créditos dão 2
+ * por semana com folga em mês de 5 semanas. Devolve null quando a conta
+ * não fecha redonda — é melhor não dizer do que dizer errado.
+ */
+export function frequenciaSemanal(p: Produto): string | null {
+  if (!p.gera_credito || p.creditos_por_ciclo < 4) return null
+  if (p.creditos_por_ciclo % 4 !== 0) return null
+  const n = p.creditos_por_ciclo / 4
+  return `≈ ${n} ${plural(n, 'aula')} por semana`
+}
+
+/**
+ * O que acontece com o crédito no fim do prazo, em uma frase curta.
+ *
+ * É a regra que a gestão pediu para ficar MUITO mais clara (a de que
+ * crédito não usado morre no fim do ciclo). Antes ela vinha embutida no
+ * fim de `entregaDoPlano()`, em cinza claro, e passava batido.
+ */
+export function expiracaoDoPlano(p: Produto): string | null {
+  if (!p.gera_credito || p.creditos_por_ciclo === 0) return null
+  if (!p.renova_automaticamente) {
+    const dias = p.validade_creditos_dias ?? p.periodicidade_dias
+    return `Validade de ${dias} dias`
+  }
+  return p.acumula_creditos
+    ? 'Crédito que sobra acumula para o mês seguinte'
+    : 'Não acumulam: o que não usar expira na renovação'
+}
+
 /** Linha de apoio de um avulso: quanto entrega e por quanto tempo vale. */
 export function resumoAvulso(p: Produto): string {
   if (!p.gera_credito || p.creditos_por_ciclo === 0) return 'Horário combinado com o estúdio'

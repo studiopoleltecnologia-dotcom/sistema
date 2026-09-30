@@ -16,6 +16,7 @@ import {
   listarMinhaFila,
   listarMinhasTurmasFixas,
   listarPlanos,
+  listarRestricoesCatalogo,
   listarVagas,
   meuCadastroPrevio,
   obterConfigAgendamento,
@@ -148,6 +149,25 @@ export function useMinhaSuspensao() {
 
 export function usePlanos() {
   return useQuery({ queryKey: ['portal-planos'], queryFn: listarPlanos })
+}
+
+/**
+ * O impedimento de cada produto para este aluno, indexado por produto.
+ *
+ * Fica separado de `usePlanos()` de propósito: o catálogo é igual para
+ * todo mundo e cacheia bem; o veredito é pessoal e muda quando o aluno
+ * completa o cadastro ou faz a primeira aula.
+ */
+export function useRestricoesCatalogo() {
+  const q = useQuery({ queryKey: ['portal-restricoes-catalogo'], queryFn: listarRestricoesCatalogo })
+  const porProduto = useMemo(() => {
+    const m = new Map<string, { motivo: string; codigo: string }>()
+    for (const r of q.data ?? []) {
+      if (r.motivo) m.set(r.produto_id, { motivo: r.motivo, codigo: r.codigo })
+    }
+    return m
+  }, [q.data])
+  return { ...q, porProduto }
 }
 
 export function useConfigAgendamento() {

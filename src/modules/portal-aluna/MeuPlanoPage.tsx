@@ -326,6 +326,18 @@ function MeusCreditos({ plano: p, lotes }: { plano: MeuPlano; lotes: LoteCredito
           {vencemJuntos === 1 ? '1 crédito vence' : `${vencemJuntos} créditos vencem`} em{' '}
           <strong className="text-neutral-900">{fmtDataCompleta(proximo.validade)}</strong>. Os mais antigos são
           usados primeiro.
+          {/* A regra dita com a palavra que o aluno procura. "Vence em
+              <data>" já estava aqui, mas não responde "e se eu não usar,
+              sobra para o mês que vem?" — que é a pergunta que chega na
+              recepção. Só no plano que renova: num pacote avulso não
+              existe "ciclo seguinte" para acumular. */}
+          {p.renova_automaticamente && !p.acumula_creditos && (
+            <>
+              {' '}
+              <strong className="text-neutral-900">Eles não acumulam:</strong> o que não for usado
+              até lá não passa para o ciclo seguinte.
+            </>
+          )}
         </p>
       )}
       {p.saldo === 0 && (

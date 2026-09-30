@@ -1,12 +1,23 @@
 import type { ReactNode } from 'react'
-import { Check, MessageCircle } from 'lucide-react'
+import {
+  CalendarCheck,
+  Check,
+  Clock,
+  Hourglass,
+  MessageCircle,
+  PiggyBank,
+  RefreshCw,
+} from 'lucide-react'
 import { cn } from '../../../../components/ui/cn'
 import { linkWhatsApp } from '../../contato'
+import { AjudaWhatsApp } from '../AjudaWhatsApp'
 import { LinkFolha } from './Escolhas'
 import {
   entregaDoPlano,
+  expiracaoDoPlano,
   fmtPreco,
   fraseCobranca,
+  frequenciaSemanal,
   lugarDoProduto,
   periodoLabel,
   recorrenciaDoProduto,
@@ -75,13 +86,50 @@ function Preco({ produto: p, selos = [] }: { produto: Produto; selos?: string[] 
  * quando quiser — não que a cobrança para sozinha. É essa frase que evita
  * a discussão de cobrança dois meses depois.
  */
-function Cobranca({ produto: p, pagamentoCombinado = true }: { produto: Produto; pagamentoCombinado?: boolean }) {
+function Cobranca({ produto: p, comoPaga = true }: { produto: Produto; comoPaga?: boolean }) {
   return (
     <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2.5 text-xs leading-relaxed text-brand-800">
       <strong className="font-semibold">{fraseCobranca(p)}</strong>
-      {pagamentoCombinado && (
-        <> Por enquanto, o pagamento é combinado com o estúdio (PIX ou na recepção).</>
+      {comoPaga && <> Você recebe o link de pagamento por e-mail, com Pix ou cartão.</>}
+    </div>
+  )
+}
+
+/**
+ * O que acontece com o crédito que sobra, como bloco próprio.
+ *
+ * Pedido explícito da gestão (30/09/2026): "créditos não acumulam"
+ * precisa ficar MUITO mais claro. Antes era o rabicho de uma frase em
+ * cinza claro. Aqui é um bloco com cor de atenção quando expira e cor
+ * de benefício quando acumula — a mesma informação, nos dois sentidos,
+ * sem o aluno ter que inferir qual é o caso dele.
+ */
+function Expiracao({ produto: p }: { produto: Produto }) {
+  const texto = expiracaoDoPlano(p)
+  if (!texto) return null
+  const acumula = p.acumula_creditos
+  return (
+    <div
+      className={cn(
+        'mt-4 flex gap-2.5 rounded-lg border px-3 py-2.5 text-xs leading-relaxed',
+        acumula
+          ? 'border-success-200 bg-success-50 text-success-800'
+          : 'border-warning-200 bg-warning-50 text-warning-800',
       )}
+    >
+      {acumula ? (
+        <PiggyBank className="mt-px size-4 shrink-0" />
+      ) : (
+        <Hourglass className="mt-px size-4 shrink-0" />
+      )}
+      <span>
+        <strong className="font-semibold">{texto}.</strong>{' '}
+        {acumula
+          ? `O saldo acumula até ${p.teto_acumulo_ciclos + 1}× os créditos do ciclo, e expira no fim do compromisso de ${p.ciclos_compromisso} meses.`
+          : p.renova_automaticamente
+            ? 'Os créditos valem só dentro do mês contratado. O que você não usar até a renovação não passa para o mês seguinte.'
+            : 'Depois desse prazo o crédito não pode mais ser usado.'}
+      </span>
     </div>
   )
 }
@@ -129,28 +177,39 @@ export function ConfirmarCompra({
 }) {
   const ehPlano = lugarDoProduto(p) !== 'avulso'
   const temCredito = p.gera_credito && p.creditos_por_ciclo > 0
+  const frequencia = frequenciaSemanal(p)
 
   return (
     <div>
       <Preco produto={p} selos={selos} />
 
+      {/*
+        "Para quem este plano é indicado" não é campo novo no banco: é a
+        `produtos.descricao`, que a equipe já preenche e que estava sendo
+        mostrada SÓ nos avulsos. Num plano ela dizia exatamente o que o
+        aluno precisa ("Um crédito, todas as modalidades da grade
+        regular", "Valor congelado por 6 ciclos") e ficava escondida.
+      */}
+      {p.descricao && (
+        <p className="-mt-1 mb-4 text-sm leading-relaxed text-neutral-600">{p.descricao}</p>
+      )}
+
       <Lista>
         {ehPlano ? (
           <>
             <Item>{entregaDoPlano(p)}, em qualquer modalidade da grade</Item>
-            {p.acumula_creditos && <Item>Crédito que sobra passa para o mês seguinte</Item>}
+            {frequencia && <Item>{frequencia}</Item>}
           </>
         ) : (
-          <>
-            {p.descricao && <Item>{p.descricao}</Item>}
-            <Item>{resumoAvulso(p)}</Item>
-          </>
+          <Item>{resumoAvulso(p)}</Item>
         )}
         {temCredito && horasCancelamento !== null && (
           <Item>Cancelou até {horasCancelamento}h antes da aula? O crédito volta.</Item>
         )}
         {temCredito && <Item>Faltou sem cancelar, o crédito é consumido.</Item>}
       </Lista>
+
+      <Expiracao produto={p} />
 
       <Cobranca produto={p} />
 
@@ -169,6 +228,13 @@ export function ConfirmarCompra({
       >
         Voltar
       </button>
+
+      <div className="mt-3 text-center">
+        <AjudaWhatsApp
+          variante="linha"
+          mensagem={`Olá! Tenho uma dúvida antes de contratar o ${p.nome}:`}
+        />
+      </div>
     </div>
   )
 }
@@ -212,7 +278,7 @@ export function PedirTurmaFixa({
         <Item>Não usa créditos</Item>
       </Lista>
 
-      <Cobranca produto={p} pagamentoCombinado={false} />
+      <Cobranca produto={p} comoPaga={false} />
 
       <p className="mt-4 text-sm leading-relaxed text-neutral-600">
         A turma fixa é combinada com a equipe: você escolhe a modalidade e o horário, e a gente
@@ -243,6 +309,105 @@ export function PedirTurmaFixa({
         <LinkFolha onClick={onVerRegras}>Ver regras da turma fixa</LinkFolha>
       </div>
     </div>
+  )
+}
+
+// ------------------------------------------------------------
+// Regras à vista, na própria lista de planos
+// ------------------------------------------------------------
+
+/**
+ * As três regras que mudam a decisão, impressas na tela dos planos.
+ *
+ * Não substitui `RegrasCreditos` (a lista completa, na folha) — é o
+ * recorte do que não pode depender de clique. O critério para entrar
+ * aqui é ter custo para o aluno se ele descobrir depois: crédito que
+ * expira, prazo que devolve o crédito, e cobrança que se repete.
+ *
+ * Valem para todos os planos do período em tela, e por isso ficam
+ * embaixo dos cartões em vez de repetidas dentro de cada um.
+ */
+export function RegrasEssenciais({
+  tipo,
+  referencia: p,
+  horasCancelamento,
+  className,
+}: {
+  tipo: TipoPlano
+  /** Um plano do período em tela — de onde saem prazo e acúmulo. */
+  referencia: Produto | undefined
+  horasCancelamento: number | null
+  className?: string
+}) {
+  if (!p) return null
+
+  const itens: { Icone: typeof Hourglass; texto: ReactNode }[] = []
+
+  if (tipo === 'creditos') {
+    itens.push({
+      Icone: p.acumula_creditos ? PiggyBank : Hourglass,
+      texto: p.acumula_creditos ? (
+        <>
+          Crédito que sobra <strong>acumula</strong> para o mês seguinte, até o fim do compromisso.
+        </>
+      ) : (
+        <>
+          Os créditos valem <strong>só dentro do mês contratado</strong> — o que não usar{' '}
+          <strong>não acumula</strong> e expira na renovação.
+        </>
+      ),
+    })
+  } else {
+    itens.push({
+      Icone: CalendarCheck,
+      texto: (
+        <>
+          Sua vaga fica <strong>reservada toda semana</strong>: não precisa agendar, e não usa
+          crédito.
+        </>
+      ),
+    })
+  }
+
+  if (horasCancelamento !== null) {
+    itens.push({
+      Icone: Clock,
+      texto: (
+        <>
+          Cancelou a aula com <strong>{horasCancelamento}h ou mais</strong> de antecedência? O
+          crédito volta. Depois disso, ou se faltar, ele é consumido.
+        </>
+      ),
+    })
+  }
+
+  if (p.renova_automaticamente) {
+    itens.push({
+      Icone: RefreshCw,
+      texto:
+        p.ciclos_compromisso > 1 ? (
+          <>
+            Cobrança <strong>automática todo mês</strong>, com permanência mínima de{' '}
+            {p.ciclos_compromisso} meses.
+          </>
+        ) : (
+          <>
+            Cobrança <strong>automática todo mês</strong>, até você pedir o cancelamento — sem
+            multa e sem prazo mínimo.
+          </>
+        ),
+    })
+  }
+
+  return (
+    <ul className={cn('flex flex-col gap-2 rounded-xl bg-neutral-50 p-3.5', className)}>
+      {itens.map(({ Icone, texto }, i) => (
+        <li key={i} className="flex gap-2.5 text-xs leading-relaxed text-neutral-600">
+          <Icone className="mt-px size-3.5 shrink-0 text-neutral-400" />
+          <span>{texto}</span>
+        </li>
+      ))}
+    </ul>
   )
 }
 

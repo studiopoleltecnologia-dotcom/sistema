@@ -4366,6 +4366,14 @@ export type Database = {
         Args: { p_solicitacao: string }
         Returns: undefined
       }
+      catalogo_do_aluno: {
+        Args: never
+        Returns: {
+          codigo: string
+          motivo: string
+          produto_id: string
+        }[]
+      }
       cliente_atual: { Args: never; Returns: string }
       cobranca_cancelada: {
         Args: {
@@ -4570,6 +4578,7 @@ export type Database = {
       impedimento_para_contratar: {
         Args: { p_cliente: string; p_produto: string }
         Returns: {
+          codigo: string
           excepcionavel: boolean
           motivo: string
         }[]

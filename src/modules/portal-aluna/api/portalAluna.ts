@@ -182,6 +182,21 @@ export async function listarPlanos() {
 }
 
 /**
+ * Por que cada produto do catálogo pode ou não ser contratado por ESTE
+ * aluno — o mesmo veredito que trava `solicitar_contratacao()`.
+ *
+ * Existe porque a RLS não consegue filtrar elegibilidade: "já fez a
+ * experimental" é histórico de presença, não dono de linha. Sem esta
+ * chamada o catálogo oferece o que o banco vai recusar, e o aluno
+ * descobre no clique.
+ */
+export async function listarRestricoesCatalogo() {
+  const { data, error } = await requireSupabase().rpc('catalogo_do_aluno')
+  if (error) throw error
+  return data
+}
+
+/**
  * Contratar pelo portal cria um PEDIDO, não uma matrícula.
  *
  * Nada é liberado aqui: sem aprovação da gestão e sem pagamento

@@ -9,6 +9,7 @@ import {
   useContratarPlano,
   useMeusPlanos,
   usePlanos,
+  useRestricoesCatalogo,
 } from './hooks/usePortalAluna'
 import {
   REQUISITO_SELO,
@@ -42,6 +43,8 @@ import {
 } from './components/planos/Detalhes'
 import { Cabecalho } from './components/Basicos'
 import { Folha } from './components/Folha'
+import { AjudaWhatsApp } from './components/AjudaWhatsApp'
+import { RegrasEssenciais } from './components/planos/Detalhes'
 
 type FolhaAberta =
   | { tipo: 'comprar'; produtoId: string }
@@ -50,6 +53,13 @@ type FolhaAberta =
   | { tipo: 'regras'; de: TipoPlano }
 
 const PERIODOS: Recorrencia[] = ['mensal', 'semestral']
+
+/**
+ * Códigos de impedimento que TIRAM o produto da vitrine — os que o aluno
+ * não resolve hoje. `sem_cpf` e `sem_email` ficam de fora de propósito:
+ * são pendências do cadastro dele, e viram aviso com link para o Perfil.
+ */
+const OCULTAM = new Set(['limite', 'legado', 'elegibilidade', 'inexistente'])
 
 /**
  * Planos do Portal do Aluno.
@@ -77,7 +87,8 @@ export function PlanosPage() {
   const clienteId = usePortalClienteId()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const { data: produtos, isLoading } = usePlanos()
+  const { data: todosOsProdutos, isLoading: carregandoPlanos } = usePlanos()
+  const { porProduto: restricoes, isLoading: carregandoRestricoes } = useRestricoesCatalogo()
   const { data: meusPlanos } = useMeusPlanos()
   const { data: config } = useConfigAgendamento()
   const { data: requisitos } = useRequisitos()
@@ -87,11 +98,37 @@ export function PlanosPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [contratado, setContratado] = useState<Produto | null>(null)
 
-  const porId = useMemo(() => new Map((produtos ?? []).map((p) => [p.id, p])), [produtos])
+  /*
+    Produto que este aluno não pode contratar não entra na vitrine.
+    Antes ele aparecia, era escolhido, e o erro vinha no clique — o caso
+    concreto é a aluna que já fez a experimental e continuava vendo
+    "Aula experimental" no catálogo.
+
+    Pendência do CADASTRO dela (sem CPF, sem e-mail) não esconde nada:
+    ela resolve no Perfil em dois minutos, e esconder o catálogo inteiro
+    faria a tela parecer quebrada. Vira o aviso abaixo.
+  */
+  const produtos = useMemo(
+    () => (todosOsProdutos ?? []).filter((p) => !OCULTAM.has(restricoes.get(p.id)?.codigo ?? '')),
+    [todosOsProdutos, restricoes],
+  )
+
+  /** Falta dado no cadastro dela para qualquer plano ser cobrável. */
+  const pendenciaCadastro = useMemo(() => {
+    for (const p of produtos) {
+      const r = restricoes.get(p.id)
+      if (r && (r.codigo === 'sem_cpf' || r.codigo === 'sem_email')) return r.codigo
+    }
+    return null
+  }, [produtos, restricoes])
+
+  const isLoading = carregandoPlanos || carregandoRestricoes
+
+  const porId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos])
 
   const porLugar = useMemo(() => {
     const m: Record<TipoPlano | 'avulso', Produto[]> = { creditos: [], turma_fixa: [], avulso: [] }
-    for (const p of produtos ?? []) m[lugarDoProduto(p)].push(p)
+    for (const p of produtos) m[lugarDoProduto(p)].push(p)
     return m
   }, [produtos])
 
@@ -195,6 +232,19 @@ export function PlanosPage() {
     <div className="lg:max-w-4xl">
       <Cabecalho titulo="Planos" subtitulo="Escolha como você quer treinar." />
 
+      {pendenciaCadastro && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3.5 text-sm text-warning-800">
+          <span>
+            {pendenciaCadastro === 'sem_cpf'
+              ? 'Falta o seu CPF no cadastro. Ele é obrigatório para emitir a cobrança.'
+              : 'Falta o seu e-mail no cadastro. É por ele que chegam a confirmação e o link de pagamento.'}
+          </span>
+          <Link to="../perfil" className="text-xs font-semibold underline underline-offset-2">
+            Completar cadastro
+          </Link>
+        </div>
+      )}
+
       {planoAtivo && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-100 bg-brand-50 p-3.5 text-sm text-brand-700">
           {/* A data que importa para ela é a que o CRÉDITO vence, não a
@@ -214,7 +264,7 @@ export function PlanosPage() {
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      {!isLoading && (produtos ?? []).length === 0 && (
+      {!isLoading && produtos.length === 0 && (
         <p className="py-4 text-center text-sm text-neutral-400">Nenhum plano disponível no momento.</p>
       )}
 
@@ -275,10 +325,25 @@ export function PlanosPage() {
             ))}
           </div>
 
+          {/*
+            As regras decisivas ficam À VISTA, não atrás de um clique.
+            O link para a folha continua, com a lista inteira — mas as
+            três que mudam a escolha (o crédito expira, o prazo de
+            cancelamento, a renovação automática) não podem depender de
+            o aluno ter curiosidade de abrir "Como funcionam os
+            créditos?". Pedido da gestão em 30/09/2026.
+          */}
+          <RegrasEssenciais
+            className="mt-3.5"
+            tipo={tipo}
+            referencia={visiveis[0]}
+            horasCancelamento={horasCancelamento(visiveis[0])}
+          />
+
           <div className="mt-3.5 flex justify-center">
             <LinkFolha onClick={() => abrirFolha({ tipo: 'regras', de: tipo })}>
               <Info className="size-3.5" />
-              {tipo === 'creditos' ? 'Como funcionam os créditos?' : 'Ver regras da turma fixa'}
+              {tipo === 'creditos' ? 'Ver todas as regras dos créditos' : 'Ver regras da turma fixa'}
             </LinkFolha>
           </div>
         </section>
@@ -303,6 +368,12 @@ export function PlanosPage() {
           </div>
         </section>
       )}
+
+      {/* ---- Suporte antes da compra ---- */}
+      <AjudaWhatsApp
+        className="mt-8"
+        mensagem="Olá! Estou vendo os planos no portal do aluno e ficou uma dúvida:"
+      />
 
       {/* ---- Folhas ---- */}
       {folha?.tipo === 'comprar' && produtoDaFolha && (
