@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   Gauge,
+  HeartPulse,
   MessageCircle,
   Users,
   Wallet,
@@ -26,6 +27,7 @@ import { FunilResumo } from './components/FunilResumo'
 import { FolhaResumo } from './components/FolhaResumo'
 import {
   useAniversariantes,
+  useAtestadosPendentes,
   useAulasDeHoje,
   useCancelamentosPendentes,
   useFollowupsPendentes,
@@ -80,6 +82,7 @@ export function DashboardPage() {
 
   const pctMei = mei.data?.percentual_limite ?? 0
   const nivelMei = nivelAlertaMei(pctMei)
+  const atestados = useAtestadosPendentes(gestao)
   const saldo = caixa.data?.saldo_atual_centavos ?? 0
   const ativos = funil.data?.find((f) => f.estagio === 'ativa')?.total ?? 0
   const aulasHoje = aulas.data?.length ?? 0
@@ -130,6 +133,15 @@ export function DashboardPage() {
         ? 'Faturamento MEI se aproximando do teto'
         : `Faturamento MEI em ${pctMei.toFixed(0)}% do teto`,
       tom: nivelMei === 'critico' ? 'danger' : 'warning',
+    })
+  }
+  // Atestado parado é aluno que pagou e não consegue reservar.
+  if (gestao && (atestados.data ?? []).length > 0) {
+    alertas.push({
+      to: '/clientes',
+      icon: HeartPulse,
+      texto: `${atestados.data!.length} atestado(s) médico(s) para avaliar`,
+      tom: 'warning',
     })
   }
   if ((followups.data ?? 0) > 0) {
