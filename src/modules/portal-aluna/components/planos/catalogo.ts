@@ -145,7 +145,13 @@ export function fraseCobranca(p: Produto): string {
     : `Cobrança automática ${cada}. Renova sozinho até você cancelar.`
 }
 
-/** Selo curto do requisito, na voz de quem compra. */
+/**
+ * Selo curto do requisito, na voz de quem compra.
+ *
+ * `checkins_wellhub` não tem produto desde 10/2026 (o Studio+ saiu), mas
+ * o tipo continua no enum e o selo com ele: o dia em que existir outro
+ * produto que dependa do Wellhub, a vitrine já sabe rotular.
+ */
 export const REQUISITO_SELO: Record<TipoRequisito, string> = {
   nunca_treinou: 'Primeira vez aqui',
   plano_ativo: 'Para quem tem plano',

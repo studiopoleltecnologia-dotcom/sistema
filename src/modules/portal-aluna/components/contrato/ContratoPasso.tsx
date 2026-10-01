@@ -18,9 +18,9 @@ import { DocumentoHtml, EstiloDocumento } from './DocumentoHtml'
  *
  * O texto não é montado aqui. Vem de `montar_contrato()`, com apenas as
  * cláusulas do produto escolhido: quem compra plano por crédito não
- * recebe cláusula de turma fixa, e o Studio+ não aparece para aluno
- * comum. Montar no front seria uma segunda implementação da mesma regra
- * condicional, e as duas divergiriam no primeiro ajuste de texto.
+ * recebe cláusula de turma fixa, e quem compra avulso não recebe as de
+ * recorrência. Montar no front seria uma segunda implementação da mesma
+ * regra condicional, e as duas divergiriam no primeiro ajuste de texto.
  *
  * O checkbox fica **abaixo** do contrato, e não acima: para marcar é
  * preciso rolar até o fim.
