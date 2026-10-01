@@ -5328,7 +5328,7 @@ export type Database = {
         | "documento_aprovado"
         | "documento_recusado"
       base_percentual: "mensalidade_contratada"
-      canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
+      canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa" | "totalpass"
       categoria_entrada:
         | "mensalista"
         | "wellhub"
@@ -5337,6 +5337,7 @@ export type Database = {
         | "workshop"
         | "evento"
         | "outros"
+        | "totalpass"
       estagio_funil:
         | "lead"
         | "pediu_informacoes"
@@ -5372,6 +5373,7 @@ export type Database = {
         | "passou_na_porta"
         | "outros"
         | "portal_aluna"
+        | "totalpass"
       plano_tipo: "creditos" | "semanal"
       rotina_checklist: "abertura" | "fechamento"
       status_agendamento: "agendado" | "cancelado"
@@ -5566,7 +5568,7 @@ export const Constants = {
         "documento_recusado",
       ],
       base_percentual: ["mensalidade_contratada"],
-      canal_aula: ["mensalista", "wellhub", "classpass", "avulsa"],
+      canal_aula: ["mensalista", "wellhub", "classpass", "avulsa", "totalpass"],
       categoria_entrada: [
         "mensalista",
         "wellhub",
@@ -5614,6 +5616,7 @@ export const Constants = {
         "passou_na_porta",
         "outros",
         "portal_aluna",
+        "totalpass",
       ],
       plano_tipo: ["creditos", "semanal"],
       rotina_checklist: ["abertura", "fechamento"],

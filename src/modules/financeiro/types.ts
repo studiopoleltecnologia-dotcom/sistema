@@ -52,6 +52,7 @@ export const CATEGORIAS_ENTRADA: { value: CategoriaEntrada; label: string }[] = 
   { value: 'avulsa', label: 'Aula avulsa' },
   { value: 'workshop', label: 'Workshop' },
   { value: 'evento', label: 'Evento' },
+  { value: 'totalpass', label: 'TotalPass' },
   { value: 'outros', label: 'Outros' },
 ]
 
