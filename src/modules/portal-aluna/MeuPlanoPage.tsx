@@ -8,7 +8,7 @@ import { cn } from '../../components/ui/cn'
 import { mensagemDoBanco } from './aulas'
 import { Aviso, Cabecalho, Carregando, Cartao, Dado, ErroCarregar } from './components/Basicos'
 import { MeusDocumentos } from './components/contrato/MeusDocumentos'
-import { useSolicitacaoAberta } from './hooks/usePortalAluna'
+import { useDesistirSolicitacao, useSolicitacaoAberta } from './hooks/usePortalAluna'
 import { Folha } from './components/Folha'
 import { fmtPreco } from './components/planos/catalogo'
 import { RegrasDoPlano } from './components/RegrasDoPlano'
@@ -143,22 +143,44 @@ export function MeuPlanoPage() {
  */
 function PagamentoPendente() {
   const { data: pedido } = useSolicitacaoAberta()
+  const desistir = useDesistirSolicitacao()
   if (!pedido) return null
 
   const aguardandoEquipe = pedido.status === 'aguardando_aprovacao'
   const url = pedido.url_pagamento as string | null
+  const turmaFixa = (pedido.turmas_fixas ?? 0) > 0
+  const turmas = pedido.turmas_rotulo ?? []
+  /*
+    Aprovado mas sem contrato aceito: o passo que falta é O DELE, e esta
+    tela dizia "estamos gerando o link" — para um link que nunca sairia,
+    porque `registrar_cobranca()` recusa emitir cobrança sem contrato.
+    Quem pede turma fixa cai sempre aqui, já que o aceite só acontece
+    depois da aprovação.
+  */
+  const faltaContrato = !aguardandoEquipe && !pedido.contrato_aceito
+
+  const titulo = aguardandoEquipe
+    ? turmaFixa
+      ? 'Confirmando a sua vaga'
+      : 'Pedido em análise pela equipe'
+    : faltaContrato
+      ? `Falta aceitar o contrato — ${pedido.produto_nome}`
+      : `Pagamento em aberto — ${pedido.produto_nome}`
 
   return (
     <div className="mb-8">
       <Aviso
         tom={aguardandoEquipe ? 'info' : 'atencao'}
-        titulo={
-          aguardandoEquipe
-            ? 'Pedido em análise pela equipe'
-            : `Pagamento em aberto — ${pedido.produto_nome}`
-        }
+        titulo={titulo}
         acao={
-          url && !aguardandoEquipe ? (
+          aguardandoEquipe ? undefined : faltaContrato ? (
+            <Link
+              to={`../planos?contrato=${pedido.id}`}
+              className="inline-flex rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+            >
+              Ler e aceitar
+            </Link>
+          ) : url ? (
             <a
               href={url}
               target="_blank"
@@ -170,11 +192,41 @@ function PagamentoPendente() {
           ) : undefined
         }
       >
-        {aguardandoEquipe
-          ? 'Turmas fixas dependem de vaga, então a equipe confere antes de qualquer cobrança. Você é avisado por e-mail — nenhum valor é cobrado até a confirmação.'
-          : url
-            ? 'Seus créditos são liberados assim que o pagamento for confirmado.'
-            : 'Estamos gerando o link. Ele chega no seu e-mail em alguns minutos.'}
+        {aguardandoEquipe ? (
+          <>
+            {turmaFixa && turmas.length > 0 && (
+              <span className="mb-1 block font-medium text-neutral-800">{turmas.join(' · ')}</span>
+            )}
+            {turmaFixa
+              ? 'Sua vaga fica guardada durante todo o plano, então ela sai da capacidade da turma — a equipe confere se há lugar antes de qualquer cobrança. Nenhum valor foi cobrado, e você é avisado por e-mail.'
+              : 'A equipe confirma seu pedido antes de qualquer cobrança. Nenhum valor foi cobrado, e você é avisado por e-mail.'}
+            <button
+              onClick={() => pedido.id && desistir.mutate(String(pedido.id))}
+              disabled={desistir.isPending}
+              className="mt-2 block text-xs font-medium text-neutral-500 underline underline-offset-2 hover:text-neutral-800 disabled:opacity-50"
+            >
+              {desistir.isPending ? 'Cancelando…' : 'Desistir deste pedido'}
+            </button>
+            {desistir.isError && (
+              <span className="mt-1 block text-xs text-danger-600">
+                {mensagemDoBanco(desistir.error, 'Não foi possível cancelar o pedido agora.')}
+              </span>
+            )}
+          </>
+        ) : faltaContrato ? (
+          <>
+            {turmaFixa && turmas.length > 0 && (
+              <span className="mb-1 block font-medium text-neutral-800">
+                Vaga confirmada: {turmas.join(' · ')}
+              </span>
+            )}
+            Falta ler e aceitar o Contrato de Adesão. O pagamento é liberado em seguida.
+          </>
+        ) : url ? (
+          'Seus créditos são liberados assim que o pagamento for confirmado.'
+        ) : (
+          'Estamos gerando o link. Ele chega no seu e-mail em alguns minutos.'
+        )}
       </Aviso>
     </div>
   )

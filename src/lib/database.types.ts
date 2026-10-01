@@ -4568,6 +4568,7 @@ export type Database = {
           cobranca_id: string | null
           cobranca_status: Database["public"]["Enums"]["status_cobranca"] | null
           cobranca_vencimento: string | null
+          contrato_aceito: boolean | null
           decidida_em: string | null
           decisor_nome: string | null
           forma_pagamento: string | null
@@ -4581,11 +4582,14 @@ export type Database = {
           produto_id: string | null
           produto_nome: string | null
           produto_status: Database["public"]["Enums"]["status_produto"] | null
+          politica_contratacao: string | null
           solicitada_em: string | null
           solicitante_nome: string | null
           status: Database["public"]["Enums"]["status_solicitacao"] | null
           tipo_produto: Database["public"]["Enums"]["tipo_produto"] | null
           turmas: string[] | null
+          turmas_fixas: number | null
+          turmas_rotulo: string[] | null
           url_pagamento: string | null
         }
         Relationships: [
@@ -5301,12 +5305,46 @@ export type Database = {
         Args: { p_cliente: string; p_data: string; p_turma: string }
         Returns: boolean
       }
+      rotulo_turma: { Args: { p_turma: string }; Returns: string }
+      ocupacao_assento_fixo: {
+        Args: { p_de?: string; p_turma: string }
+        Returns: {
+          dia: string
+          ocupadas: number
+          capacidade: number
+          vagas: number
+        }[]
+      }
+      proxima_ocorrencia: {
+        Args: { p_de?: string; p_dia_semana: number }
+        Returns: string
+      }
       trocar_turma_fixa: {
         Args: { p_imediato?: boolean; p_turma_nova: string; p_vinculo: string }
         Returns: string
       }
+      turmas_para_assento_fixo: {
+        Args: { p_cliente?: string; p_de?: string }
+        Returns: {
+          turma_id: string
+          modalidade: string
+          dia_semana: number
+          horario: string
+          duracao_minutos: number
+          professora_nome: string | null
+          sala_nome: string | null
+          categoria_cor: string | null
+          dia: string
+          capacidade: number
+          ocupadas: number
+          vagas: number
+          elegivel: boolean
+          ja_contratada: boolean
+          motivo: string | null
+        }[]
+      }
       validar_assento_fixo: {
-        Args: { p_data: string; p_turma: string }
+        Args: { p_data?: string; p_turma: string }
         Returns: undefined
       }
       valor_da_aula: {

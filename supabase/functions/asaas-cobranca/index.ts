@@ -175,23 +175,19 @@ Deno.serve(async (req) => {
     return json({ erro: 'acesso restrito' }, 403)
   }
 
-  // O aluno só gera link do que ele mesmo pode pagar sozinho. Produto de
-  // aprovação prévia (turma fixa) continua sendo cobrado pela equipe
-  // depois de validar a vaga — senão o autoatendimento furaria a fila do
-  // assento na sala.
-  if (!ehGestao) {
-    const { data: prod } = await sb
-      .from('produtos')
-      .select('politica_contratacao')
-      .eq('id', sol.produto_id)
-      .maybeSingle()
-    if (prod?.politica_contratacao !== 'automatica') {
-      return json(
-        { erro: 'esta contratação é confirmada pela equipe antes do pagamento' },
-        403,
-      )
-    }
-  }
+  // O que autoriza o aluno a emitir a própria cobrança é o ESTADO do
+  // pedido, não a política do produto.
+  //
+  // Havia aqui uma checagem de `politica_contratacao === 'automatica'`, e
+  // ela bloqueava exatamente o caso que a gestão pediu: na turma fixa, a
+  // equipe confirma a vaga e **o aluno paga**. Com a checagem, o pedido
+  // aprovado ficava sem botão — a tela dizia "estamos gerando o link" para
+  // um link que ninguém ia gerar.
+  //
+  // Não há folga nisso: `aguardando_pagamento` só acontece sozinho em
+  // produto automático; em produto de aprovação prévia é a gestão que põe
+  // o pedido nesse estado, depois de olhar a vaga. A verificação está uma
+  // linha abaixo, e `registrar_cobranca()` ainda exige contrato aceito.
   if (sol.status !== 'aguardando_pagamento') {
     return json({ erro: `solicitação está em "${sol.status}", não aguardando pagamento` }, 409)
   }

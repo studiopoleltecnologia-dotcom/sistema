@@ -4,14 +4,13 @@ import {
   Check,
   Clock,
   Hourglass,
-  MessageCircle,
   PiggyBank,
   RefreshCw,
 } from 'lucide-react'
 import { cn } from '../../../../components/ui/cn'
-import { linkWhatsApp } from '../../contato'
 import { AjudaWhatsApp } from '../AjudaWhatsApp'
 import { LinkFolha } from './Escolhas'
+import { SeletorTurmaPortal } from './SeletorTurmaPortal'
 import {
   entregaDoPlano,
   expiracaoDoPlano,
@@ -253,20 +252,40 @@ export function ConfirmarCompra({
  * Aqui a folha diz a verdade e leva a conversa para a recepção, já com o
  * plano escolhido escrito na mensagem.
  */
+/**
+ * Pedir uma vaga fixa — o fluxo todo, menos o pagamento.
+ *
+ * Esta folha era informativa: mostrava o preço e mandava o aluno para o
+ * WhatsApp ("a turma fixa é combinada com a equipe"). Quem estava no app
+ * às 22h de domingo não contratava.
+ *
+ * Agora ele escolhe a turma e pede. O que NÃO muda é a ordem: a equipe
+ * confirma a vaga antes de existir qualquer cobrança — o assento sai da
+ * capacidade da sala (regulamento 2.3.1), e por isso o produto é de
+ * `politica_contratacao = 'aprovacao_previa'`, que o banco recusa trocar.
+ *
+ * O aviso de que nada será cobrado aparece **antes** do botão, não depois
+ * do pedido: é a dúvida que decide se a pessoa clica.
+ */
 export function PedirTurmaFixa({
   produto: p,
+  selecionadas,
+  onSelecionar,
+  onPedir,
+  pendente,
+  erro,
   onVerRegras,
-  onFechar,
 }: {
   produto: Produto
+  selecionadas: string[]
+  onSelecionar: (ids: string[]) => void
+  onPedir: () => void
+  pendente: boolean
+  erro: string | null
   onVerRegras: () => void
-  onFechar: () => void
 }) {
-  const sufixo = sufixoPreco(p)
-  const link = linkWhatsApp(
-    `Olá! Quero contratar o plano ${p.nome} (${fmtPreco(p.preco_centavos)}${sufixo}). ` +
-      'Pode me ajudar a escolher a turma?',
-  )
+  const quantas = p.turmas_fixas || 1
+  const completo = selecionadas.length === quantas
 
   return (
     <div>
@@ -280,30 +299,35 @@ export function PedirTurmaFixa({
 
       <Cobranca produto={p} comoPaga={false} />
 
-      <p className="mt-4 text-sm leading-relaxed text-neutral-600">
-        A turma fixa é combinada com a equipe: você escolhe a modalidade e o horário, e a gente
-        confirma se tem vaga.
-        {!link && ' Fale com a recepção, pessoalmente ou pelo WhatsApp do estúdio.'}
-      </p>
+      <div className="mt-5">
+        <SeletorTurmaPortal
+          maximo={quantas}
+          selecionadas={selecionadas}
+          onChange={onSelecionar}
+        />
+      </div>
 
-      {link ? (
-        <a
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
-        >
-          <MessageCircle className="size-4" />
-          Combinar pelo WhatsApp
-        </a>
-      ) : (
-        <button
-          onClick={onFechar}
-          className="mt-5 w-full rounded-lg bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
-        >
-          Entendi
-        </button>
+      <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50 p-3.5 text-sm leading-relaxed text-brand-800">
+        <strong className="font-semibold">Nenhuma cobrança é feita agora.</strong> Como a sua vaga
+        fica guardada durante todo o plano, a gente confere se a turma tem lugar antes de qualquer
+        pagamento. Você é avisado por e-mail — e só depois disso o pagamento é liberado.
+      </div>
+
+      {erro && (
+        <p className="mt-3 rounded-lg bg-danger-50 p-3 text-sm text-danger-700">{erro}</p>
       )}
+
+      <button
+        onClick={onPedir}
+        disabled={!completo || pendente}
+        className="mt-4 w-full rounded-lg bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {pendente
+          ? 'Enviando…'
+          : completo
+            ? 'Pedir esta vaga'
+            : `Escolha ${quantas - selecionadas.length} turma${quantas - selecionadas.length > 1 ? 's' : ''}`}
+      </button>
 
       <div className="mt-4 text-center">
         <LinkFolha onClick={onVerRegras}>Ver regras da turma fixa</LinkFolha>
@@ -311,7 +335,6 @@ export function PedirTurmaFixa({
     </div>
   )
 }
-
 // ------------------------------------------------------------
 // Regras à vista, na própria lista de planos
 // ------------------------------------------------------------

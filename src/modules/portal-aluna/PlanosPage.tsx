@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Info } from 'lucide-react'
 import { fmtData } from '../../lib/datas'
@@ -102,6 +102,10 @@ export function PlanosPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [contratado, setContratado] = useState<Produto | null>(null)
   const [linkPagamento, setLinkPagamento] = useState<string | null>(null)
+  /** Turma fixa: as turmas escolhidas na folha, antes de pedir. */
+  const [turmas, setTurmas] = useState<string[]>([])
+  /** Turma fixa: o pedido já saiu e espera a equipe confirmar a vaga. */
+  const [pedido, setPedido] = useState<Produto | null>(null)
   const { data: solicitacaoAberta } = useSolicitacaoAberta()
 
   /*
@@ -198,8 +202,27 @@ export function PlanosPage() {
     setParams(novo, { replace: true })
   }
 
+  /*
+    "Meu plano" manda o aluno para cá com ?contrato=<pedido> quando a vaga
+    foi aprovada e falta o aceite. O passo do contrato mora aqui, e uma
+    implementação só é o motivo de o link ser uma rota em vez de um
+    segundo ContratoPasso dentro de "Meu plano".
+  */
+  const contratoNaUrl = params.get('contrato')
+  useEffect(() => {
+    if (!contratoNaUrl || !solicitacaoAberta?.id) return
+    if (String(solicitacaoAberta.id) !== contratoNaUrl) return
+    if (!solicitacaoAberta.produto_id) return
+    setFolha({
+      tipo: 'contrato',
+      produtoId: String(solicitacaoAberta.produto_id),
+      solicitacaoId: contratoNaUrl,
+    })
+  }, [contratoNaUrl, solicitacaoAberta?.id, solicitacaoAberta?.produto_id])
+
   function abrirFolha(f: FolhaAberta) {
     setErro(null)
+    if (f.tipo === 'turma_fixa') setTurmas([])
     setFolha(f)
   }
 
@@ -239,10 +262,42 @@ export function PlanosPage() {
     )
   }
 
+  /**
+   * Turma fixa: o pedido vai para a fila, e NÃO para o contrato.
+   *
+   * É a diferença inteira em relação a `confirmar()`: aqui não existe
+   * cobrança para o contrato preceder, porque a vaga ainda não está
+   * confirmada. O contrato aparece depois da aprovação, em "Meu plano".
+   */
+  function pedirTurmaFixa(p: Produto) {
+    setErro(null)
+    contratar.mutate(
+      { clienteId, planoId: p.id, turmaIds: turmas },
+      {
+        onSuccess: () => {
+          setFolha(null)
+          setPedido(p)
+          window.scrollTo({ top: 0 })
+        },
+        onError: (e) => setErro(mensagemErroContratacao(e)),
+      },
+    )
+  }
+
   const horasCancelamento = (p: Produto | undefined) =>
     p?.horas_cancelamento ?? config?.horas_cancelamento ?? null
 
   const planoAtivo = (meusPlanos ?? []).find((s) => s.saldo > 0 && s.status === 'ativa')
+
+  if (pedido) {
+    return (
+      <TurmaFixaSolicitada
+        produto={pedido}
+        onInicio={() => navigate('..')}
+        onMeuPlano={() => navigate('../meu-plano')}
+      />
+    )
+  }
 
   if (contratado) {
     return (
@@ -426,8 +481,12 @@ export function PlanosPage() {
         <Folha titulo={<TituloPlano produto={produtoDaFolha} />} onFechar={() => setFolha(null)}>
           <PedirTurmaFixa
             produto={produtoDaFolha}
+            selecionadas={turmas}
+            onSelecionar={setTurmas}
+            onPedir={() => pedirTurmaFixa(produtoDaFolha)}
+            pendente={contratar.isPending}
+            erro={erro}
             onVerRegras={() => abrirFolha({ tipo: 'regras', de: 'turma_fixa' })}
-            onFechar={() => setFolha(null)}
           />
         </Folha>
       )}
@@ -536,6 +595,56 @@ function ContratoAceito({
         className="mt-2 w-full rounded-md py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800"
       >
         {urlPagamento ? 'Pagar depois, ver meu plano' : 'Voltar ao início'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Pedido de turma fixa enviado — e nada cobrado.
+ *
+ * A frase que importa é a terceira. O aluno acabou de clicar em "Pedir
+ * esta vaga" num plano de R$ 130 e vai esperar horas por uma resposta; se
+ * a tela não disser que não houve cobrança, a primeira coisa que ele faz
+ * é abrir o WhatsApp para perguntar. Dizer aqui é mais barato que
+ * responder depois — e é o que o pedido da gestão exige em letra:
+ * "nenhuma cobrança será realizada antes da confirmação".
+ */
+function TurmaFixaSolicitada({
+  produto: p,
+  onInicio,
+  onMeuPlano,
+}: {
+  produto: Produto
+  onInicio: () => void
+  onMeuPlano: () => void
+}) {
+  return (
+    <div className="pt-10 text-center">
+      <div className="mb-3 text-4xl">🗓️</div>
+      <h1 className="mb-2 text-xl font-semibold text-neutral-900">Recebemos sua solicitação!</h1>
+      <p className="mb-1 text-sm text-neutral-600">
+        Você pediu <b>{p.nome}</b>. A equipe vai confirmar se a turma que você escolheu tem vaga.
+      </p>
+      <p className="mb-1 text-sm font-medium text-neutral-800">
+        Nenhuma cobrança será realizada antes da confirmação.
+      </p>
+      <p className="mb-8 text-xs text-neutral-400">
+        Assim que a vaga for confirmada, você recebe um e-mail e o pagamento aparece aqui no app. Se
+        não houver vaga nesse horário, a gente avisa e você escolhe outro — sem custo nenhum.
+      </p>
+
+      <button
+        onClick={onMeuPlano}
+        className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
+      >
+        Acompanhar em “Meu plano”
+      </button>
+      <button
+        onClick={onInicio}
+        className="mt-2 w-full rounded-md py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800"
+      >
+        Voltar ao início
       </button>
     </div>
   )

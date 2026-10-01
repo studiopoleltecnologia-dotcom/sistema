@@ -5,6 +5,8 @@ import {
   atualizarMeuCliente,
   cancelarAgendamento,
   contratarPlano,
+  desistirDaSolicitacao,
+  turmasParaAssentoFixo,
   criarContaAluna,
   entrarListaEspera,
   listarAulasCanceladas,
@@ -272,6 +274,22 @@ export function useSairListaEspera() {
   return useMutation({ mutationFn: sairListaEspera, onSuccess: invalidar })
 }
 
+/**
+ * As turmas que aceitam assento fixo, com a vaga de cada uma.
+ *
+ * `staleTime` curto de propósito: a vaga muda quando outra pessoa reserva,
+ * e escolher uma turma que acabou de lotar significa ver o erro do banco
+ * no clique de confirmar.
+ */
+export function useTurmasAssentoFixo(ativo = true) {
+  return useQuery({
+    queryKey: ['portal-turmas-assento-fixo'],
+    queryFn: turmasParaAssentoFixo,
+    enabled: ativo,
+    staleTime: 30_000,
+  })
+}
+
 export function useContratarPlano() {
   const invalidar = useInvalidarAgenda()
   const qc = useQueryClient()
@@ -292,6 +310,14 @@ export function useContratarPlano() {
  * um pedido em aberto"). Sem isto, a saída seria cancelar o pedido e
  * começar de novo — por um clique em "voltar".
  */
+export function useDesistirSolicitacao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: desistirDaSolicitacao,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['portal-solicitacao-aberta'] }),
+  })
+}
+
 export function useSolicitacaoAberta() {
   return useQuery({
     queryKey: ['portal-solicitacao-aberta'],

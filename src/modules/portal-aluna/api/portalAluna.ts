@@ -203,13 +203,54 @@ export async function listarRestricoesCatalogo() {
  * confirmado não existe matrícula, e portanto não existe crédito para
  * agendar. O aluno acompanha o pedido em “Meu plano”.
  */
-export async function contratarPlano(args: { clienteId: string; planoId: string }) {
+export async function contratarPlano(args: {
+  clienteId: string
+  planoId: string
+  /**
+   * Turma fixa: as turmas escolhidas. O banco exige exatamente
+   * `produtos.turmas_fixas` turmas distintas e confere a vaga de cada
+   * uma ANTES de criar o pedido — não dá para pedir primeiro e escolher
+   * depois, senão o pedido entraria na fila para ser recusado.
+   */
+  turmaIds?: string[]
+}) {
   const { data, error } = await requireSupabase().rpc('solicitar_contratacao', {
     p_cliente: args.clienteId,
     p_produto: args.planoId,
+    p_turmas: args.turmaIds ?? [],
   })
   if (error) throw error
   return data
+}
+
+/**
+ * A grade como quem vai assinar um assento precisa vê-la.
+ *
+ * Não é `vw_grade_publica`: aqui vem a vaga calculada para a próxima
+ * ocorrência de cada turma, somando assento fixo e reserva por crédito —
+ * a MESMA conta que `validar_assento_fixo()` usa para aceitar ou recusar.
+ * Era o furo da tela da equipe, que contava por conta própria e mostrava
+ * vaga onde o banco ia recusar.
+ */
+export async function turmasParaAssentoFixo() {
+  const { data, error } = await requireSupabase().rpc('turmas_para_assento_fixo', {})
+  if (error) throw error
+  return data ?? []
+}
+
+/**
+ * Desistir do pedido.
+ *
+ * Existe porque a espera é longa: quem pede turma fixa fica dias
+ * aguardando a confirmação da vaga, e sem esta saída a única forma de
+ * mudar de ideia seria pedir à equipe. `cancelar_solicitacao()` já
+ * aceitava o próprio aluno desde 24/09 — faltava o botão.
+ */
+export async function desistirDaSolicitacao(id: string) {
+  const { error } = await requireSupabase().rpc('cancelar_solicitacao', {
+    p_solicitacao: id,
+  })
+  if (error) throw error
 }
 
 /** O pedido em aberto do aluno, se houver — para “Meu plano” mostrar em que pé está. */
