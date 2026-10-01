@@ -17,6 +17,7 @@ import {
   listarMinhasTurmasFixas,
   listarPlanos,
   listarRestricoesCatalogo,
+  minhaSolicitacaoAberta,
   listarVagas,
   meuCadastroPrevio,
   obterConfigAgendamento,
@@ -273,7 +274,29 @@ export function useSairListaEspera() {
 
 export function useContratarPlano() {
   const invalidar = useInvalidarAgenda()
-  return useMutation({ mutationFn: contratarPlano, onSuccess: invalidar })
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: contratarPlano,
+    onSuccess: () => {
+      invalidar()
+      qc.invalidateQueries({ queryKey: ['portal-solicitacao-aberta'] })
+    },
+  })
+}
+
+/**
+ * O pedido que o aluno deixou pela metade.
+ *
+ * Existe para RETOMAR, não para informar: quem fecha a aba no passo do
+ * contrato volta e encontra `solicitar_contratacao` recusando ("já existe
+ * um pedido em aberto"). Sem isto, a saída seria cancelar o pedido e
+ * começar de novo — por um clique em "voltar".
+ */
+export function useSolicitacaoAberta() {
+  return useQuery({
+    queryKey: ['portal-solicitacao-aberta'],
+    queryFn: minhaSolicitacaoAberta,
+  })
 }
 
 export function useSolicitarCancelamento() {

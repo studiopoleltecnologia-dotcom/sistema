@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/Button'
 import { cn } from '../../components/ui/cn'
 import { mensagemDoBanco } from './aulas'
 import { Aviso, Cabecalho, Carregando, Cartao, Dado, ErroCarregar } from './components/Basicos'
+import { MeusDocumentos } from './components/contrato/MeusDocumentos'
+import { useSolicitacaoAberta } from './hooks/usePortalAluna'
 import { Folha } from './components/Folha'
 import { fmtPreco } from './components/planos/catalogo'
 import { RegrasDoPlano } from './components/RegrasDoPlano'
@@ -82,6 +84,8 @@ export function MeuPlanoPage() {
         }
       />
 
+      <PagamentoPendente />
+
       {planos.error ? (
         <ErroCarregar onTentar={() => planos.refetch()} />
       ) : planos.isLoading ? (
@@ -105,6 +109,13 @@ export function MeuPlanoPage() {
         </div>
       )}
 
+      {/* Documentos vêm DEPOIS do plano e fora do bloco condicional: quem
+          não tem plano ativo hoje pode ter contrato de um plano antigo, e
+          o PAR-Q existe independentemente de haver plano. */}
+      <div className="mt-10">
+        <MeusDocumentos />
+      </div>
+
       {regrasDe && (
         <Folha titulo="Regras do seu plano" onFechar={() => setRegrasDe(null)}>
           <RegrasDoPlano plano={regrasDe} />
@@ -112,6 +123,59 @@ export function MeuPlanoPage() {
       )}
 
       {cancelarDe && <SolicitarCancelamento plano={cancelarDe} onFechar={() => setCancelarDe(null)} />}
+    </div>
+  )
+}
+
+// ------------------------------------------------------------
+// Pagamento em aberto
+// ------------------------------------------------------------
+
+/**
+ * O link de pagamento da contratação que o aluno já aceitou.
+ *
+ * Antes ele existia só no e-mail (backlog 11.4, item 14). Quem apagou a
+ * mensagem, ou cujo e-mail caiu no spam, ficava sem caminho — com o
+ * contrato aceito e nenhum botão para pagar. Aqui ele fica.
+ *
+ * Aparece acima dos planos de propósito: é a única coisa nesta tela que
+ * o aluno precisa FAZER.
+ */
+function PagamentoPendente() {
+  const { data: pedido } = useSolicitacaoAberta()
+  if (!pedido) return null
+
+  const aguardandoEquipe = pedido.status === 'aguardando_aprovacao'
+  const url = pedido.url_pagamento as string | null
+
+  return (
+    <div className="mb-8">
+      <Aviso
+        tom={aguardandoEquipe ? 'info' : 'atencao'}
+        titulo={
+          aguardandoEquipe
+            ? 'Pedido em análise pela equipe'
+            : `Pagamento em aberto — ${pedido.produto_nome}`
+        }
+        acao={
+          url && !aguardandoEquipe ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+            >
+              Pagar agora
+            </a>
+          ) : undefined
+        }
+      >
+        {aguardandoEquipe
+          ? 'Turmas fixas dependem de vaga, então a equipe confere antes de qualquer cobrança. Você é avisado por e-mail — nenhum valor é cobrado até a confirmação.'
+          : url
+            ? 'Seus créditos são liberados assim que o pagamento for confirmado.'
+            : 'Estamos gerando o link. Ele chega no seu e-mail em alguns minutos.'}
+      </Aviso>
     </div>
   )
 }

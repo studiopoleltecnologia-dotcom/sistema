@@ -10,6 +10,7 @@ import {
   useMeusPlanos,
   usePlanos,
   useRestricoesCatalogo,
+  useSolicitacaoAberta,
 } from './hooks/usePortalAluna'
 import {
   REQUISITO_SELO,
@@ -45,12 +46,15 @@ import { Cabecalho } from './components/Basicos'
 import { Folha } from './components/Folha'
 import { AjudaWhatsApp } from './components/AjudaWhatsApp'
 import { RegrasEssenciais } from './components/planos/Detalhes'
+import { ContratoPasso } from './components/contrato/ContratoPasso'
 
 type FolhaAberta =
   | { tipo: 'comprar'; produtoId: string }
   | { tipo: 'turma_fixa'; produtoId: string }
   | { tipo: 'comparar' }
   | { tipo: 'regras'; de: TipoPlano }
+  /** Passo do Contrato de Adesão, entre o pedido e o pagamento. */
+  | { tipo: 'contrato'; produtoId: string; solicitacaoId: string }
 
 const PERIODOS: Recorrencia[] = ['mensal', 'semestral']
 
@@ -97,6 +101,8 @@ export function PlanosPage() {
   const [folha, setFolha] = useState<FolhaAberta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [contratado, setContratado] = useState<Produto | null>(null)
+  const [linkPagamento, setLinkPagamento] = useState<string | null>(null)
+  const { data: solicitacaoAberta } = useSolicitacaoAberta()
 
   /*
     Produto que este aluno não pode contratar não entra na vitrine.
@@ -197,17 +203,38 @@ export function PlanosPage() {
     setFolha(f)
   }
 
+  /**
+   * Contratar deixou de ser o último passo.
+   *
+   * O pedido nasce, e o aluno vai direto para o Contrato de Adesão: ele
+   * lê as cláusulas do produto que escolheu, aceita, e **só então** paga.
+   * `registrar_cobranca` recusa emitir cobrança sem contrato aceito, então
+   * esta ordem não é convenção de tela — é o que o banco exige.
+   */
   function confirmar(p: Produto) {
     setErro(null)
     contratar.mutate(
       { clienteId, planoId: p.id },
       {
-        onSuccess: () => {
-          setFolha(null)
-          setContratado(p)
+        onSuccess: (solicitacaoId) => {
+          setFolha({ tipo: 'contrato', produtoId: p.id, solicitacaoId: String(solicitacaoId) })
           window.scrollTo({ top: 0 })
         },
-        onError: (e) => setErro(mensagemErroContratacao(e)),
+        onError: (e) => {
+          // Pedido em aberto do MESMO produto não é erro: é o aluno
+          // voltando. Retoma de onde parou em vez de pedir que cancele.
+          const aberto = solicitacaoAberta
+          if (
+            aberto?.id &&
+            aberto.produto_id === p.id &&
+            /pedido em aberto/i.test((e as { message?: string }).message ?? '')
+          ) {
+            setFolha({ tipo: 'contrato', produtoId: p.id, solicitacaoId: String(aberto.id) })
+            window.scrollTo({ top: 0 })
+            return
+          }
+          setErro(mensagemErroContratacao(e))
+        },
       },
     )
   }
@@ -219,12 +246,17 @@ export function PlanosPage() {
 
   if (contratado) {
     return (
-      <Contratado produto={contratado} onInicio={() => navigate('..')} />
+      <ContratoAceito
+        produto={contratado}
+        urlPagamento={linkPagamento}
+        onInicio={() => navigate('..')}
+        onMeuPlano={() => navigate('../meu-plano')}
+      />
     )
   }
 
   const produtoDaFolha =
-    folha && (folha.tipo === 'comprar' || folha.tipo === 'turma_fixa')
+    folha && (folha.tipo === 'comprar' || folha.tipo === 'turma_fixa' || folha.tipo === 'contrato')
       ? porId.get(folha.produtoId)
       : undefined
 
@@ -406,6 +438,22 @@ export function PlanosPage() {
         </Folha>
       )}
 
+      {folha?.tipo === 'contrato' && produtoDaFolha && (
+        <Folha titulo="Contrato de Adesão" onFechar={() => setFolha(null)}>
+          <ContratoPasso
+            solicitacaoId={folha.solicitacaoId}
+            nomeProduto={produtoDaFolha.nome}
+            onAceito={(url) => {
+              setFolha(null)
+              setLinkPagamento(url)
+              setContratado(produtoDaFolha)
+              window.scrollTo({ top: 0 })
+            }}
+            onVoltar={() => setFolha(null)}
+          />
+        </Folha>
+      )}
+
       {folha?.tipo === 'regras' && (
         <Folha
           titulo={folha.de === 'creditos' ? 'Como funcionam os créditos' : 'Como funciona a turma fixa'}
@@ -426,35 +474,68 @@ export function PlanosPage() {
 }
 
 /**
- * Tela de sucesso — de um PEDIDO, não de uma compra concluída.
+ * Depois do aceite do contrato — e antes do pagamento.
  *
- * Contratar pelo portal não matricula mais ninguém: cria uma
- * solicitação que a gestão aprova e que só vira matrícula quando o
- * pagamento é confirmado. Por isso não existe mais o botão "agendar
- * primeira aula" — não há crédito, e o atalho levaria a uma Agenda que
- * responderia "sem créditos".
+ * Esta tela já disse duas coisas diferentes, e as duas estavam erradas no
+ * momento em que foram escritas. Primeiro "Plano ativado! Suas aulas já
+ * estão liberadas", quando contratar matriculava na hora. Depois "o
+ * estúdio vai confirmar", quando havia aprovação manual. Agora o plano de
+ * crédito não espera ninguém: o que falta é só o pagamento, e é isso que
+ * ela diz.
+ *
+ * O link de pagamento não é prometido aqui como "já disponível" porque
+ * quem o emite é o gateway, logo depois — então a tela manda o aluno para
+ * "Meu plano", que é onde o link aparece e fica.
  */
-function Contratado({ produto: p, onInicio }: { produto: Produto; onInicio: () => void }) {
-  // Antes esta tela dizia "Plano ativado! Suas aulas já estão
-  // liberadas", porque contratar de fato matriculava na hora. Agora o
-  // pedido espera a confirmação do estúdio, e prometer aula liberada
-  // aqui mandaria o aluno para a agenda receber "sem créditos".
+function ContratoAceito({
+  produto: p,
+  urlPagamento,
+  onInicio,
+  onMeuPlano,
+}: {
+  produto: Produto
+  /** Null quando o gateway não respondeu — o link vai por e-mail. */
+  urlPagamento: string | null
+  onInicio: () => void
+  onMeuPlano: () => void
+}) {
   return (
     <div className="pt-10 text-center">
-      <div className="mb-3 text-4xl">✅</div>
-      <h1 className="mb-2 text-xl font-semibold text-neutral-900">Pedido enviado!</h1>
+      <div className="mb-3 text-4xl">📄</div>
+      <h1 className="mb-2 text-xl font-semibold text-neutral-900">Contrato aceito!</h1>
       <p className="mb-1 text-sm text-neutral-600">
-        O estúdio vai confirmar o <b>{p.nome}</b> e combinar o pagamento com você.
+        Guardamos a versão que você aceitou do <b>{p.nome}</b>, com data e hora. Ela fica em{' '}
+        <b>Meu plano → Documentos</b>.
       </p>
       <p className="mb-8 text-xs text-neutral-400">
-        Suas aulas são liberadas assim que o pagamento for confirmado. Você recebe um e-mail a
-        cada passo, e pode acompanhar em “Meu plano”.
+        {urlPagamento
+          ? 'Falta só o pagamento. Seus créditos são liberados assim que ele for confirmado.'
+          : 'Falta o pagamento. O link chega no seu e-mail em alguns minutos e também aparece em “Meu plano”.'}
       </p>
+
+      {urlPagamento ? (
+        <a
+          href={urlPagamento}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
+        >
+          Pagar agora
+        </a>
+      ) : (
+        <button
+          onClick={onMeuPlano}
+          className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          Ir para “Meu plano”
+        </button>
+      )}
+
       <button
-        onClick={onInicio}
-        className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
+        onClick={urlPagamento ? onMeuPlano : onInicio}
+        className="mt-2 w-full rounded-md py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800"
       >
-        Voltar ao início
+        {urlPagamento ? 'Pagar depois, ver meu plano' : 'Voltar ao início'}
       </button>
     </div>
   )

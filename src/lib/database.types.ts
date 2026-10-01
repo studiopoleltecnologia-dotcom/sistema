@@ -573,6 +573,8 @@ export type Database = {
         Row: {
           asaas_customer_id: string | null
           atualizada_em: string
+          autoriza_imagem: boolean | null
+          autoriza_imagem_em: string | null
           contato_emergencia_nome: string | null
           contato_emergencia_parentesco: string | null
           contato_emergencia_telefone: string | null
@@ -591,6 +593,9 @@ export type Database = {
           origem: Database["public"]["Enums"]["origem_cliente"]
           primeiro_contato: string
           responsavel_id: string | null
+          responsavel_legal_cpf: string | null
+          responsavel_legal_nome: string | null
+          responsavel_legal_vinculo: string | null
           telefone: string | null
           ultima_aula: string | null
           ultima_conversa: string | null
@@ -599,6 +604,8 @@ export type Database = {
         Insert: {
           asaas_customer_id?: string | null
           atualizada_em?: string
+          autoriza_imagem?: boolean | null
+          autoriza_imagem_em?: string | null
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
@@ -617,6 +624,9 @@ export type Database = {
           origem?: Database["public"]["Enums"]["origem_cliente"]
           primeiro_contato?: string
           responsavel_id?: string | null
+          responsavel_legal_cpf?: string | null
+          responsavel_legal_nome?: string | null
+          responsavel_legal_vinculo?: string | null
           telefone?: string | null
           ultima_aula?: string | null
           ultima_conversa?: string | null
@@ -625,6 +635,8 @@ export type Database = {
         Update: {
           asaas_customer_id?: string | null
           atualizada_em?: string
+          autoriza_imagem?: boolean | null
+          autoriza_imagem_em?: string | null
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
@@ -643,6 +655,9 @@ export type Database = {
           origem?: Database["public"]["Enums"]["origem_cliente"]
           primeiro_contato?: string
           responsavel_id?: string | null
+          responsavel_legal_cpf?: string | null
+          responsavel_legal_nome?: string | null
+          responsavel_legal_vinculo?: string | null
           telefone?: string | null
           ultima_aula?: string | null
           ultima_conversa?: string | null
@@ -833,29 +848,38 @@ export type Database = {
       config_cadastro: {
         Row: {
           atualizada_em: string
+          exigir_contrato: boolean
           exigir_cpf: boolean
           exigir_cpf_email_no_lead: boolean
           exigir_email: boolean
+          exigir_parq: boolean
           exigir_sobrenome: boolean
           id: boolean
+          validade_parq_meses: number
           validar_telefone_br: boolean
         }
         Insert: {
           atualizada_em?: string
+          exigir_contrato?: boolean
           exigir_cpf?: boolean
           exigir_cpf_email_no_lead?: boolean
           exigir_email?: boolean
+          exigir_parq?: boolean
           exigir_sobrenome?: boolean
           id?: boolean
+          validade_parq_meses?: number
           validar_telefone_br?: boolean
         }
         Update: {
           atualizada_em?: string
+          exigir_contrato?: boolean
           exigir_cpf?: boolean
           exigir_cpf_email_no_lead?: boolean
           exigir_email?: boolean
+          exigir_parq?: boolean
           exigir_sobrenome?: boolean
           id?: boolean
+          validade_parq_meses?: number
           validar_telefone_br?: boolean
         }
         Relationships: []
@@ -987,6 +1011,345 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      config_estudio: {
+        Row: {
+          atualizada_em: string
+          cnpj: string | null
+          endereco: string | null
+          id: boolean
+          razao_social: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          atualizada_em?: string
+          cnpj?: string | null
+          endereco?: string | null
+          id?: boolean
+          razao_social?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          atualizada_em?: string
+          cnpj?: string | null
+          endereco?: string | null
+          id?: boolean
+          razao_social?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      contrato_clausulas: {
+        Row: {
+          condicao: string[]
+          corpo_html: string
+          criada_em: string
+          id: string
+          nivel: number
+          ordem: number
+          titulo: string
+          versao_id: string
+        }
+        Insert: {
+          condicao?: string[]
+          corpo_html: string
+          criada_em?: string
+          id?: string
+          nivel?: number
+          ordem: number
+          titulo: string
+          versao_id: string
+        }
+        Update: {
+          condicao?: string[]
+          corpo_html?: string
+          criada_em?: string
+          id?: string
+          nivel?: number
+          ordem?: number
+          titulo?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      contrato_versoes: {
+        Row: {
+          criada_em: string
+          criada_por: string | null
+          id: string
+          notas: string | null
+          versao: string
+          vigente: boolean
+          vigente_desde: string
+        }
+        Insert: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          notas?: string | null
+          versao: string
+          vigente?: boolean
+          vigente_desde: string
+        }
+        Update: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          notas?: string | null
+          versao?: string
+          vigente?: boolean
+          vigente_desde?: string
+        }
+        Relationships: []
+      }
+      contratos: {
+        Row: {
+          aceito_em: string
+          cliente_id: string
+          cobranca_id: string | null
+          corpo_html: string
+          criado_em: string
+          forma_pagamento: string | null
+          hash_corpo: string
+          id: string
+          ip: string | null
+          matricula_id: string | null
+          produto_id: string
+          provider_ref: string | null
+          resumo: Json
+          solicitacao_id: string
+          tags: string[]
+          user_agent: string | null
+          valor_centavos: number
+          versao: string
+          versao_id: string
+        }
+        Insert: {
+          aceito_em?: string
+          cliente_id: string
+          cobranca_id?: string | null
+          corpo_html: string
+          criado_em?: string
+          forma_pagamento?: string | null
+          hash_corpo: string
+          id?: string
+          ip?: string | null
+          matricula_id?: string | null
+          produto_id: string
+          provider_ref?: string | null
+          resumo: Json
+          solicitacao_id: string
+          tags: string[]
+          user_agent?: string | null
+          valor_centavos: number
+          versao: string
+          versao_id: string
+        }
+        Update: {
+          aceito_em?: string
+          cliente_id?: string
+          cobranca_id?: string | null
+          corpo_html?: string
+          criado_em?: string
+          forma_pagamento?: string | null
+          hash_corpo?: string
+          id?: string
+          ip?: string | null
+          matricula_id?: string | null
+          produto_id?: string
+          provider_ref?: string | null
+          resumo?: Json
+          solicitacao_id?: string
+          tags?: string[]
+          user_agent?: string | null
+          valor_centavos?: number
+          versao?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      parq_documentos: {
+        Row: {
+          aprovado: boolean | null
+          arquivo_nome: string
+          arquivo_path: string
+          avaliado_em: string | null
+          avaliado_por: string | null
+          cliente_id: string
+          emitido_em: string | null
+          enviado_em: string
+          enviado_por: string | null
+          id: string
+          motivo: string | null
+          resposta_id: string
+          valido_ate: string | null
+        }
+        Insert: {
+          aprovado?: boolean | null
+          arquivo_nome: string
+          arquivo_path: string
+          avaliado_em?: string | null
+          avaliado_por?: string | null
+          cliente_id: string
+          emitido_em?: string | null
+          enviado_em?: string
+          enviado_por?: string | null
+          id?: string
+          motivo?: string | null
+          resposta_id: string
+          valido_ate?: string | null
+        }
+        Update: {
+          aprovado?: boolean | null
+          arquivo_nome?: string
+          arquivo_path?: string
+          avaliado_em?: string | null
+          avaliado_por?: string | null
+          cliente_id?: string
+          emitido_em?: string | null
+          enviado_em?: string
+          enviado_por?: string | null
+          id?: string
+          motivo?: string | null
+          resposta_id?: string
+          valido_ate?: string | null
+        }
+        Relationships: []
+      }
+      parq_perguntas: {
+        Row: {
+          atencao_quando: boolean
+          id: string
+          ordem: number
+          texto: string
+          versao_id: string
+        }
+        Insert: {
+          atencao_quando?: boolean
+          id?: string
+          ordem: number
+          texto: string
+          versao_id: string
+        }
+        Update: {
+          atencao_quando?: boolean
+          id?: string
+          ordem?: number
+          texto?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      parq_respostas: {
+        Row: {
+          aceito_por: string | null
+          cliente_id: string
+          criada_em: string
+          id: string
+          ip: string | null
+          observacoes: string | null
+          respondido_em: string
+          respostas: Json
+          respostas_sim: number
+          responsavel_aceito_em: string | null
+          responsavel_cpf: string | null
+          responsavel_nome: string | null
+          responsavel_vinculo: string | null
+          status: Database["public"]["Enums"]["status_parq"]
+          termo_aceito_em: string
+          termo_hash: string
+          user_agent: string | null
+          validade: string
+          versao: string
+          versao_id: string
+        }
+        Insert: {
+          aceito_por?: string | null
+          cliente_id: string
+          criada_em?: string
+          id?: string
+          ip?: string | null
+          observacoes?: string | null
+          respondido_em?: string
+          respostas: Json
+          respostas_sim: number
+          responsavel_aceito_em?: string | null
+          responsavel_cpf?: string | null
+          responsavel_nome?: string | null
+          responsavel_vinculo?: string | null
+          status: Database["public"]["Enums"]["status_parq"]
+          termo_aceito_em?: string
+          termo_hash: string
+          user_agent?: string | null
+          validade: string
+          versao: string
+          versao_id: string
+        }
+        Update: {
+          aceito_por?: string | null
+          cliente_id?: string
+          criada_em?: string
+          id?: string
+          ip?: string | null
+          observacoes?: string | null
+          respondido_em?: string
+          respostas?: Json
+          respostas_sim?: number
+          responsavel_aceito_em?: string | null
+          responsavel_cpf?: string | null
+          responsavel_nome?: string | null
+          responsavel_vinculo?: string | null
+          status?: Database["public"]["Enums"]["status_parq"]
+          termo_aceito_em?: string
+          termo_hash?: string
+          user_agent?: string | null
+          validade?: string
+          versao?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      parq_versoes: {
+        Row: {
+          aviso_html: string
+          criada_em: string
+          id: string
+          mensagem_apto: string
+          mensagem_atencao: string
+          mensagem_menor: string
+          mensagem_renovacao: string
+          termo_html: string
+          versao: string
+          vigente: boolean
+          vigente_desde: string
+        }
+        Insert: {
+          aviso_html: string
+          criada_em?: string
+          id?: string
+          mensagem_apto: string
+          mensagem_atencao: string
+          mensagem_menor: string
+          mensagem_renovacao: string
+          termo_html: string
+          versao: string
+          vigente?: boolean
+          vigente_desde: string
+        }
+        Update: {
+          aviso_html?: string
+          criada_em?: string
+          id?: string
+          mensagem_apto?: string
+          mensagem_atencao?: string
+          mensagem_menor?: string
+          mensagem_renovacao?: string
+          termo_html?: string
+          versao?: string
+          vigente?: boolean
+          vigente_desde?: string
+        }
+        Relationships: []
       }
       creditos_eventos: {
         Row: {
@@ -2351,6 +2714,7 @@ export type Database = {
           ordem: number
           periodicidade_dias: number
           periodicidade_meses: number | null
+          politica_contratacao: string
           preco_centavos: number
           produto_sucessor_id: string | null
           renova_automaticamente: boolean
@@ -2381,6 +2745,7 @@ export type Database = {
           ordem?: number
           periodicidade_dias: number
           periodicidade_meses?: number | null
+          politica_contratacao?: string
           preco_centavos: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
@@ -2411,6 +2776,7 @@ export type Database = {
           ordem?: number
           periodicidade_dias?: number
           periodicidade_meses?: number | null
+          politica_contratacao?: string
           preco_centavos?: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
@@ -4375,6 +4741,110 @@ export type Database = {
         }[]
       }
       cliente_atual: { Args: never; Returns: string }
+      aceitar_contrato: {
+        Args: { p_forma_pagamento?: string; p_solicitacao: string; p_versao: string }
+        Returns: string
+      }
+      avaliar_atestado_parq: {
+        Args: {
+          p_aprovado: boolean
+          p_documento: string
+          p_motivo?: string
+          p_valido_ate?: string
+        }
+        Returns: boolean
+      }
+      contrato_aceito: { Args: { p_solicitacao: string }; Returns: boolean }
+      contrato_resumo: { Args: { p_solicitacao: string }; Returns: Json }
+      contrato_tags: { Args: { p_produto: string }; Returns: string[] }
+      definir_autorizacao_imagem: {
+        Args: { p_autoriza: boolean; p_cliente?: string }
+        Returns: boolean
+      }
+      enviar_atestado_parq: {
+        Args: {
+          p_arquivo_nome: string
+          p_arquivo_path: string
+          p_emitido_em?: string
+          p_resposta: string
+        }
+        Returns: string
+      }
+      ler_parq: {
+        Args: { p_resposta: string }
+        Returns: {
+          cliente_id: string
+          ip: string
+          observacoes: string
+          respondido_em: string
+          respostas: Json
+          responsavel_cpf: string
+          responsavel_nome: string
+          responsavel_vinculo: string
+          status: string
+          termo_aceito_em: string
+          validade: string
+          versao: string
+        }[]
+      }
+      meus_contratos: {
+        Args: never
+        Returns: {
+          aceito_em: string
+          formato: string
+          id: string
+          matricula_id: string
+          produto: string
+          status_matricula: string
+          valor_centavos: number
+          versao: string
+        }[]
+      }
+      montar_contrato: {
+        Args: { p_aceite_em?: string; p_solicitacao: string; p_versao?: string }
+        Returns: {
+          corpo_html: string
+          resumo: Json
+          tags: string[]
+          versao: string
+          versao_id: string
+        }[]
+      }
+      parq_impede_agendamento: { Args: { p_cliente: string }; Returns: string }
+      parq_situacao: {
+        Args: { p_cliente: string }
+        Returns: {
+          liberado: boolean
+          mensagem: string
+          respondido_em: string
+          resposta_id: string
+          situacao: string
+          validade: string
+          versao: string
+        }[]
+      }
+      responder_parq: {
+        Args: {
+          p_aceita_termo: boolean
+          p_cliente?: string
+          p_observacoes?: string
+          p_respostas: Json
+          p_responsavel_cpf?: string
+          p_responsavel_nome?: string
+          p_responsavel_vinculo?: string
+        }
+        Returns: string
+      }
+      vincular_contrato_ao_pagamento: {
+        Args: {
+          p_cobranca: string
+          p_forma: string
+          p_matricula: string
+          p_provider_ref: string
+          p_solicitacao: string
+        }
+        Returns: boolean
+      }
       cobranca_cancelada: {
         Args: {
           p_estorno?: boolean
@@ -4851,6 +5321,12 @@ export type Database = {
       }
     }
     Enums: {
+      status_parq:
+        | "apto"
+        | "aguardando_documento"
+        | "documento_enviado"
+        | "documento_aprovado"
+        | "documento_recusado"
       base_percentual: "mensalidade_contratada"
       canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
       categoria_entrada:
@@ -5082,6 +5558,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      status_parq: [
+        "apto",
+        "aguardando_documento",
+        "documento_enviado",
+        "documento_aprovado",
+        "documento_recusado",
+      ],
       base_percentual: ["mensalidade_contratada"],
       canal_aula: ["mensalista", "wellhub", "classpass", "avulsa"],
       categoria_entrada: [

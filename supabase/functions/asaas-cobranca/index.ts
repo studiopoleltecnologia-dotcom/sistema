@@ -141,15 +141,27 @@ Deno.serve(async (req) => {
 
   if (!corpo.solicitacao_id) return json({ erro: 'solicitacao_id é obrigatório' }, 400)
 
-  // Quem pediu precisa ser gestão. Verificado com o token de quem
-  // chamou, não com a service key — senão qualquer um emitiria cobrança.
+  // Quem pediu precisa ser gestão OU o próprio aluno da contratação.
+  // Verificado com o token de quem chamou, não com a service key — senão
+  // qualquer um emitiria cobrança.
+  //
+  // O aluno entrou aqui em 01/10/2026, quando a contratação de plano comum
+  // passou a ser automática: ele aceita o contrato e precisa do link na
+  // hora. Antes só a gestão emitia, e no autoatendimento isso significaria
+  // esperar alguém clicar.
+  //
+  // A permissão dele é estreita de propósito — só a PRÓPRIA contratação,
+  // e o banco ainda recusa emitir sem Contrato de Adesão aceito
+  // (`registrar_cobranca`).
   const comoUsuario = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_ANON_KEY')!,
     { global: { headers: { Authorization: auth } } },
   )
   const { data: ehGestao } = await comoUsuario.rpc('is_gestao')
-  if (!ehGestao) return json({ erro: 'acesso restrito à gestão' }, 403)
+  const { data: clienteDaSessao } = ehGestao
+    ? { data: null }
+    : await comoUsuario.rpc('cliente_atual')
 
   const { data: sol, error: erroSol } = await sb
     .from('vw_solicitacoes')
@@ -158,6 +170,28 @@ Deno.serve(async (req) => {
     .maybeSingle()
   if (erroSol) return json({ erro: erroSol.message }, 500)
   if (!sol) return json({ erro: 'solicitação não encontrada' }, 404)
+
+  if (!ehGestao && (!clienteDaSessao || clienteDaSessao !== sol.cliente_id)) {
+    return json({ erro: 'acesso restrito' }, 403)
+  }
+
+  // O aluno só gera link do que ele mesmo pode pagar sozinho. Produto de
+  // aprovação prévia (turma fixa) continua sendo cobrado pela equipe
+  // depois de validar a vaga — senão o autoatendimento furaria a fila do
+  // assento na sala.
+  if (!ehGestao) {
+    const { data: prod } = await sb
+      .from('produtos')
+      .select('politica_contratacao')
+      .eq('id', sol.produto_id)
+      .maybeSingle()
+    if (prod?.politica_contratacao !== 'automatica') {
+      return json(
+        { erro: 'esta contratação é confirmada pela equipe antes do pagamento' },
+        403,
+      )
+    }
+  }
   if (sol.status !== 'aguardando_pagamento') {
     return json({ erro: `solicitação está em "${sol.status}", não aguardando pagamento` }, 409)
   }

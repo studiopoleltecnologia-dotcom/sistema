@@ -22,6 +22,7 @@ import {
   useMeuCliente,
   useMinhasTurmasFixas,
 } from './hooks/usePortalAluna'
+import { useSituacaoParq } from './hooks/useDocumentos'
 import {
   SITUACAO,
   ativoAte,
@@ -48,6 +49,7 @@ export function DashboardPage() {
   const grade = useGradePublica()
   const turmas = useMinhasTurmasFixas()
   const { ctx, suspensao, isLoading, error, refetch } = useContextoAluno()
+  const { data: parq } = useSituacaoParq()
 
   const hoje = hojeIso()
   const aulas = minhasProximasAulas(grade.data ?? [], ctx, 14)
@@ -87,6 +89,36 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="mb-5 flex flex-col gap-2.5 empty:hidden">
+            {/*
+              O PAR-Q vem antes de tudo porque é ele que BLOQUEIA a reserva:
+              avisar depois de o aluno tentar agendar e levar a recusa é
+              descobrir o pré-requisito pelo erro. A mensagem é a do
+              documento oficial, vinda do banco — não uma paráfrase.
+            */}
+            {parq && !parq.liberado && (
+              <Aviso
+                tom={parq.situacao === 'documento_enviado' ? 'info' : 'atencao'}
+                titulo={
+                  parq.situacao === 'nao_preenchido'
+                    ? 'Preencha o PAR-Q antes da primeira aula'
+                    : parq.situacao === 'expirado'
+                      ? 'Seu PAR-Q venceu'
+                      : parq.situacao === 'documento_enviado'
+                        ? 'Atestado em análise'
+                        : 'Atestado médico necessário'
+                }
+                acao={
+                  <Link
+                    to="saude"
+                    className="inline-flex rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+                  >
+                    {parq.situacao === 'documento_enviado' ? 'Ver situação' : 'Resolver agora'}
+                  </Link>
+                }
+              >
+                {parq.mensagem}
+              </Aviso>
+            )}
             {creditoSemReserva && (
               <Aviso
                 tom="info"
