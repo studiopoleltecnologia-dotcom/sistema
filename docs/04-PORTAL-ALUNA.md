@@ -274,7 +274,8 @@ journey
 
 Cobre a regra §9.5 do CLAUDE.md: Wellhub não precisa de conta para o básico. A
 jornada só entra no Portal se ela **quiser algo a mais** (ex: comprar o
-complemento Passe Livre ou a ponte Studio+, já definidos na estratégia de
+complemento Passe Livre (a ponte Studio+ foi descontinuada em 01/10/2026),
+já definido na estratégia de
 migração Wellhub discutida com a equipe):
 
 1. Continua agendando/check-in **pelo app Wellhub normalmente** — zero
