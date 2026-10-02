@@ -797,6 +797,48 @@ export type Database = {
           },
         ]
       }
+      conferencias_quorum: {
+        Row: {
+          agendados: number
+          cancelamento_id: string | null
+          conferida_em: string
+          data: string
+          decisao: string
+          fixos: number
+          id: string
+          inicio_da_aula: string
+          minimo: number
+          motivo: string | null
+          turma_id: string
+        }
+        Insert: {
+          agendados: number
+          cancelamento_id?: string | null
+          conferida_em?: string
+          data: string
+          decisao: string
+          fixos: number
+          id?: string
+          inicio_da_aula: string
+          minimo: number
+          motivo?: string | null
+          turma_id: string
+        }
+        Update: {
+          agendados?: number
+          cancelamento_id?: string | null
+          conferida_em?: string
+          data?: string
+          decisao?: string
+          fixos?: number
+          id?: string
+          inicio_da_aula?: string
+          minimo?: number
+          motivo?: string | null
+          turma_id?: string
+        }
+        Relationships: []
+      }
       config_agendamento: {
         Row: {
           atualizada_em: string
@@ -807,10 +849,14 @@ export type Database = {
           dias_validade_credito_aula_cancelada: number
           faltas_para_suspensao: number
           horas_cancelamento: number
+          horas_conferencia_quorum: number
+          horas_minimas_para_cancelar: number
           id: boolean
           max_reposicoes_por_matricula: number
+          minimo_alunos_turma: number
           minutos_reserva_espera: number
           minutos_tolerancia_atraso: number
+          valor_checkin_totalpass_centavos: number
           valor_checkin_wellhub_centavos: number
         }
         Insert: {
@@ -822,10 +868,14 @@ export type Database = {
           dias_validade_credito_aula_cancelada?: number
           faltas_para_suspensao?: number
           horas_cancelamento?: number
+          horas_conferencia_quorum?: number
+          horas_minimas_para_cancelar?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
+          minimo_alunos_turma?: number
           minutos_reserva_espera?: number
           minutos_tolerancia_atraso?: number
+          valor_checkin_totalpass_centavos?: number
           valor_checkin_wellhub_centavos?: number
         }
         Update: {
@@ -837,10 +887,14 @@ export type Database = {
           dias_validade_credito_aula_cancelada?: number
           faltas_para_suspensao?: number
           horas_cancelamento?: number
+          horas_conferencia_quorum?: number
+          horas_minimas_para_cancelar?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
+          minimo_alunos_turma?: number
           minutos_reserva_espera?: number
           minutos_tolerancia_atraso?: number
+          valor_checkin_totalpass_centavos?: number
           valor_checkin_wellhub_centavos?: number
         }
         Relationships: []
@@ -3547,6 +3601,7 @@ export type Database = {
           duracao_minutos: number
           horario: string
           id: string
+          minimo_alunos: number | null
           modalidade: string
           modalidade_id: string | null
           professora_id: string
@@ -3561,6 +3616,7 @@ export type Database = {
           duracao_minutos?: number
           horario: string
           id?: string
+          minimo_alunos?: number | null
           modalidade?: string
           modalidade_id?: string | null
           professora_id: string
@@ -3575,6 +3631,7 @@ export type Database = {
           duracao_minutos?: number
           horario?: string
           id?: string
+          minimo_alunos?: number | null
           modalidade?: string
           modalidade_id?: string | null
           professora_id?: string
@@ -4560,6 +4617,27 @@ export type Database = {
           },
         ]
       }
+      vw_conferencias_quorum: {
+        Row: {
+          agendados: number | null
+          cancelamento_id: string | null
+          conferida_em: string | null
+          data: string | null
+          decisao: string | null
+          fixos: number | null
+          horario: string | null
+          id: string | null
+          inicio_da_aula: string | null
+          minimo: number | null
+          modalidade: string | null
+          motivo: string | null
+          professora_nome: string | null
+          reaberta: boolean | null
+          sala_nome: string | null
+          turma_id: string | null
+        }
+        Relationships: []
+      }
       vw_solicitacoes: {
         Row: {
           cliente_email: string | null
@@ -5323,6 +5401,27 @@ export type Database = {
         Args: { p_imediato?: boolean; p_turma_nova: string; p_vinculo: string }
         Returns: string
       }
+      quorum_da_aula: {
+        Args: { p_data: string; p_turma: string }
+        Returns: {
+          agendados: number
+          fixos: number
+          minimo: number
+          atende: boolean
+          motivo: string | null
+        }[]
+      }
+      conferir_quorum: {
+        Args: { p_agora?: string }
+        Returns: {
+          turma_id: string
+          data: string
+          decisao: string
+          agendados: number
+          minimo: number
+        }[]
+      }
+      horas_em_texto: { Args: { p: number }; Returns: string }
       turmas_para_assento_fixo: {
         Args: { p_cliente?: string; p_de?: string }
         Returns: {

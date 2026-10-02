@@ -90,6 +90,10 @@ function ConfigAgendamentoForm() {
   const atualizar = useAtualizarConfigAgendamento()
   const [horas, setHoras] = useState<string | null>(null)
   const [valorWellhub, setValorWellhub] = useState<string | null>(null)
+  const [valorTotalpass, setValorTotalpass] = useState<string | null>(null)
+  const [minimoAlunos, setMinimoAlunos] = useState<string | null>(null)
+  const [horasQuorum, setHorasQuorum] = useState<string | null>(null)
+  const [horasMinimas, setHorasMinimas] = useState<string | null>(null)
   const [cobranca, setCobranca] = useState<string | null>(null)
   const [avisoCancelamento, setAvisoCancelamento] = useState<string | null>(null)
   const [avisoFimSemestral, setAvisoFimSemestral] = useState<string | null>(null)
@@ -104,10 +108,18 @@ function ConfigAgendamentoForm() {
     if (!config) return
     const valorCent =
       valorWellhub !== null ? parseCentavos(valorWellhub) : config.valor_checkin_wellhub_centavos
+    const valorTp =
+      valorTotalpass !== null
+        ? parseCentavos(valorTotalpass)
+        : config.valor_checkin_totalpass_centavos
     const num = (v: string | null, atual: number) => (v !== null && v !== '' ? Number(v) : atual)
     atualizar.mutate({
       horas_cancelamento: num(horas, config.horas_cancelamento),
       valor_checkin_wellhub_centavos: valorCent ?? config.valor_checkin_wellhub_centavos,
+      valor_checkin_totalpass_centavos: valorTp ?? config.valor_checkin_totalpass_centavos,
+      minimo_alunos_turma: num(minimoAlunos, config.minimo_alunos_turma),
+      horas_conferencia_quorum: num(horasQuorum, config.horas_conferencia_quorum),
+      horas_minimas_para_cancelar: num(horasMinimas, config.horas_minimas_para_cancelar),
       dias_antecedencia_cobranca: num(cobranca, config.dias_antecedencia_cobranca),
       dias_antecedencia_cancelamento_plano: num(
         avisoCancelamento,
@@ -151,6 +163,59 @@ function ConfigAgendamentoForm() {
             onChange={(e) => setValorWellhub(e.target.value)}
             className={input}
           />
+        </div>
+        <div>
+          <label className={campo}>
+            Valor estimado por check-in TotalPass (hoje{' '}
+            {fmtCentavos(config.valor_checkin_totalpass_centavos)}) — com 0 nada é lançado
+          </label>
+          <input
+            value={valorTotalpass ?? String(config.valor_checkin_totalpass_centavos / 100)}
+            onChange={(e) => setValorTotalpass(e.target.value)}
+            className={input}
+          />
+        </div>
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-neutral-500">
+            Mínimo de alunos (regulamento 5.1)
+          </p>
+          <div className="flex flex-col gap-3">
+            <div>
+              <label className={campo}>
+                Mínimo de alunos para a aula acontecer — a turma pode ter o seu próprio
+              </label>
+              <input
+                value={minimoAlunos ?? String(config.minimo_alunos_turma)}
+                onChange={(e) => setMinimoAlunos(e.target.value)}
+                className={input}
+              />
+            </div>
+            <div>
+              {/* Hoje é o mesmo 4 do cancelamento do aluno, e não por acaso:
+                  às 4h antes ninguém mais cancela de graça, então a lista
+                  está fechada. São campos separados para que mudar um não
+                  mova o outro em silêncio. */}
+              <label className={campo}>
+                Quantas horas antes do início a conta é feita
+              </label>
+              <input
+                value={horasQuorum ?? String(config.horas_conferencia_quorum)}
+                onChange={(e) => setHorasQuorum(e.target.value)}
+                className={input}
+              />
+            </div>
+            <div>
+              <label className={campo}>
+                Dentro de quantas horas do início a aula NÃO é mais cancelada, mesmo abaixo do
+                mínimo (já tem aluno a caminho)
+              </label>
+              <input
+                value={horasMinimas ?? String(config.horas_minimas_para_cancelar)}
+                onChange={(e) => setHorasMinimas(e.target.value)}
+                className={input}
+              />
+            </div>
+          </div>
         </div>
         <div>
           <label className={campo}>

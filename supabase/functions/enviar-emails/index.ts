@@ -20,6 +20,7 @@ const PORTAL = 'https://studiopoleltecnologia-dotcom.github.io/sistema/#/portal'
 const MATRICULAS_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=cancelamentos'
 // A fila de pedidos de contratação — é desta aba que a gestão aprova a vaga.
 const CONTRATACOES_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=contratacoes'
+const AGENDA_ERP = 'https://sistema.studiopolel.com.br/#/agenda'
 // ?v muda quando a logo troca — fura o cache do Gmail (que guarda imagem por URL).
 const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png?v=2'
 const MAX_TENTATIVAS = 5
@@ -363,6 +364,31 @@ function render(tipo: string, d: Dados): Render {
            Bons treinos!`,
           { texto: 'Ver minhas aulas', url: PORTAL }),
       }
+    // Regulamento 5.1–5.2: a aula abaixo do mínimo se cancela sozinha, e a
+    // equipe fica sabendo. Cancelamento automático sem aviso é o pior dos
+    // dois mundos — ninguém confia no sistema e ninguém sabe o que houve.
+    //
+    // O assunto leva a turma e a hora porque este e-mail é lido no celular,
+    // de relance, e a pergunta é sempre "qual aula?".
+    case 'aula_cancelada_quorum': {
+      const agendados = (d.agendados as number) ?? 0
+      return {
+        assunto: `Aula cancelada por quórum — ${esc(d.turma)}`,
+        html: layout('Aula cancelada automaticamente',
+          `A aula abaixo não atingiu o mínimo de alunos até o prazo de conferência e <strong style="color:#241f33">foi cancelada pelo sistema</strong>.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Turma</td><td style="padding:3px 0;color:#241f33">${esc(d.turma)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Data</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.data as string)} às ${hhmm(d.horario as string)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Agendados</td><td style="padding:3px 0;color:#241f33">${agendados} de ${d.minimo} necessários</td></tr>
+           </table><br>
+           ${agendados > 0
+             ? 'Quem estava agendado já foi avisado por e-mail e teve o crédito devolvido.'
+             : 'Ninguém estava agendado, então não houve aviso a aluno.'}
+           <br><br>
+           Quer fazer a aula mesmo assim? Reabra em <strong>Agenda → Canceladas</strong>: a vaga volta a ser oferecida, mas os alunos avisados precisam agendar de novo.`,
+          { texto: 'Abrir a Agenda', url: AGENDA_ERP }),
+      }
+    }
     default:
       return null
   }
