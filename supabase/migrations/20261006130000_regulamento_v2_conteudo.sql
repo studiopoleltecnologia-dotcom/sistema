@@ -289,7 +289,7 @@ begin
   -- ================= 3. agendamento, cancelamento, faltas =================
   (v_id, 70, 1, '{}', 'Agendamento, cancelamento de aula, faltas e atraso',
    '<ul>
-<li>A compra de plano, aula avulsa ou aula experimental <strong>não reserva vaga automaticamente</strong>. O agendamento pelo sistema é obrigatório. No Plano Turma Fixa, a vaga da turma contratada já fica reservada.</li>
+<li>A compra de plano, aula avulsa ou aula experimental <strong>não reserva vaga automaticamente</strong>. O agendamento pelo sistema é obrigatório.</li>
 <li>Cancelamentos e remarcações devem ser realizados com pelo menos <strong>{{HORAS_CANCELAMENTO}} horas</strong> de antecedência. Após esse prazo, a aula é considerada utilizada.</li>
 <li>A tolerância de atraso é de <strong>{{MINUTOS_TOLERANCIA}} minutos</strong>. Após esse limite, o aluno poderá ser impedido de entrar por motivo de segurança, especialmente porque o aquecimento integra a preparação da atividade, e a aula será considerada utilizada.</li>
 </ul>'),
