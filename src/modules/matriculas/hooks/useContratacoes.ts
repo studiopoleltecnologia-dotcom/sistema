@@ -7,6 +7,7 @@ import {
   listarSolicitacoes,
   recusarContratacao,
   solicitarContratacao,
+  turmasParaAssentoFixo,
   type StatusSolicitacao,
 } from '../api/contratacoes'
 
@@ -23,6 +24,21 @@ export function useContratacoesDecididas() {
   return useQuery({
     queryKey: ['contratacoes', 'decididas'],
     queryFn: () => listarSolicitacoes(['concluida', 'recusada', 'cancelada']),
+  })
+}
+
+/**
+ * As turmas que aceitam assento fixo, com a vaga de cada uma.
+ *
+ * `staleTime` curto: a vaga muda quando qualquer pessoa reserva, e
+ * escolher uma turma que acabou de lotar significa ver o erro do banco no
+ * clique de salvar.
+ */
+export function useTurmasAssentoFixo(clienteId?: string) {
+  return useQuery({
+    queryKey: ['turmas-assento-fixo', clienteId ?? null],
+    queryFn: () => turmasParaAssentoFixo(clienteId),
+    staleTime: 30_000,
   })
 }
 

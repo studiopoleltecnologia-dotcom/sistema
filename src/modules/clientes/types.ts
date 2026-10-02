@@ -25,19 +25,30 @@ export const ESTAGIO_LABEL = Object.fromEntries(
   ESTAGIOS.map((e) => [e.value, e.label]),
 ) as Record<EstagioFunil, string>
 
+/** As origens que a equipe escolhe no cadastro. */
 export const ORIGENS: { value: OrigemCliente; label: string }[] = [
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'instagram', label: 'Instagram' },
   { value: 'wellhub', label: 'Wellhub' },
+  { value: 'totalpass', label: 'TotalPass' },
   { value: 'classpass', label: 'ClassPass' },
   { value: 'indicacao', label: 'Indicação' },
   { value: 'passou_na_porta', label: 'Passou na porta' },
   { value: 'outros', label: 'Outros' },
 ]
 
-export const ORIGEM_LABEL = Object.fromEntries(
-  ORIGENS.map((o) => [o.value, o.label]),
-) as Record<OrigemCliente, string>
+/**
+ * Rótulo de TODA origem, inclusive as que ninguém escolhe à mão.
+ *
+ * `portal_aluna` é posta pelo sistema quando a pessoa cria a própria conta,
+ * então não entra no seletor — mas precisa de rótulo, senão a ficha dela
+ * mostra `undefined`. O `as Record` da versão anterior era um cast, e cast
+ * não cobra chave faltando: o buraco existia sem o compilador avisar.
+ */
+export const ORIGEM_LABEL: Record<OrigemCliente, string> = {
+  ...Object.fromEntries(ORIGENS.map((o) => [o.value, o.label])),
+  portal_aluna: 'Criou conta no portal',
+} as Record<OrigemCliente, string>
 
 export const TIPO_INTERACAO_LABEL: Record<TipoInteracao, string> = {
   nota: 'Nota',

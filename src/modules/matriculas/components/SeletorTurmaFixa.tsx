@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Ban, Check, Search } from 'lucide-react'
-import { useModalidades, useTurmas } from '../../agenda/hooks/useAgenda'
-import { useMatriculaTurmas } from '../hooks/useMatriculas'
+import { useTurmasAssentoFixo } from '../hooks/useContratacoes'
 import { DIAS_SEMANA, fmtHoraCurta } from '../types'
 
 /**
@@ -17,7 +16,16 @@ import { DIAS_SEMANA, fmtHoraCurta } from '../types'
  * Livre — 2.3.6) NÃO são escondidas: aparecem riscadas e desabilitadas,
  * com o motivo. Sumir com metade da grade faria a equipe achar que a
  * turma foi arquivada e ir procurar na Agenda; mostrar bloqueado ensina
- * a regra. A recusa de verdade é do banco de qualquer jeito.
+ * a regra. (No portal do aluno o critério é o oposto, e está comentado
+ * lá: para quem só quer escolher um horário, 34 linhas riscadas são um
+ * muro, não uma lição.)
+ *
+ * ⚠️ **A vaga vem do banco.** Esta tela somava os vínculos de
+ * `matricula_turmas` por conta própria, e a conta estava incompleta:
+ * `validar_assento_fixo()` conta também as reservas por crédito já
+ * feitas para a próxima ocorrência da turma. Dava para a equipe ver
+ * "3/8" e o banco recusar o assento no clique seguinte. Agora a fonte é
+ * `turmas_para_assento_fixo()`, a mesma que valida.
  */
 export function SeletorTurmaFixa({
   maximo,
@@ -25,33 +33,17 @@ export function SeletorTurmaFixa({
   onChange,
   /** Assentos que a matrícula já tem — a turma atual não é opção de novo. */
   jaContratadas = [],
+  /** Quem vai assinar, quando se sabe: marca onde essa pessoa já tem assento. */
+  clienteId,
 }: {
   maximo: number
   selecionadas: string[]
   onChange: (ids: string[]) => void
   jaContratadas?: string[]
+  clienteId?: string
 }) {
-  const { data: turmas } = useTurmas()
-  const { data: modalidades } = useModalidades()
-  const { data: vinculos } = useMatriculaTurmas()
+  const { data: turmas, isLoading } = useTurmasAssentoFixo(clienteId)
   const [busca, setBusca] = useState('')
-
-  const elegivelPorModalidade = useMemo(
-    () => new Map((modalidades ?? []).map((m) => [m.id, m.elegivel_turma_fixa])),
-    [modalidades],
-  )
-
-  // Assentos já tomados por turma — vigentes e os agendados para a
-  // próxima renovação, porque os dois seguram lugar (ver
-  // assentos_fixos_ocupados no banco).
-  const ocupadosPorTurma = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const v of vinculos ?? []) {
-      if (!v.turma_id || (!v.vigente && !v.futuro)) continue
-      m.set(v.turma_id, (m.get(v.turma_id) ?? 0) + 1)
-    }
-    return m
-  }, [vinculos])
 
   const porDia = useMemo(() => {
     const termo = busca.trim().toLowerCase()
@@ -59,15 +51,12 @@ export function SeletorTurmaFixa({
       (t) =>
         termo === '' ||
         t.modalidade.toLowerCase().includes(termo) ||
-        (t.professora.nome ?? '').toLowerCase().includes(termo),
+        (t.professora_nome ?? '').toLowerCase().includes(termo),
     )
     const grupos = new Map<number, typeof filtradas>()
     for (const t of filtradas) {
-      const atual = grupos.get(t.dia_semana) ?? []
-      atual.push(t)
-      grupos.set(t.dia_semana, atual)
+      grupos.set(t.dia_semana, [...(grupos.get(t.dia_semana) ?? []), t])
     }
-    for (const lista of grupos.values()) lista.sort((a, b) => a.horario.localeCompare(b.horario))
     return [...grupos.entries()].sort((a, b) => a[0] - b[0])
   }, [turmas, busca])
 
@@ -100,7 +89,10 @@ export function SeletorTurmaFixa({
       </div>
 
       <div className="max-h-72 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50/50 p-2">
-        {porDia.length === 0 && (
+        {isLoading && (
+          <p className="px-1 py-3 text-center text-xs text-neutral-400">Carregando a grade…</p>
+        )}
+        {!isLoading && porDia.length === 0 && (
           <p className="px-1 py-3 text-center text-xs text-neutral-400">
             Nenhuma turma encontrada.
           </p>
@@ -112,30 +104,20 @@ export function SeletorTurmaFixa({
             </h4>
             <div className="grid gap-1">
               {lista.map((t) => {
-                const elegivel = t.modalidade_id
-                  ? elegivelPorModalidade.get(t.modalidade_id) !== false
-                  : false
-                const ocupados = ocupadosPorTurma.get(t.id) ?? 0
-                const semVaga = ocupados >= t.capacidade
-                const jaTem = jaContratadas.includes(t.id)
-                const marcada = selecionadas.includes(t.id)
-                const bloqueada = !elegivel || semVaga || jaTem
-                const motivo = !elegivel
-                  ? t.modalidade_id
-                    ? 'não aceita turma fixa (regulamento 2.3.6)'
-                    : 'turma sem modalidade cadastrada'
-                  : jaTem
-                    ? 'já contratada nesta matrícula'
-                    : semVaga
-                      ? 'sem vaga'
-                      : null
+                // `jaContratadas` é desta MATRÍCULA; `ja_contratada` é
+                // desta PESSOA (ela pode ter duas matrículas). As duas
+                // bloqueiam, por motivos diferentes.
+                const jaTem = jaContratadas.includes(t.turma_id)
+                const marcada = selecionadas.includes(t.turma_id)
+                const bloqueada = jaTem || t.motivo !== null
+                const motivo = jaTem ? 'já contratada nesta matrícula' : t.motivo
 
                 return (
                   <button
-                    key={t.id}
+                    key={t.turma_id}
                     type="button"
                     disabled={bloqueada || (cheio && !marcada)}
-                    onClick={() => alternar(t.id)}
+                    onClick={() => alternar(t.turma_id)}
                     aria-pressed={marcada}
                     className={`flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-sm transition ${
                       marcada
@@ -169,14 +151,14 @@ export function SeletorTurmaFixa({
 
                     <span
                       className={`min-w-0 flex-1 truncate font-medium ${
-                        !elegivel ? 'text-neutral-400 line-through' : 'text-neutral-800'
+                        !t.elegivel ? 'text-neutral-400 line-through' : 'text-neutral-800'
                       }`}
                     >
                       {t.modalidade}
                     </span>
 
                     <span className="hidden shrink-0 truncate text-xs text-neutral-400 sm:block">
-                      {t.professora.nome ?? '—'}
+                      {t.professora_nome ?? '—'}
                     </span>
 
                     {motivo ? (
@@ -186,9 +168,9 @@ export function SeletorTurmaFixa({
                     ) : (
                       <span
                         className="shrink-0 text-[11px] tabular-nums text-neutral-400"
-                        title="Assentos de turma fixa já reservados nesta turma"
+                        title="Lugares ocupados na próxima ocorrência: assento fixo + reserva por crédito"
                       >
-                        {ocupados}/{t.capacidade}
+                        {t.ocupadas}/{t.capacidade}
                       </span>
                     )}
                   </button>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Info } from 'lucide-react'
 import { fmtData } from '../../lib/datas'
@@ -9,6 +9,8 @@ import {
   useContratarPlano,
   useMeusPlanos,
   usePlanos,
+  useRestricoesCatalogo,
+  useSolicitacaoAberta,
 } from './hooks/usePortalAluna'
 import {
   REQUISITO_SELO,
@@ -42,14 +44,26 @@ import {
 } from './components/planos/Detalhes'
 import { Cabecalho } from './components/Basicos'
 import { Folha } from './components/Folha'
+import { AjudaWhatsApp } from './components/AjudaWhatsApp'
+import { RegrasEssenciais } from './components/planos/Detalhes'
+import { ContratoPasso } from './components/contrato/ContratoPasso'
 
 type FolhaAberta =
   | { tipo: 'comprar'; produtoId: string }
   | { tipo: 'turma_fixa'; produtoId: string }
   | { tipo: 'comparar' }
   | { tipo: 'regras'; de: TipoPlano }
+  /** Passo do Contrato de Adesão, entre o pedido e o pagamento. */
+  | { tipo: 'contrato'; produtoId: string; solicitacaoId: string }
 
 const PERIODOS: Recorrencia[] = ['mensal', 'semestral']
+
+/**
+ * Códigos de impedimento que TIRAM o produto da vitrine — os que o aluno
+ * não resolve hoje. `sem_cpf` e `sem_email` ficam de fora de propósito:
+ * são pendências do cadastro dele, e viram aviso com link para o Perfil.
+ */
+const OCULTAM = new Set(['limite', 'legado', 'elegibilidade', 'inexistente'])
 
 /**
  * Planos do Portal do Aluno.
@@ -77,7 +91,8 @@ export function PlanosPage() {
   const clienteId = usePortalClienteId()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const { data: produtos, isLoading } = usePlanos()
+  const { data: todosOsProdutos, isLoading: carregandoPlanos } = usePlanos()
+  const { porProduto: restricoes, isLoading: carregandoRestricoes } = useRestricoesCatalogo()
   const { data: meusPlanos } = useMeusPlanos()
   const { data: config } = useConfigAgendamento()
   const { data: requisitos } = useRequisitos()
@@ -86,12 +101,44 @@ export function PlanosPage() {
   const [folha, setFolha] = useState<FolhaAberta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [contratado, setContratado] = useState<Produto | null>(null)
+  const [linkPagamento, setLinkPagamento] = useState<string | null>(null)
+  /** Turma fixa: as turmas escolhidas na folha, antes de pedir. */
+  const [turmas, setTurmas] = useState<string[]>([])
+  /** Turma fixa: o pedido já saiu e espera a equipe confirmar a vaga. */
+  const [pedido, setPedido] = useState<Produto | null>(null)
+  const { data: solicitacaoAberta } = useSolicitacaoAberta()
 
-  const porId = useMemo(() => new Map((produtos ?? []).map((p) => [p.id, p])), [produtos])
+  /*
+    Produto que este aluno não pode contratar não entra na vitrine.
+    Antes ele aparecia, era escolhido, e o erro vinha no clique — o caso
+    concreto é a aluna que já fez a experimental e continuava vendo
+    "Aula experimental" no catálogo.
+
+    Pendência do CADASTRO dela (sem CPF, sem e-mail) não esconde nada:
+    ela resolve no Perfil em dois minutos, e esconder o catálogo inteiro
+    faria a tela parecer quebrada. Vira o aviso abaixo.
+  */
+  const produtos = useMemo(
+    () => (todosOsProdutos ?? []).filter((p) => !OCULTAM.has(restricoes.get(p.id)?.codigo ?? '')),
+    [todosOsProdutos, restricoes],
+  )
+
+  /** Falta dado no cadastro dela para qualquer plano ser cobrável. */
+  const pendenciaCadastro = useMemo(() => {
+    for (const p of produtos) {
+      const r = restricoes.get(p.id)
+      if (r && (r.codigo === 'sem_cpf' || r.codigo === 'sem_email')) return r.codigo
+    }
+    return null
+  }, [produtos, restricoes])
+
+  const isLoading = carregandoPlanos || carregandoRestricoes
+
+  const porId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos])
 
   const porLugar = useMemo(() => {
     const m: Record<TipoPlano | 'avulso', Produto[]> = { creditos: [], turma_fixa: [], avulso: [] }
-    for (const p of produtos ?? []) m[lugarDoProduto(p)].push(p)
+    for (const p of produtos) m[lugarDoProduto(p)].push(p)
     return m
   }, [produtos])
 
@@ -155,19 +202,81 @@ export function PlanosPage() {
     setParams(novo, { replace: true })
   }
 
+  /*
+    "Meu plano" manda o aluno para cá com ?contrato=<pedido> quando a vaga
+    foi aprovada e falta o aceite. O passo do contrato mora aqui, e uma
+    implementação só é o motivo de o link ser uma rota em vez de um
+    segundo ContratoPasso dentro de "Meu plano".
+  */
+  const contratoNaUrl = params.get('contrato')
+  useEffect(() => {
+    if (!contratoNaUrl || !solicitacaoAberta?.id) return
+    if (String(solicitacaoAberta.id) !== contratoNaUrl) return
+    if (!solicitacaoAberta.produto_id) return
+    setFolha({
+      tipo: 'contrato',
+      produtoId: String(solicitacaoAberta.produto_id),
+      solicitacaoId: contratoNaUrl,
+    })
+  }, [contratoNaUrl, solicitacaoAberta?.id, solicitacaoAberta?.produto_id])
+
   function abrirFolha(f: FolhaAberta) {
     setErro(null)
+    if (f.tipo === 'turma_fixa') setTurmas([])
     setFolha(f)
   }
 
+  /**
+   * Contratar deixou de ser o último passo.
+   *
+   * O pedido nasce, e o aluno vai direto para o Contrato de Adesão: ele
+   * lê as cláusulas do produto que escolheu, aceita, e **só então** paga.
+   * `registrar_cobranca` recusa emitir cobrança sem contrato aceito, então
+   * esta ordem não é convenção de tela — é o que o banco exige.
+   */
   function confirmar(p: Produto) {
     setErro(null)
     contratar.mutate(
       { clienteId, planoId: p.id },
       {
+        onSuccess: (solicitacaoId) => {
+          setFolha({ tipo: 'contrato', produtoId: p.id, solicitacaoId: String(solicitacaoId) })
+          window.scrollTo({ top: 0 })
+        },
+        onError: (e) => {
+          // Pedido em aberto do MESMO produto não é erro: é o aluno
+          // voltando. Retoma de onde parou em vez de pedir que cancele.
+          const aberto = solicitacaoAberta
+          if (
+            aberto?.id &&
+            aberto.produto_id === p.id &&
+            /pedido em aberto/i.test((e as { message?: string }).message ?? '')
+          ) {
+            setFolha({ tipo: 'contrato', produtoId: p.id, solicitacaoId: String(aberto.id) })
+            window.scrollTo({ top: 0 })
+            return
+          }
+          setErro(mensagemErroContratacao(e))
+        },
+      },
+    )
+  }
+
+  /**
+   * Turma fixa: o pedido vai para a fila, e NÃO para o contrato.
+   *
+   * É a diferença inteira em relação a `confirmar()`: aqui não existe
+   * cobrança para o contrato preceder, porque a vaga ainda não está
+   * confirmada. O contrato aparece depois da aprovação, em "Meu plano".
+   */
+  function pedirTurmaFixa(p: Produto) {
+    setErro(null)
+    contratar.mutate(
+      { clienteId, planoId: p.id, turmaIds: turmas },
+      {
         onSuccess: () => {
           setFolha(null)
-          setContratado(p)
+          setPedido(p)
           window.scrollTo({ top: 0 })
         },
         onError: (e) => setErro(mensagemErroContratacao(e)),
@@ -180,20 +289,48 @@ export function PlanosPage() {
 
   const planoAtivo = (meusPlanos ?? []).find((s) => s.saldo > 0 && s.status === 'ativa')
 
+  if (pedido) {
+    return (
+      <TurmaFixaSolicitada
+        produto={pedido}
+        onInicio={() => navigate('..')}
+        onMeuPlano={() => navigate('../meu-plano')}
+      />
+    )
+  }
+
   if (contratado) {
     return (
-      <Contratado produto={contratado} onInicio={() => navigate('..')} />
+      <ContratoAceito
+        produto={contratado}
+        urlPagamento={linkPagamento}
+        onInicio={() => navigate('..')}
+        onMeuPlano={() => navigate('../meu-plano')}
+      />
     )
   }
 
   const produtoDaFolha =
-    folha && (folha.tipo === 'comprar' || folha.tipo === 'turma_fixa')
+    folha && (folha.tipo === 'comprar' || folha.tipo === 'turma_fixa' || folha.tipo === 'contrato')
       ? porId.get(folha.produtoId)
       : undefined
 
   return (
     <div className="lg:max-w-4xl">
       <Cabecalho titulo="Planos" subtitulo="Escolha como você quer treinar." />
+
+      {pendenciaCadastro && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3.5 text-sm text-warning-800">
+          <span>
+            {pendenciaCadastro === 'sem_cpf'
+              ? 'Falta o seu CPF no cadastro. Ele é obrigatório para emitir a cobrança.'
+              : 'Falta o seu e-mail no cadastro. É por ele que chegam a confirmação e o link de pagamento.'}
+          </span>
+          <Link to="../perfil" className="text-xs font-semibold underline underline-offset-2">
+            Completar cadastro
+          </Link>
+        </div>
+      )}
 
       {planoAtivo && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-100 bg-brand-50 p-3.5 text-sm text-brand-700">
@@ -214,7 +351,7 @@ export function PlanosPage() {
 
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
-      {!isLoading && (produtos ?? []).length === 0 && (
+      {!isLoading && produtos.length === 0 && (
         <p className="py-4 text-center text-sm text-neutral-400">Nenhum plano disponível no momento.</p>
       )}
 
@@ -275,10 +412,25 @@ export function PlanosPage() {
             ))}
           </div>
 
+          {/*
+            As regras decisivas ficam À VISTA, não atrás de um clique.
+            O link para a folha continua, com a lista inteira — mas as
+            três que mudam a escolha (o crédito expira, o prazo de
+            cancelamento, a renovação automática) não podem depender de
+            o aluno ter curiosidade de abrir "Como funcionam os
+            créditos?". Pedido da gestão em 30/09/2026.
+          */}
+          <RegrasEssenciais
+            className="mt-3.5"
+            tipo={tipo}
+            referencia={visiveis[0]}
+            horasCancelamento={horasCancelamento(visiveis[0])}
+          />
+
           <div className="mt-3.5 flex justify-center">
             <LinkFolha onClick={() => abrirFolha({ tipo: 'regras', de: tipo })}>
               <Info className="size-3.5" />
-              {tipo === 'creditos' ? 'Como funcionam os créditos?' : 'Ver regras da turma fixa'}
+              {tipo === 'creditos' ? 'Ver todas as regras dos créditos' : 'Ver regras da turma fixa'}
             </LinkFolha>
           </div>
         </section>
@@ -304,6 +456,12 @@ export function PlanosPage() {
         </section>
       )}
 
+      {/* ---- Suporte antes da compra ---- */}
+      <AjudaWhatsApp
+        className="mt-8"
+        mensagem="Olá! Estou vendo os planos no portal do aluno e ficou uma dúvida:"
+      />
+
       {/* ---- Folhas ---- */}
       {folha?.tipo === 'comprar' && produtoDaFolha && (
         <Folha titulo={<TituloPlano produto={produtoDaFolha} />} onFechar={() => setFolha(null)}>
@@ -323,8 +481,12 @@ export function PlanosPage() {
         <Folha titulo={<TituloPlano produto={produtoDaFolha} />} onFechar={() => setFolha(null)}>
           <PedirTurmaFixa
             produto={produtoDaFolha}
+            selecionadas={turmas}
+            onSelecionar={setTurmas}
+            onPedir={() => pedirTurmaFixa(produtoDaFolha)}
+            pendente={contratar.isPending}
+            erro={erro}
             onVerRegras={() => abrirFolha({ tipo: 'regras', de: 'turma_fixa' })}
-            onFechar={() => setFolha(null)}
           />
         </Folha>
       )}
@@ -332,6 +494,22 @@ export function PlanosPage() {
       {folha?.tipo === 'comparar' && tipo && (
         <Folha titulo="Mensal ou semestral?" onFechar={() => setFolha(null)}>
           <ComparativoPeriodo tipo={tipo} mensal={referencia('mensal')} semestral={semestralRef} />
+        </Folha>
+      )}
+
+      {folha?.tipo === 'contrato' && produtoDaFolha && (
+        <Folha titulo="Contrato de Adesão" onFechar={() => setFolha(null)}>
+          <ContratoPasso
+            solicitacaoId={folha.solicitacaoId}
+            nomeProduto={produtoDaFolha.nome}
+            onAceito={(url) => {
+              setFolha(null)
+              setLinkPagamento(url)
+              setContratado(produtoDaFolha)
+              window.scrollTo({ top: 0 })
+            }}
+            onVoltar={() => setFolha(null)}
+          />
         </Folha>
       )}
 
@@ -355,33 +533,116 @@ export function PlanosPage() {
 }
 
 /**
- * Tela de sucesso — de um PEDIDO, não de uma compra concluída.
+ * Depois do aceite do contrato — e antes do pagamento.
  *
- * Contratar pelo portal não matricula mais ninguém: cria uma
- * solicitação que a gestão aprova e que só vira matrícula quando o
- * pagamento é confirmado. Por isso não existe mais o botão "agendar
- * primeira aula" — não há crédito, e o atalho levaria a uma Agenda que
- * responderia "sem créditos".
+ * Esta tela já disse duas coisas diferentes, e as duas estavam erradas no
+ * momento em que foram escritas. Primeiro "Plano ativado! Suas aulas já
+ * estão liberadas", quando contratar matriculava na hora. Depois "o
+ * estúdio vai confirmar", quando havia aprovação manual. Agora o plano de
+ * crédito não espera ninguém: o que falta é só o pagamento, e é isso que
+ * ela diz.
+ *
+ * O link de pagamento não é prometido aqui como "já disponível" porque
+ * quem o emite é o gateway, logo depois — então a tela manda o aluno para
+ * "Meu plano", que é onde o link aparece e fica.
  */
-function Contratado({ produto: p, onInicio }: { produto: Produto; onInicio: () => void }) {
-  // Antes esta tela dizia "Plano ativado! Suas aulas já estão
-  // liberadas", porque contratar de fato matriculava na hora. Agora o
-  // pedido espera a confirmação do estúdio, e prometer aula liberada
-  // aqui mandaria o aluno para a agenda receber "sem créditos".
+function ContratoAceito({
+  produto: p,
+  urlPagamento,
+  onInicio,
+  onMeuPlano,
+}: {
+  produto: Produto
+  /** Null quando o gateway não respondeu — o link vai por e-mail. */
+  urlPagamento: string | null
+  onInicio: () => void
+  onMeuPlano: () => void
+}) {
   return (
     <div className="pt-10 text-center">
-      <div className="mb-3 text-4xl">✅</div>
-      <h1 className="mb-2 text-xl font-semibold text-neutral-900">Pedido enviado!</h1>
+      <div className="mb-3 text-4xl">📄</div>
+      <h1 className="mb-2 text-xl font-semibold text-neutral-900">Contrato aceito!</h1>
       <p className="mb-1 text-sm text-neutral-600">
-        O estúdio vai confirmar o <b>{p.nome}</b> e combinar o pagamento com você.
+        Guardamos a versão que você aceitou do <b>{p.nome}</b>, com data e hora. Ela fica em{' '}
+        <b>Meu plano → Documentos</b>.
       </p>
       <p className="mb-8 text-xs text-neutral-400">
-        Suas aulas são liberadas assim que o pagamento for confirmado. Você recebe um e-mail a
-        cada passo, e pode acompanhar em “Meu plano”.
+        {urlPagamento
+          ? 'Falta só o pagamento. Seus créditos são liberados assim que ele for confirmado.'
+          : 'Falta o pagamento. O link chega no seu e-mail em alguns minutos e também aparece em “Meu plano”.'}
       </p>
+
+      {urlPagamento ? (
+        <a
+          href={urlPagamento}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
+        >
+          Pagar agora
+        </a>
+      ) : (
+        <button
+          onClick={onMeuPlano}
+          className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          Ir para “Meu plano”
+        </button>
+      )}
+
+      <button
+        onClick={urlPagamento ? onMeuPlano : onInicio}
+        className="mt-2 w-full rounded-md py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800"
+      >
+        {urlPagamento ? 'Pagar depois, ver meu plano' : 'Voltar ao início'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Pedido de turma fixa enviado — e nada cobrado.
+ *
+ * A frase que importa é a terceira. O aluno acabou de clicar em "Pedir
+ * esta vaga" num plano de R$ 130 e vai esperar horas por uma resposta; se
+ * a tela não disser que não houve cobrança, a primeira coisa que ele faz
+ * é abrir o WhatsApp para perguntar. Dizer aqui é mais barato que
+ * responder depois — e é o que o pedido da gestão exige em letra:
+ * "nenhuma cobrança será realizada antes da confirmação".
+ */
+function TurmaFixaSolicitada({
+  produto: p,
+  onInicio,
+  onMeuPlano,
+}: {
+  produto: Produto
+  onInicio: () => void
+  onMeuPlano: () => void
+}) {
+  return (
+    <div className="pt-10 text-center">
+      <div className="mb-3 text-4xl">🗓️</div>
+      <h1 className="mb-2 text-xl font-semibold text-neutral-900">Recebemos sua solicitação!</h1>
+      <p className="mb-1 text-sm text-neutral-600">
+        Você pediu <b>{p.nome}</b>. A equipe vai confirmar se a turma que você escolheu tem vaga.
+      </p>
+      <p className="mb-1 text-sm font-medium text-neutral-800">
+        Nenhuma cobrança será realizada antes da confirmação.
+      </p>
+      <p className="mb-8 text-xs text-neutral-400">
+        Assim que a vaga for confirmada, você recebe um e-mail e o pagamento aparece aqui no app. Se
+        não houver vaga nesse horário, a gente avisa e você escolhe outro — sem custo nenhum.
+      </p>
+
+      <button
+        onClick={onMeuPlano}
+        className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
+      >
+        Acompanhar em “Meu plano”
+      </button>
       <button
         onClick={onInicio}
-        className="w-full rounded-md bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700"
+        className="mt-2 w-full rounded-md py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800"
       >
         Voltar ao início
       </button>

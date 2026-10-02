@@ -8,13 +8,16 @@ export const flags = {
   /** Integração ClassPass (ativar quando o estúdio aderir) */
   classpass: false,
   /**
-   * "Assinar no cartão" na aprovação da contratação. DESLIGADO porque o
-   * caminho não conclui: `CHECKOUT_PAID` só ativa a assinatura e nunca
-   * chama `confirmar_pagamento_contratacao()` — o aluno paga e a
-   * matrícula não nasce (achado na homologação de 27/09/2026). Religar
-   * só depois de corrigir `assinatura_ativada()`.
+   * "Assinar no cartão" na aprovação da contratação.
+   *
+   * Ficou DESLIGADA de 27/09 a 01/10/2026 porque o caminho não concluía:
+   * `CHECKOUT_PAID` só ativava a assinatura e nunca chamava
+   * `confirmar_pagamento_contratacao()` — o aluno pagava e a matrícula não
+   * nascia. Corrigido em `20261003190000`: `assinatura_ativada()` conclui a
+   * contratação, e a reentrega do webhook não duplica matrícula nem receita.
+   * Testado no DEV ponta a ponta antes de religar.
    */
-  cartaoRecorrente: false,
+  cartaoRecorrente: true,
 } as const
 
 export type FlagName = keyof typeof flags

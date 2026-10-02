@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { CampoSenha } from '../../../components/ui/CampoSenha'
 
 const inputCls =
   'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand-500'
@@ -99,17 +100,13 @@ export function ProfessoraLogin() {
         </label>
 
         {modo !== 'recuperar' && (
-          <label className="mb-6 block">
-            <span className="mb-1 block text-xs font-medium text-neutral-600">Senha</span>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputCls}
-            />
-          </label>
+          <CampoSenha
+            className="mb-6"
+            rotulo="Senha"
+            valor={password}
+            onChange={setPassword}
+            autoComplete={modo === 'cadastro' ? 'new-password' : 'current-password'}
+          />
         )}
 
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}

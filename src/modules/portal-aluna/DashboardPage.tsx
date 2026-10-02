@@ -22,6 +22,7 @@ import {
   useMeuCliente,
   useMinhasTurmasFixas,
 } from './hooks/usePortalAluna'
+import { useSituacaoParq } from './hooks/useDocumentos'
 import {
   SITUACAO,
   ativoAte,
@@ -48,6 +49,7 @@ export function DashboardPage() {
   const grade = useGradePublica()
   const turmas = useMinhasTurmasFixas()
   const { ctx, suspensao, isLoading, error, refetch } = useContextoAluno()
+  const { data: parq } = useSituacaoParq()
 
   const hoje = hojeIso()
   const aulas = minhasProximasAulas(grade.data ?? [], ctx, 14)
@@ -57,6 +59,19 @@ export function DashboardPage() {
   const vagaSegurada = ctx.fila.find((f) => f.status === 'notificada')
   const atrasado = principais.find((p) => p.status === 'inadimplente')
   const primeiroNome = cliente?.nome?.split(' ')[0]
+
+  /*
+    Comprou e não agendou.
+
+    Esse é o erro que mais custa na recepção: a pessoa compra a aula
+    experimental, entende que "comprou a aula", e aparece no estúdio sem
+    reserva — numa turma que pode estar lotada. O aviso vale para
+    QUALQUER crédito sem aula marcada (avulsa, crédito extra, plano novo),
+    porque o mal-entendido é o mesmo e a frase que resolve é a mesma:
+    comprar dá o crédito, reservar dá a vaga.
+  */
+  const saldoTotal = [...principais, ...pacotes].reduce((s, p) => s + p.saldo, 0)
+  const creditoSemReserva = saldoTotal > 0 && aulas.length === 0 && !atrasado && !suspensao
 
   return (
     <div>
@@ -74,6 +89,57 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="mb-5 flex flex-col gap-2.5 empty:hidden">
+            {/*
+              O PAR-Q vem antes de tudo porque é ele que BLOQUEIA a reserva:
+              avisar depois de o aluno tentar agendar e levar a recusa é
+              descobrir o pré-requisito pelo erro. A mensagem é a do
+              documento oficial, vinda do banco — não uma paráfrase.
+            */}
+            {parq && !parq.liberado && (
+              <Aviso
+                tom={parq.situacao === 'documento_enviado' ? 'info' : 'atencao'}
+                titulo={
+                  parq.situacao === 'nao_preenchido'
+                    ? 'Preencha o PAR-Q antes da primeira aula'
+                    : parq.situacao === 'expirado'
+                      ? 'Seu PAR-Q venceu'
+                      : parq.situacao === 'documento_enviado'
+                        ? 'Atestado em análise'
+                        : 'Atestado médico necessário'
+                }
+                acao={
+                  <Link
+                    to="saude"
+                    className="inline-flex rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+                  >
+                    {parq.situacao === 'documento_enviado' ? 'Ver situação' : 'Resolver agora'}
+                  </Link>
+                }
+              >
+                {parq.mensagem}
+              </Aviso>
+            )}
+            {creditoSemReserva && (
+              <Aviso
+                tom="info"
+                titulo={
+                  saldoTotal === 1
+                    ? 'Você tem 1 crédito e nenhuma aula agendada'
+                    : `Você tem ${saldoTotal} créditos e nenhuma aula agendada`
+                }
+                acao={
+                  <Link
+                    to="agenda"
+                    className="inline-flex rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+                  >
+                    Agendar minha aula
+                  </Link>
+                }
+              >
+                Escolha uma aula na agenda para garantir a sua vaga — sem reserva não dá para
+                treinar, mesmo com crédito.
+              </Aviso>
+            )}
             {vagaSegurada?.data && (
               <Aviso
                 tom="atencao"

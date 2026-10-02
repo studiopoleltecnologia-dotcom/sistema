@@ -7,6 +7,7 @@ import { PerfilPage } from './PerfilPage'
 import { PlanosPage } from './PlanosPage'
 import { PortalAuthGate } from './PortalAuthGate'
 import { PortalLayout } from './PortalLayout'
+import { SaudePage } from './SaudePage'
 
 /**
  * O basename do HashRouter depende de COMO a jornada foi aberta.
@@ -38,6 +39,10 @@ export function PortalApp() {
             <Route path="meu-plano" element={<MeuPlanoPage />} />
             <Route path="planos" element={<PlanosPage />} />
             <Route path="perfil" element={<PerfilPage />} />
+            {/* Fora da barra de baixo de propósito: a barra já tem cinco
+                itens e o PAR-Q é um passo, não um destino diário. Chega-se
+                a ele pelo Perfil e pelo aviso do Início. */}
+            <Route path="saude" element={<SaudePage />} />
             {/* "Reservas" virou "Aulas agendadas" (21/09/2026). O endereço
                 antigo continua funcionando para quem salvou o link. */}
             <Route path="reservas" element={<Navigate to="../aulas" replace />} />

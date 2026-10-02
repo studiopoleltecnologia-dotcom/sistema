@@ -31,6 +31,26 @@ export async function solicitarContratacao(args: {
   return data
 }
 
+/**
+ * A grade com a vaga de assento fixo calculada PELO BANCO.
+ *
+ * Esta tela contava a ocupação sozinha, somando os vínculos de
+ * `matricula_turmas`. A conta estava incompleta: `validar_assento_fixo()`
+ * soma também as reservas por crédito já feitas para a próxima
+ * ocorrência da turma, porque assinar um assento tira a vaga de quem já
+ * reservou. O resultado era a equipe ver "3/8", clicar, e o banco recusar.
+ *
+ * Agora as duas leem a mesma função. Com `clienteId`, a resposta também
+ * marca a turma em que essa pessoa já tem assento.
+ */
+export async function turmasParaAssentoFixo(clienteId?: string) {
+  const { data, error } = await requireSupabase().rpc('turmas_para_assento_fixo', {
+    p_cliente: clienteId,
+  })
+  if (error) throw error
+  return data ?? []
+}
+
 export async function listarSolicitacoes(status?: StatusSolicitacao[]) {
   let q = requireSupabase()
     .from('vw_solicitacoes')

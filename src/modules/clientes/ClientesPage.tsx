@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, Search, Settings2 } from 'lucide-react'
+import { FileText, Plus, Search, Settings2 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Tabs } from '../../components/ui/Tabs'
@@ -8,6 +8,7 @@ import { useMinhaFuncao } from '../../lib/funcao'
 import { ClienteDetalhe } from './components/ClienteDetalhe'
 import { ClienteForm } from './components/ClienteForm'
 import { ConfigCadastroModal } from './components/ConfigCadastroModal'
+import { ConfigDocumentosModal } from './components/ConfigDocumentosModal'
 import { ClientesLista } from './components/ClientesLista'
 import { FunilBoard } from './components/FunilBoard'
 import { useAtualizarCliente, useClientes, useCriarCliente, useSocias } from './hooks/useClientes'
@@ -32,6 +33,7 @@ export function ClientesPage() {
   const [formAberto, setFormAberto] = useState(false)
   const [editando, setEditando] = useState<Cliente | null>(null)
   const [regrasAbertas, setRegrasAbertas] = useState(false)
+  const [documentosAbertos, setDocumentosAbertos] = useState(false)
   const { data: funcao } = useMinhaFuncao()
 
   // deriva da lista viva do cache: painel reflete mutações na hora
@@ -94,14 +96,24 @@ export function ClientesPage() {
         acoes={
           <div className="flex items-center gap-2">
             {funcao === 'gestao' && (
-              <Button
-                variant="ghost"
-                onClick={() => setRegrasAbertas(true)}
-                title="Regras do cadastro — sobrenome, DDD, CPF, e-mail"
-              >
-                <Settings2 className="size-4" />
-                Regras
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => setDocumentosAbertos(true)}
+                  title="Contrato de Adesão e PAR-Q — dados do estúdio e o que é obrigatório"
+                >
+                  <FileText className="size-4" />
+                  Documentos
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setRegrasAbertas(true)}
+                  title="Regras do cadastro — sobrenome, DDD, CPF, e-mail"
+                >
+                  <Settings2 className="size-4" />
+                  Regras
+                </Button>
+              </>
             )}
             <Button onClick={() => setFormAberto(true)}>
               <Plus className="size-4" />
@@ -157,6 +169,9 @@ export function ClientesPage() {
       )}
 
       {regrasAbertas && <ConfigCadastroModal onFechar={() => setRegrasAbertas(false)} />}
+      {documentosAbertos && (
+        <ConfigDocumentosModal onFechar={() => setDocumentosAbertos(false)} />
+      )}
 
       {formAberto && (
         <ClienteForm

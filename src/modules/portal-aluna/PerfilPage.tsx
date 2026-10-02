@@ -7,12 +7,132 @@ import {
   type ErrosCadastro,
 } from '../../lib/cadastro'
 import { supabase } from '../../lib/supabase'
+import { Link } from 'react-router-dom'
+import { Camera, HeartPulse } from 'lucide-react'
 import { Cabecalho } from './components/Basicos'
 import { useAtualizarMeuCliente, useMeuCliente } from './hooks/usePortalAluna'
+import { useAutorizacaoImagem, useSituacaoParq } from './hooks/useDocumentos'
+import { cn } from '../../components/ui/cn'
 
 const inputCls =
   'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand-500'
 const erroCls = 'mt-1 text-xs text-red-600'
+
+/**
+ * Atalho para o PAR-Q, com a situação à vista.
+ *
+ * Fica no Perfil e não na barra de baixo: é um passo que se faz uma vez
+ * por ano, não um destino diário. Mas precisa estar visível, porque é ele
+ * que destrava o agendamento.
+ */
+function Saude() {
+  const { data: parq } = useSituacaoParq()
+  const pendente = !parq || parq.situacao === 'nao_preenchido' || !parq.liberado
+
+  return (
+    <Link
+      to="../saude"
+      className={cn(
+        'mt-4 flex items-center gap-3 rounded-lg border p-4 transition',
+        pendente
+          ? 'border-warning-200 bg-warning-50 hover:bg-warning-100/60'
+          : 'border-neutral-200 bg-white hover:bg-neutral-50',
+      )}
+    >
+      <span
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-lg',
+          pendente ? 'bg-warning-100 text-warning-700' : 'bg-brand-50 text-brand-600',
+        )}
+      >
+        <HeartPulse className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            'block text-sm font-semibold',
+            pendente ? 'text-warning-800' : 'text-neutral-900',
+          )}
+        >
+          Saúde — PAR-Q
+        </span>
+        <span className={cn('block text-xs', pendente ? 'text-warning-800' : 'text-neutral-500')}>
+          {!parq || parq.situacao === 'nao_preenchido'
+            ? 'Preencha antes da sua primeira aula'
+            : parq.situacao === 'expirado'
+              ? 'Vencido — precisa renovar'
+              : parq.liberado
+                ? 'Em dia'
+                : 'Aguardando atestado médico'}
+        </span>
+      </span>
+      <span className="shrink-0 text-xs font-semibold text-brand-700">Abrir</span>
+    </Link>
+  )
+}
+
+/**
+ * Uso de imagem — preferência separada, revogável.
+ *
+ * Fora do aceite do contrato de propósito (regulamento 11.4):
+ * consentimento embutido em aceite obrigatório não é consentimento livre,
+ * e o regulamento promete que dá para mudar "a qualquer momento, sem
+ * precisar justificar". Recusar não interfere na contratação, e a tela
+ * diz isso.
+ *
+ * `null` (nunca respondeu) é diferente de "não autorizo": enquanto não
+ * houver resposta explícita, a equipe trata como NÃO autorizado.
+ */
+function Imagem({ autoriza }: { autoriza: boolean | null }) {
+  const definir = useAutorizacaoImagem()
+  const atual = definir.isPending ? definir.variables : autoriza
+
+  return (
+    <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-4">
+      <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-neutral-900">
+        <Camera className="size-4 text-neutral-400" />
+        Uso da minha imagem
+      </p>
+      <p className="mb-3 text-xs leading-relaxed text-neutral-500">
+        Autorizo o uso da minha imagem em fotos e vídeos produzidos pelo Studio para
+        divulgação. Você pode mudar isso quando quiser, sem precisar justificar, e a sua
+        escolha <strong>não interfere</strong> na contratação do plano.
+      </p>
+
+      <div className="flex gap-2">
+        {[
+          { v: true, rotulo: 'Autorizo' },
+          { v: false, rotulo: 'Não autorizo' },
+        ].map(({ v, rotulo }) => (
+          <button
+            key={rotulo}
+            type="button"
+            disabled={definir.isPending}
+            onClick={() => definir.mutate(v)}
+            aria-pressed={atual === v}
+            className={cn(
+              'flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition disabled:opacity-60',
+              atual === v
+                ? 'border-brand-500 bg-brand-600 text-white'
+                : 'border-neutral-200 text-neutral-600 hover:border-neutral-300',
+            )}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
+
+      {autoriza === null && !definir.isPending && (
+        <p className="mt-2 text-xs text-neutral-400">
+          Você ainda não respondeu. Até responder, tratamos como não autorizado.
+        </p>
+      )}
+      {definir.isError && (
+        <p className="mt-2 text-xs text-red-600">Não foi possível salvar. Tente novamente.</p>
+      )}
+    </div>
+  )
+}
 
 export function PerfilPage() {
   const { data: cliente } = useMeuCliente()
@@ -149,6 +269,9 @@ export function PerfilPage() {
           Salvar alterações
         </button>
       </form>
+
+      <Saude />
+      <Imagem autoriza={cliente?.autoriza_imagem ?? null} />
 
       <button
         onClick={() => supabase?.auth.signOut()}

@@ -5,7 +5,7 @@
  * não em secret. Vazio, as telas que dependem dele orientam a falar com a
  * recepção sem oferecer link — melhor que apontar para um número errado.
  */
-export const WHATSAPP_RECEPCAO: string = ''
+export const WHATSAPP_RECEPCAO: string = '5521970674691'
 
 /** Link wa.me com a mensagem já escrita, ou null se o número não foi configurado. */
 export function linkWhatsApp(mensagem: string): string | null {

@@ -104,7 +104,8 @@ export const REQUISITOS: { valor: TipoRequisito; label: string; ajuda: string }[
   {
     valor: 'checkins_wellhub',
     label: 'Precisa de check-ins do Wellhub',
-    ajuda: 'Usado no Studio+ — quantos check-ins, em quantos dias.',
+    ajuda:
+      'Quantos check-ins pelo Wellhub, em quantos dias. Nenhum produto usa hoje — era a trava do Studio+, descontinuado em 10/2026.',
   },
 ]
 
