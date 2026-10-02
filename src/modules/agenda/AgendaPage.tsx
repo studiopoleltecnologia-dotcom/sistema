@@ -93,7 +93,7 @@ function ConfigAgendamentoForm() {
   const [valorTotalpass, setValorTotalpass] = useState<string | null>(null)
   const [minimoAlunos, setMinimoAlunos] = useState<string | null>(null)
   const [horasQuorum, setHorasQuorum] = useState<string | null>(null)
-  const [horasMinimas, setHorasMinimas] = useState<string | null>(null)
+  const [toleranciaConf, setToleranciaConf] = useState<string | null>(null)
   const [cobranca, setCobranca] = useState<string | null>(null)
   const [avisoCancelamento, setAvisoCancelamento] = useState<string | null>(null)
   const [avisoFimSemestral, setAvisoFimSemestral] = useState<string | null>(null)
@@ -119,7 +119,7 @@ function ConfigAgendamentoForm() {
       valor_checkin_totalpass_centavos: valorTp ?? config.valor_checkin_totalpass_centavos,
       minimo_alunos_turma: num(minimoAlunos, config.minimo_alunos_turma),
       horas_conferencia_quorum: num(horasQuorum, config.horas_conferencia_quorum),
-      horas_minimas_para_cancelar: num(horasMinimas, config.horas_minimas_para_cancelar),
+      minutos_tolerancia_conferencia: num(toleranciaConf, config.minutos_tolerancia_conferencia),
       dias_antecedencia_cobranca: num(cobranca, config.dias_antecedencia_cobranca),
       dias_antecedencia_cancelamento_plano: num(
         avisoCancelamento,
@@ -205,13 +205,16 @@ function ConfigAgendamentoForm() {
               />
             </div>
             <div>
+              {/* A conferência roda de 10 em 10 minutos. A tolerância tem de
+                  ser maior que isso, senão a aula entra e sai da janela entre
+                  duas execuções e nunca chega a ser decidida. */}
               <label className={campo}>
-                Dentro de quantas horas do início a aula NÃO é mais cancelada, mesmo abaixo do
-                mínimo (já tem aluno a caminho)
+                Tolerância de atraso da conferência, em minutos (mínimo prático: 10). Passado
+                isso, a aula acontece mesmo abaixo do mínimo
               </label>
               <input
-                value={horasMinimas ?? String(config.horas_minimas_para_cancelar)}
-                onChange={(e) => setHorasMinimas(e.target.value)}
+                value={toleranciaConf ?? String(config.minutos_tolerancia_conferencia)}
+                onChange={(e) => setToleranciaConf(e.target.value)}
                 className={input}
               />
             </div>

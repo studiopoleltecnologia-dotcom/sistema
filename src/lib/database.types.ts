@@ -850,7 +850,7 @@ export type Database = {
           faltas_para_suspensao: number
           horas_cancelamento: number
           horas_conferencia_quorum: number
-          horas_minimas_para_cancelar: number
+          minutos_tolerancia_conferencia: number
           id: boolean
           max_reposicoes_por_matricula: number
           minimo_alunos_turma: number
@@ -869,7 +869,7 @@ export type Database = {
           faltas_para_suspensao?: number
           horas_cancelamento?: number
           horas_conferencia_quorum?: number
-          horas_minimas_para_cancelar?: number
+          minutos_tolerancia_conferencia?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
           minimo_alunos_turma?: number
@@ -888,7 +888,7 @@ export type Database = {
           faltas_para_suspensao?: number
           horas_cancelamento?: number
           horas_conferencia_quorum?: number
-          horas_minimas_para_cancelar?: number
+          minutos_tolerancia_conferencia?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
           minimo_alunos_turma?: number

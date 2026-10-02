@@ -408,7 +408,7 @@ export async function atualizarConfigAgendamento(patch: {
   valor_checkin_totalpass_centavos?: number
   minimo_alunos_turma?: number
   horas_conferencia_quorum?: number
-  horas_minimas_para_cancelar?: number
+  minutos_tolerancia_conferencia?: number
   dias_antecedencia_cobranca?: number
   dias_antecedencia_cancelamento_plano?: number
   dias_aviso_fim_compromisso?: number

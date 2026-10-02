@@ -41,13 +41,30 @@
 --    tem resposta com número: quantos estavam agendados, qual era o
 --    mínimo, se havia turma fixa, e a que hora a conta foi feita.
 --
--- ## A trava do cron atrasado
+-- ## A janela de decisão: às 4h e só ali
 --
--- Se o cron ficar parado e voltar com uma aula a 40 minutos de começar,
--- cancelar seria pior que fazer a aula com uma pessoa: já tem alguém
--- saindo de casa. Abaixo de `horas_minimas_para_cancelar` (2h) a aula é
--- registrada como `sem_tempo` e **acontece**. Isso também é o que torna
--- seguro publicar este cron no meio do dia.
+-- Regra da gestão, em letra: *"a única alteração deve ser 4h de
+-- antecedência e pronto. Antes e após isso não pode ter alteração."*
+--
+-- Então a decisão não é "cancele quando estiver abaixo do mínimo" — é
+-- "decida no instante das 4h". Duas consequências, as duas desenhadas:
+--
+-- * **Antes das 4h, nada acontece.** A aula só entra na conta quando
+--   `inicio - agora <= horas_conferencia_quorum`.
+-- * **Depois das 4h, nada acontece.** O cron roda a cada 10 minutos, e
+--   age apenas se a conferência estiver acontecendo **dentro de
+--   `minutos_tolerancia_conferencia`** (30 min) do marco. Passou disso —
+--   cron parado, banco fora do ar —, a aula é registrada como
+--   `sem_tempo` e **acontece**.
+--
+-- A tolerância não é folga, é escolha de qual falha preferir. Se o
+-- sistema ficar fora do ar na hora da conferência, o desfecho é uma aula
+-- com um aluno; a alternativa seria cancelar uma aula 40 minutos antes,
+-- com alguém já saindo de casa. O prejuízo da primeira é do estúdio, o
+-- da segunda é do aluno.
+--
+-- É também o que torna seguro publicar este cron no meio do dia: as aulas
+-- que já passaram do marco não são tocadas.
 --
 -- ## O que NÃO entra aqui
 --
@@ -64,7 +81,7 @@
 alter table public.config_agendamento
   add column if not exists minimo_alunos_turma integer not null default 2,
   add column if not exists horas_conferencia_quorum numeric(4,1) not null default 4,
-  add column if not exists horas_minimas_para_cancelar numeric(4,1) not null default 2;
+  add column if not exists minutos_tolerancia_conferencia integer not null default 30;
 
 do $$
 begin
@@ -72,8 +89,8 @@ begin
     add constraint quorum_parametros_coerentes check (
       minimo_alunos_turma > 0
       and horas_conferencia_quorum > 0
-      and horas_minimas_para_cancelar >= 0
-      and horas_minimas_para_cancelar < horas_conferencia_quorum
+      and minutos_tolerancia_conferencia >= 0
+      and minutos_tolerancia_conferencia < horas_conferencia_quorum * 60
     );
 exception when duplicate_object then null;
 end $$;
@@ -81,9 +98,9 @@ end $$;
 comment on column public.config_agendamento.minimo_alunos_turma is
   'Mínimo de alunos confirmados para a aula acontecer (regulamento 5.1). Vale como padrão; a turma pode ter o seu próprio em turmas.minimo_alunos.';
 comment on column public.config_agendamento.horas_conferencia_quorum is
-  'Quantas horas antes do início a conta é feita (regulamento 5.1: 4h). Coluna separada de horas_cancelamento de propósito: hoje são o mesmo número, mas são decisões diferentes.';
-comment on column public.config_agendamento.horas_minimas_para_cancelar is
-  'Dentro deste prazo a aula NÃO é mais cancelada por quórum, mesmo abaixo do mínimo: já tem aluno a caminho. Protege contra cron atrasado.';
+  'O marco: quantas horas antes do início a conta é feita (regulamento 5.1: 4h). Coluna separada de horas_cancelamento de propósito — hoje são o mesmo número, mas são decisões diferentes.';
+comment on column public.config_agendamento.minutos_tolerancia_conferencia is
+  'Quanto a conferência pode atrasar e ainda decidir. Passou disso (cron parado), a aula ACONTECE: a decisão é no marco das 4h, não "a qualquer momento abaixo do mínimo". ⚠️ Tem de ser MAIOR que o intervalo do cron (10 min), senão aula entra e sai da janela entre duas execuções e nunca é cancelada.';
 
 
 -- ------------------------------------------------------------
@@ -444,6 +461,8 @@ declare
   cfg record;
   agora timestamptz;
   hoje date;
+  marco interval;
+  piso interval;
   r record;
   q record;
   ac_id uuid;
@@ -458,6 +477,11 @@ begin
   select * into cfg from public.config_agendamento;
   agora := coalesce(p_agora, now());
   hoje := (agora at time zone 'America/Sao_Paulo')::date;
+
+  -- A janela de decisão: a aula é decidida quando falta entre `piso` e
+  -- `marco` para ela começar. Fora disso, ninguém mexe.
+  marco := (cfg.horas_conferencia_quorum || ' hours')::interval;
+  piso  := marco - (cfg.minutos_tolerancia_conferencia || ' minutes')::interval;
 
   for r in
     -- Hoje e amanhã bastam: a janela é de horas, e a virada do dia em São
@@ -479,8 +503,8 @@ begin
   loop
     -- Já começou: não há o que decidir.
     continue when r.inicio <= agora;
-    -- Fora da janela de conferência.
-    continue when r.inicio - agora > (cfg.horas_conferencia_quorum || ' hours')::interval;
+    -- Ainda não chegou no marco: antes das 4h, nada acontece.
+    continue when r.inicio - agora > marco;
     -- Já conferida: a decisão é tomada uma vez (ver cabeçalho).
     continue when exists (
       select 1 from public.conferencias_quorum c
@@ -503,12 +527,15 @@ begin
       dec := 'confirmada';
       mot := q.motivo;
 
-    elsif r.inicio - agora < (cfg.horas_minimas_para_cancelar || ' hours')::interval then
-      -- Tarde demais para cancelar sem prejudicar quem já está vindo.
+    elsif r.inicio - agora < piso then
+      -- A conferência está acontecendo tarde: o marco das 4h já passou há
+      -- mais que a tolerância, então a decisão não é mais desta função.
+      -- Cancelar agora seria mexer na aula depois da hora, e a regra da
+      -- gestão é explícita: "antes e após isso não pode ter alteração".
       dec := 'sem_tempo';
-      mot := 'abaixo do mínimo, mas dentro de '
-             || public.horas_em_texto(cfg.horas_minimas_para_cancelar)
-             || 'h do início — a aula acontece';
+      mot := 'conferência fora da janela de decisão (faltavam menos de '
+             || public.horas_em_texto(extract(epoch from piso) / 3600)
+             || 'h) — a aula acontece mesmo abaixo do mínimo';
 
     else
       -- Cancela pelo caminho único: devolve crédito de todos os canais,
