@@ -171,6 +171,25 @@ export function separarPlanos(planos: MeuPlano[], hoje = hojeIso()) {
 }
 
 /** Pedido de cancelamento só faz sentido para plano que renova e ainda não foi cancelado. */
+/**
+ * Dá para PEDIR a pausa deste plano.
+ *
+ * Pergunta grosseira de propósito: quem decide de verdade é
+ * `direito_a_pausa()` no banco, que olha o intervalo desde a última
+ * pausa, o formato do plano e a situação da matrícula. Aqui só se
+ * decide se vale mostrar o botão — e esconder o botão de quem está
+ * pausado ou com plano encerrado evita abrir uma folha que só diria
+ * "não dá".
+ */
+export function podePausar(p: MeuPlano): boolean {
+  return (
+    p.renova_automaticamente &&
+    !p.cancelada_em &&
+    p.status === 'ativa' &&
+    p.solicitacao_status !== 'pendente'
+  )
+}
+
 export function podeSolicitarCancelamento(p: MeuPlano): boolean {
   return (
     p.renova_automaticamente &&

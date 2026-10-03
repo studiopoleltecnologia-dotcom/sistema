@@ -5,7 +5,11 @@ import {
   atualizarMeuCliente,
   cancelarAgendamento,
   contratarPlano,
+  desistirDaPausa,
   desistirDaSolicitacao,
+  direitoAPausa,
+  minhaPausa,
+  solicitarPausa,
   turmasParaAssentoFixo,
   criarContaAluna,
   entrarListaEspera,
@@ -310,6 +314,50 @@ export function useContratarPlano() {
  * um pedido em aberto"). Sem isto, a saída seria cancelar o pedido e
  * começar de novo — por um clique em "voltar".
  */
+/** A pausa em aberto deste aluno — pedida, aprovada ou em curso. */
+export function useMinhaPausa() {
+  return useQuery({ queryKey: ['portal-pausa'], queryFn: minhaPausa })
+}
+
+/**
+ * Pode pausar, e por quantos dias.
+ *
+ * A conta é do banco (`direito_a_pausa`): o limite muda com o formato do
+ * plano (15 dias no mensal, 30 no semestral, 90 com atestado), com o
+ * intervalo desde a última pausa e com a situação da matrícula. Replicar
+ * isso aqui seria a segunda versão da regra, e as duas divergiriam.
+ *
+ * Só consulta com a folha aberta: a resposta depende do tipo escolhido.
+ */
+export function useDireitoAPausa(matriculaId: string | null, atestado: boolean) {
+  return useQuery({
+    queryKey: ['portal-pausa', 'direito', matriculaId, atestado],
+    queryFn: () => direitoAPausa(matriculaId!, atestado),
+    enabled: Boolean(matriculaId),
+  })
+}
+
+function useInvalidarPausa() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['portal-pausa'] })
+    // A pausa muda o status e a vigência da matrícula, e estica a validade
+    // dos créditos — é o que "Meu plano" e a lista de lotes leem.
+    qc.invalidateQueries({ queryKey: ['portal-meus-planos'] })
+    qc.invalidateQueries({ queryKey: ['portal-lotes'] })
+  }
+}
+
+export function useSolicitarPausa() {
+  const invalidar = useInvalidarPausa()
+  return useMutation({ mutationFn: solicitarPausa, onSuccess: invalidar })
+}
+
+export function useDesistirDaPausa() {
+  const invalidar = useInvalidarPausa()
+  return useMutation({ mutationFn: desistirDaPausa, onSuccess: invalidar })
+}
+
 export function useDesistirSolicitacao() {
   const qc = useQueryClient()
   return useMutation({

@@ -2558,6 +2558,50 @@ export type Database = {
           },
         ]
       }
+      pausas_matricula: {
+        Row: {
+          ativada_em: string | null
+          atualizada_em: string
+          ciclo_na_pausa: number | null
+          cliente_id: string
+          criada_em: string
+          data_fim_antes: string | null
+          data_fim_depois: string | null
+          decidida_em: string | null
+          decidida_por: string | null
+          dia_renovacao_antes: number | null
+          dias_efetivos: number | null
+          encerrada_em: string | null
+          fim: string
+          id: string
+          inicio: string
+          lotes_estendidos: number | null
+          matricula_id: string
+          motivo_decisao: string | null
+          observacao: string | null
+          solicitada_em: string
+          solicitada_por: string | null
+          status: Database["public"]["Enums"]["status_pausa"]
+          tipo: Database["public"]["Enums"]["tipo_pausa"]
+        }
+        Insert: {
+          cliente_id: string
+          fim: string
+          inicio: string
+          matricula_id: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_pausa"]
+          tipo?: Database["public"]["Enums"]["tipo_pausa"]
+        }
+        Update: {
+          fim?: string
+          inicio?: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_pausa"]
+          tipo?: Database["public"]["Enums"]["tipo_pausa"]
+        }
+        Relationships: []
+      }
       presencas: {
         Row: {
           agendamento_id: string | null
@@ -4638,6 +4682,37 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_pausas: {
+        Row: {
+          ativada_em: string | null
+          cliente_email: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          data_fim_antes: string | null
+          data_fim_depois: string | null
+          decidida_em: string | null
+          decisor_nome: string | null
+          dia_renovacao_antes: number | null
+          dias_efetivos: number | null
+          dias_pedidos: number | null
+          encerrada_em: string | null
+          fim: string | null
+          id: string | null
+          inicio: string | null
+          lotes_estendidos: number | null
+          matricula_id: string | null
+          motivo_decisao: string | null
+          observacao: string | null
+          plano_nome: string | null
+          semestral: boolean | null
+          solicitada_em: string | null
+          status: Database["public"]["Enums"]["status_pausa"] | null
+          tipo: Database["public"]["Enums"]["tipo_pausa"] | null
+          turma_fixa: boolean | null
+        }
+        Relationships: []
+      }
       vw_solicitacoes: {
         Row: {
           cliente_email: string | null
@@ -5401,6 +5476,42 @@ export type Database = {
         Args: { p_imediato?: boolean; p_turma_nova: string; p_vinculo: string }
         Returns: string
       }
+      direito_a_pausa: {
+        Args: { p_matricula: string; p_tipo?: Database["public"]["Enums"]["tipo_pausa"] }
+        Returns: {
+          pode: boolean
+          motivo: string | null
+          max_dias: number
+          proxima_liberacao: string | null
+        }[]
+      }
+      solicitar_pausa: {
+        Args: {
+          p_matricula: string
+          p_inicio: string
+          p_fim: string
+          p_tipo?: Database["public"]["Enums"]["tipo_pausa"]
+          p_observacao?: string
+        }
+        Returns: string
+      }
+      aprovar_pausa: {
+        Args: { p_pausa: string; p_motivo?: string }
+        Returns: Database["public"]["Enums"]["status_pausa"]
+      }
+      recusar_pausa: { Args: { p_pausa: string; p_motivo: string }; Returns: undefined }
+      cancelar_pausa: { Args: { p_pausa: string }; Returns: undefined }
+      encerrar_pausa: { Args: { p_pausa: string; p_em?: string }; Returns: number }
+      ativar_pausa: { Args: { p_pausa: string }; Returns: undefined }
+      processar_pausas: {
+        Args: never
+        Returns: {
+          acao: string
+          pausa_id: string
+          matricula_id: string
+          dias: number
+        }[]
+      }
       quorum_da_aula: {
         Args: { p_data: string; p_turma: string }
         Returns: {
@@ -5531,6 +5642,14 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      status_pausa:
+        | "solicitada"
+        | "aprovada"
+        | "ativa"
+        | "encerrada"
+        | "recusada"
+        | "cancelada"
+      tipo_pausa: "regular" | "atestado"
       status_produto: "venda" | "interno" | "legado" | "arquivado"
       status_saida: "prevista" | "paga" | "cancelada"
       status_solicitacao:
@@ -5777,6 +5896,15 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      status_pausa: [
+        "solicitada",
+        "aprovada",
+        "ativa",
+        "encerrada",
+        "recusada",
+        "cancelada",
+      ],
+      tipo_pausa: ["regular", "atestado"],
       status_produto: ["venda", "interno", "legado", "arquivado"],
       status_saida: ["prevista", "paga", "cancelada"],
       status_solicitacao: [
