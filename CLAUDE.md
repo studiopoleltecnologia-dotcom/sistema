@@ -278,8 +278,27 @@ plataformas parceiras) — referência de comparação, não de cópia de interf
   no Wix dentro do prazo e o ERP recusa a devolução do crédito.
   Dentro do prazo o crédito volta e ela pode remarcar; fora, o crédito é
   consumido.
-  ⚠️ Em 05/09/2026 o DEV estava em 4h e a **produção ainda em 3h** — conferir
-  antes de confiar no valor.
+  ✅ Conferido em 05/10/2026: **os dois ambientes estão em 4h**, e o
+  regulamento de 01/10 (item 4.5) diz o mesmo. A divergência de 05/09
+  (produção em 3h) foi resolvida.
+
+### 9.3.1 Faltas e suspensão (regulamento 4.7)
+
+**2 faltas** sem cancelamento no mesmo ciclo suspendem o agendamento
+antecipado por **20 dias** (`config_agendamento.faltas_para_suspensao` e
+`dias_suspensao_faltas`). A penalidade **não se aplica ao Plano Turma
+Fixa** — a vaga já é dela, e faltar não a transfere para ninguém.
+
+- **Suspensão não é bloqueio.** O aluno continua podendo treinar: ele
+  perde a antecedência, e passa a agendar no mesmo dia da aula ou pela
+  lista de espera. O texto da tela e do e-mail precisa dizer isso, senão
+  parece punição maior do que é.
+- ⚠️ **Era 3 faltas / 15 dias até 05/10/2026** — os números do regulamento
+  de setembro. O DEV ficou para trás e a produção já estava certa;
+  `20261017120000` alinhou os dois e corrigiu o `default` da coluna, que
+  era a origem da divergência (ambiente novo nascia errado).
+- Falta **não é presumida**: aula passada sem presença marcada não vira
+  falta automática. Ver Agenda → Faltas, segunda lista.
 
 ### 9.4 Jornada Mensalista — pacotes e créditos
 
@@ -493,6 +512,43 @@ todas as sócias de gestão, sempre.
 - Público = `emails_gestao()` (função = gestão). Levar à secretária é uma
   linha ali, mas é decisão de produto — ela resolve convidado e check-in
   pendente, então faz sentido quando pedirem.
+
+### 9.11 O regulamento oficial, e onde cada número mora
+
+**O documento vigente é de 01/10/2026** e vive FORA do repositório, em
+`DOCS OFICIAIS/01_Regulamento_do_Aluno_Studio_Pole_L_ATUALIZADO.docx`
+(com o Manual Interno e o Contrato ao lado). O repo tem só a versão de
+setembro — conferir sempre o arquivo oficial antes de afirmar uma regra.
+
+**Nenhum número do regulamento é constante no código.** Cada um sai de
+uma coluna, e o texto do contrato dinâmico lê a mesma coluna por marcador
+(`contrato_resumo()`). Mudar o parâmetro muda o sistema **e** o
+documento que o aluno aceita, de uma vez.
+
+| Regulamento | Valor | Onde mora |
+|---|---|---|
+| 4.3 máx. de aulas agendadas | 8 | `produtos.max_agendamentos_simultaneos` |
+| 4.4 janela de agendamento | 14 (mensal) / 21 (semestral) | `produtos.dias_antecedencia_agendamento` |
+| 4.5 cancelar e devolver crédito | 4h | `config.horas_cancelamento` |
+| 4.6 tolerância de atraso | 15 min | `config.minutos_tolerancia_atraso` |
+| 4.7 faltas → suspensão | 2 faltas / 20 dias | `config.faltas_para_suspensao`, `dias_suspensao_faltas` |
+| 5.1 mínimo de alunos | 2, conferido 4h antes | `config.minimo_alunos_turma`, `horas_conferencia_quorum` |
+| 6.7 crédito de reposição | 30 dias | `config.dias_validade_credito_aula_cancelada` |
+| 7.1 pausa | 15 (mensal) / 30 (semestral), 1 a cada 6 meses | `config.dias_pausa_*`, `meses_entre_pausas` |
+| 7.2 pausa com atestado | 90 dias | `config.dias_pausa_atestado` |
+| 8.2–8.5 troca de plano/turma | 5 dias | `config.dias_antecedencia_troca_plano` |
+| 9.1 cancelar o plano | 10 dias | `config.dias_antecedencia_cancelamento_plano` |
+| 9.7 desistência fora do estúdio | 7 dias | `config.dias_desistencia_fora_estudio` |
+| 10 crédito extra | validade até o fim do ciclo | teto em `matricular_produto()` (A29) |
+| 10.1 abatimento do experimental | 7 dias, o valor pago | `config.dias_abatimento_experimental` |
+| 11.1 convidado do semestral | 1 por ciclo, 6 meses sem treinar | `produtos.convidados_por_ciclo`, `config.meses_sem_treinar_convidado` |
+
+⚠️ **Divergência entre ambientes é bug silencioso.** A de faltas (3/15 no
+DEV contra 2/20 na produção) só apareceu porque a homologação comparou os
+dois lados — e teria feito o teste provar a regra errada. Antes de
+homologar qualquer coisa que leia `config_agendamento`, comparar DEV e
+produção. Parâmetro de regulamento entra por **migration** (igual nos dois
+ambientes); o que varia por ambiente mora no Vault (§14.4).
 
 ---
 

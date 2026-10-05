@@ -155,8 +155,11 @@ function render(tipo: string, d: Dados): Render {
     // a pessoa descobrir sozinha na hora de agendar." Este e-mail é a
     // parte "por escrito" — sem ele a regra vira uma surpresa ruim.
     case 'suspensao_faltas': {
-      const faltas = (d.faltas as number) ?? 3
-      const dias = (d.dias as number) ?? 15
+      // Os padrões acompanham o regulamento 4.7 de 01/10/2026 (2 faltas,
+      // 20 dias). Eles só entram se o enfileiramento vier sem os campos —
+      // mas um padrão errado é uma mentira esperando a hora de sair.
+      const faltas = (d.faltas as number) ?? 2
+      const dias = (d.dias as number) ?? 20
       const ate = dataExtenso(d.ate as string)
       return {
         assunto: 'Sobre suas aulas — agendamento antecipado pausado',
