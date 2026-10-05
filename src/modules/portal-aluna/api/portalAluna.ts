@@ -523,3 +523,23 @@ export async function desistirDoConvidado(id: string) {
   if (error) throw error
   return data
 }
+
+// ------------------------------------------------------------
+// O abatimento da experimental (regulamento 10.1)
+// ------------------------------------------------------------
+
+/**
+ * Quanto a experimental deste aluno abate do plano, e até quando.
+ *
+ * A conta é do banco (`abatimento_disponivel`): o valor é o que ele
+ * efetivamente PAGOU pela experimental, e o prazo conta da experiência.
+ * Quando não tem, vem o motivo — é esse texto que a tela mostra, para a
+ * ausência do desconto não parecer defeito.
+ */
+export async function abatimentoDisponivel(clienteId: string) {
+  const { data, error } = await requireSupabase().rpc('abatimento_disponivel', {
+    p_cliente: clienteId,
+  })
+  if (error) throw error
+  return data?.[0] ?? null
+}

@@ -249,6 +249,24 @@ Deno.serve(async (req) => {
   // do Asaas, e quem captura o IP é o Asaas. Daí em diante eles geram
   // e debitam cada ciclo — nós só recebemos o webhook.
   if (corpo.cartao) {
+    // Abatimento da experimental (10.1) não cabe numa assinatura: o
+    // checkout recorrente tem UM valor por ciclo, então descontar aqui
+    // daria o desconto todos os meses, para sempre. Recusar é melhor que
+    // aplicar errado em silêncio — e a mensagem diz o caminho, que é
+    // emitir o link de pagamento (onde o aluno escolhe Pix ou cartão).
+    if (Number(sol.abatimento_centavos ?? 0) > 0) {
+      return json(
+        {
+          erro:
+            `esta contratação tem R$ ${(Number(sol.abatimento_centavos) / 100).toFixed(2)} ` +
+            'de abatimento da aula experimental, que vale só na primeira cobrança — ' +
+            'uma assinatura no cartão repetiria o desconto todo mês. ' +
+            'Emita o link de pagamento em vez do cartão recorrente.',
+        },
+        409,
+      )
+    }
+
     const proximo = new Date()
     proximo.setDate(proximo.getDate() + 1)
 
@@ -303,14 +321,41 @@ Deno.serve(async (req) => {
     })
   }
 
+  // O valor vem da view, que o calcula com `valor_a_cobrar()` — a mesma
+  // conta que a tela do aluno mostrou. Subtrair aqui de novo seria a
+  // segunda versão dela, e é assim que aparece a cobrança que não bate
+  // com o que foi prometido.
+  const aCobrar = Number(sol.valor_a_cobrar_centavos ?? sol.preco_centavos)
+  const abatimento = Number(sol.abatimento_centavos ?? 0)
+
+  // Abatimento que cobre o preço inteiro não vira cobrança: o gateway
+  // recusa valor zero e a nossa tabela também (check > 0). Com o
+  // catálogo de hoje isso não acontece (o plano mais barato custa mais
+  // que a maior experimental), mas um produto barato cairia aqui — e
+  // ler o caminho é melhor que ler um 502 do Asaas.
+  if (aCobrar <= 0) {
+    return json(
+      {
+        erro:
+          'o abatimento da experimental cobre todo o valor desta contratação — ' +
+          'não há cobrança a emitir. Registre o pagamento como cortesia para matricular.',
+      },
+      409,
+    )
+  }
+
   const r = await asaas('/payments', {
     method: 'POST',
     body: JSON.stringify({
       customer: customerId,
       billingType: 'UNDEFINED', // o aluno escolhe Pix ou cartão no link
-      value: Number(sol.preco_centavos) / 100,
+      value: aCobrar / 100,
       dueDate: venc,
-      description: `${sol.produto_nome} — Studio Pole L`,
+      // O abatimento no texto da cobrança: é o que o aluno vê na fatura
+      // do Asaas, e sem isso o valor menor pareceria erro de preço.
+      description: abatimento > 0
+        ? `${sol.produto_nome} — Studio Pole L (abatimento da aula experimental: -R$ ${(abatimento / 100).toFixed(2)})`
+        : `${sol.produto_nome} — Studio Pole L`,
       externalReference: sol.id, // amarra o webhook de volta à solicitação
       ...(await encargosDeAtraso(sb)),
     }),
@@ -322,9 +367,11 @@ Deno.serve(async (req) => {
     p_matricula: null,
     p_ciclo: 1,
     p_cliente: cliente.id,
-    p_valor_centavos: sol.preco_centavos,
+    p_valor_centavos: aCobrar,
     p_vencimento: venc,
-    p_descricao: sol.produto_nome,
+    p_descricao: abatimento > 0
+      ? `${sol.produto_nome} (abatimento da experimental)`
+      : sol.produto_nome,
     p_provider: 'asaas',
     p_provider_ref: String(r.corpo.id),
     p_url: String(r.corpo.invoiceUrl ?? ''),
@@ -350,7 +397,8 @@ Deno.serve(async (req) => {
       p_dados: {
         nome: cliente.nome,
         produto: sol.produto_nome,
-        valor_centavos: sol.preco_centavos,
+        valor_centavos: aCobrar,
+        abatimento_centavos: abatimento,
         vencimento: venc,
         url: r.corpo.invoiceUrl,
       },

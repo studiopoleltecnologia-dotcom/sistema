@@ -5,6 +5,7 @@ import {
   Clock,
   Hourglass,
   PiggyBank,
+  Ticket,
   RefreshCw,
 } from 'lucide-react'
 import { cn } from '../../../../components/ui/cn'
@@ -85,6 +86,37 @@ function Preco({ produto: p, selos = [] }: { produto: Produto; selos?: string[] 
  * quando quiser — não que a cobrança para sozinha. É essa frase que evita
  * a discussão de cobrança dois meses depois.
  */
+/**
+ * O abatimento da aula experimental (regulamento 10.1).
+ *
+ * Só o que o aluno precisa para decidir: quanto sai desta cobrança, e
+ * que é só desta. A segunda parte importa tanto quanto a primeira — sem
+ * ela, o valor cheio no mês seguinte parece aumento de preço.
+ */
+export type Abatimento = { valor_centavos: number; prazo_ate: string | null }
+
+export function AvisoAbatimento({
+  abatimento: a,
+  preco,
+}: {
+  abatimento: Abatimento
+  preco: number
+}) {
+  const liquido = Math.max(preco - a.valor_centavos, 0)
+  return (
+    <div className="mt-4 flex gap-2.5 rounded-lg border border-success-200 bg-success-50 px-3 py-2.5 text-xs leading-relaxed text-success-800">
+      <Ticket className="mt-px size-4 shrink-0" />
+      <span>
+        <strong className="font-semibold">
+          {fmtPreco(a.valor_centavos)} da sua aula experimental entram como desconto.
+        </strong>{' '}
+        Você paga {fmtPreco(liquido)} nesta primeira cobrança; as seguintes voltam ao valor do
+        plano.
+      </span>
+    </div>
+  )
+}
+
 function Cobranca({ produto: p, comoPaga = true }: { produto: Produto; comoPaga?: boolean }) {
   return (
     <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2.5 text-xs leading-relaxed text-brand-800">
@@ -159,6 +191,7 @@ export function TituloPlano({ produto: p }: { produto: Produto }) {
 export function ConfirmarCompra({
   produto: p,
   horasCancelamento,
+  abatimento,
   selos,
   erro,
   pendente,
@@ -168,6 +201,8 @@ export function ConfirmarCompra({
   produto: Produto
   /** Prazo que devolve o crédito: o do produto, ou a regra da casa. */
   horasCancelamento: number | null
+  /** Abatimento da experimental, quando este produto e este aluno têm. */
+  abatimento: Abatimento | null
   selos: string[]
   erro: string | null
   pendente: boolean
@@ -211,6 +246,8 @@ export function ConfirmarCompra({
       <Expiracao produto={p} />
 
       <Cobranca produto={p} />
+
+      {abatimento && <AvisoAbatimento abatimento={abatimento} preco={p.preco_centavos} />}
 
       {erro && <p className="mt-3 text-sm text-danger-600">{erro}</p>}
 

@@ -6,6 +6,7 @@ import { useRequisitos } from '../produtos/hooks/useProdutos'
 import { usePortalClienteId } from './PortalClienteContext'
 import {
   useConfigAgendamento,
+  useAbatimentoDisponivel,
   useContratarPlano,
   useMeusPlanos,
   usePlanos,
@@ -97,6 +98,17 @@ export function PlanosPage() {
   const { data: config } = useConfigAgendamento()
   const { data: requisitos } = useRequisitos()
   const contratar = useContratarPlano()
+  /*
+    O abatimento da experimental (10.1) é informação de VENDA: tem de
+    estar na tela antes de o aluno escolher, não depois do pedido. Só
+    vale em plano que renova — avulsa e pacote são compra pontual —, e é
+    a mesma condição que solicitar_contratacao() aplica no banco.
+  */
+  const { data: abatimento } = useAbatimentoDisponivel()
+  const abatimentoDoProduto = (p: Produto | null) =>
+    p && abatimento?.tem && p.renova_automaticamente && p.preco_centavos > 0
+      ? { valor_centavos: abatimento.valor_centavos, prazo_ate: abatimento.prazo_ate }
+      : null
 
   const [folha, setFolha] = useState<FolhaAberta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -468,6 +480,7 @@ export function PlanosPage() {
           <ConfirmarCompra
             produto={produtoDaFolha}
             horasCancelamento={horasCancelamento(produtoDaFolha)}
+            abatimento={abatimentoDoProduto(produtoDaFolha)}
             selos={selosPorProduto.get(produtoDaFolha.id) ?? []}
             erro={erro}
             pendente={contratar.isPending}

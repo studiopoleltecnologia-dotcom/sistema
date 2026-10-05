@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  abatimentoDisponivel,
   agendarAula,
   atualizarMeuCliente,
   beneficioConvidado,
@@ -435,4 +436,19 @@ export function useIndicarConvidado() {
 export function useDesistirDoConvidado() {
   const invalidar = useInvalidarConvidado()
   return useMutation({ mutationFn: desistirDoConvidado, onSuccess: invalidar })
+}
+
+/**
+ * O abatimento da experimental deste aluno (regulamento 10.1).
+ *
+ * Fica na tela do catálogo, ANTES de ele escolher: é a informação que
+ * faz a pessoa voltar dentro dos 7 dias, e é inútil depois do pedido.
+ */
+export function useAbatimentoDisponivel() {
+  const clienteId = usePortalClienteId()
+  return useQuery({
+    queryKey: ['portal-abatimento', clienteId],
+    queryFn: () => abatimentoDisponivel(clienteId!),
+    enabled: Boolean(clienteId),
+  })
 }
