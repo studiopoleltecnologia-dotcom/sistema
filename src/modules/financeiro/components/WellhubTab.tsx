@@ -9,6 +9,7 @@ import { requireSupabase } from '../../../lib/supabase'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import type { Entrada } from '../types'
+import { PlanosWellhub } from './PlanosWellhub'
 
 function usePendentesWellhub() {
   return useQuery({
@@ -77,6 +78,10 @@ export function WellhubTab() {
 
   return (
     <div className="max-w-3xl">
+      {/* Os valores por plano vêm antes da conciliação de propósito: é a
+          previsão que a lista de baixo usa, e plano sem valor confirmado
+          significa previsão errada esperando o dia 15. */}
+      <PlanosWellhub />
       <p className="mb-4 text-xs text-neutral-400">
         Confira o valor do repasse na aba Financeiro do Portal do Parceiro Wellhub
         (pago todo dia 15, referente ao mês anterior) e concilie aqui: o valor real

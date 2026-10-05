@@ -215,7 +215,10 @@ funcionando e validado pelas sócias.
 - **MEI:** limite anual **R$ 81.000** (parametrizável). Alertas em **70%, 85%, 95%**.
   Faturamento por **regime de caixa** (conta quando o dinheiro entra).
 - **Wellhub/ClassPass:** receita por **check-in**, paga em lote com **atraso** →
-  tratar como "a reconciliar", diferente de mensalista.
+  tratar como "a reconciliar", diferente de mensalista. ⚠️ **O valor do
+  check-in depende do PLANO do assinante** (Silver+, Gold…) desde 05/10/2026:
+  sai de `wellhub_planos`, não de um número único. O plano vem no payload
+  (`gym.product`) e fica em `presencas.wellhub_product_id`.
 - **Professoras:** pagas **por aluna presente** por aula → derivado da Presença.
 - **Reserva de caixa:** política sugerida 10–15% da receita, meta 3 meses de despesa.
 - **Categorias financeiras:** Entradas (Mensalistas, Wellhub, ClassPass, Avulsa,
@@ -660,6 +663,17 @@ no portal, essa marcação deve chamar o `validate`. **Ainda não implementado**
 - Valor por check-in pode ser **R$ 0** (primeira visita grátis da aluna ou teto
   de pagamento por visitante atingido no mês) — é caso de negócio válido, não
   pode travar o check-in nem ser tratado como erro.
+- **O repasse varia por plano do assinante** (`20261018120000`). `gym.product`
+  no payload é, nas palavras da doc deles, "o plano do assinante (o que
+  define o repasse)". Fica em `presencas.wellhub_product_id`, e
+  `valor_checkin_wellhub()` precifica por `wellhub_planos`.
+  `config_agendamento.valor_checkin_wellhub_centavos` deixou de ser *o*
+  valor e passou a ser **o padrão de quando o plano é desconhecido**.
+  - Plano novo **se cadastra sozinho** no primeiro check-in, com
+    `confirmado = false`, e a gestão recebe aviso no sino para informar o
+    valor. Não bloqueia e não deixa de lançar: o check-in aconteceu.
+  - Isso melhora a **previsão**. A verdade do dinheiro continua sendo a
+    conciliação do repasse (12.6), que é manual por falta de API.
 - **A turma do check-in não vem no payload.** A Access Control API notifica
   *acesso ao estúdio*, não aula. Com duas salas, o horário não desambigua — daí
   a fila `checkins_pendentes` (seção 9.7). O webhook responde JSON:
