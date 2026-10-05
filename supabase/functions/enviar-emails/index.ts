@@ -24,6 +24,7 @@ const AGENDA_ERP = 'https://sistema.studiopolel.com.br/#/agenda'
 const MATRICULAS_PAUSAS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=pausas'
 const MATRICULAS_CONVIDADOS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=convidados'
 const MATRICULAS_EM_ABERTO = 'https://sistema.studiopolel.com.br/#/matriculas?aba=em_aberto'
+const WELLHUB_ERP = 'https://sistema.studiopolel.com.br/#/financeiro/wellhub'
 // ?v muda quando a logo troca — fura o cache do Gmail (que guarda imagem por URL).
 const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png?v=2'
 const MAX_TENTATIVAS = 5
@@ -564,6 +565,22 @@ function render(tipo: string, d: Dados): Render {
              ? '<br><br><strong style="color:#241f33">Atenção: este aluno tem turma fixa.</strong> A vaga continua guardada — o sistema não libera sozinho. Se for o caso de oferecê-la a outra pessoa, isso é feito à mão na matrícula.'
              : ''}`,
           { texto: 'Ver quem está em aberto', url: MATRICULAS_EM_ABERTO }),
+      }
+    // ---- Plano Wellhub que o sistema não conhecia ----
+    // O repasse da Wellhub depende do plano do assinante (Silver+, Gold…),
+    // e o plano chega no payload do check-in. Quando aparece um que não
+    // está na tabela, o sistema o cadastra sozinho pelo valor padrão e
+    // pede o valor certo — porque receita prevista errada só aparece no
+    // dia 15, quando o repasse real não bate.
+    case 'wellhub_plano_novo':
+      return {
+        assunto: `Plano Wellhub novo: ${esc(d.nome)}`,
+        html: layout('Um plano Wellhub que não conhecíamos',
+          `Chegou um check-in de um plano novo: <strong style="color:#241f33">${esc(d.nome)}</strong> (id ${esc(String(d.product_id))}).<br><br>
+           Por enquanto ele entra no financeiro pelo valor padrão, ${fmtReais(Number(d.valor_padrao_centavos ?? 0))} por check-in.
+           Se o repasse desse plano for outro, é só informar — a previsão de receita passa a usar o valor certo daí em diante.<br><br>
+           Isso não trava nada: o check-in foi registrado, a aula conta na chamada e a professora é paga normalmente.`,
+          { texto: 'Informar o valor', url: WELLHUB_ERP }),
       }
     default:
       return null

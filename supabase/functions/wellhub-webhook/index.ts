@@ -112,6 +112,15 @@ Deno.serve(async (req) => {
     return new Response('ok (sem token)', { status: 200 })
   }
 
+  // O PLANO do assinante vem em `gym.product` — e a doc da Wellhub diz
+  // que é ele "que define o repasse". Desde que passaram a existir
+  // Silver+ e Gold, cada check-in vale um valor diferente, então este
+  // campo deixou de ser enfeite: é o que precifica a receita prevista.
+  const gym = (eventData?.gym ?? payload.gym) as Record<string, unknown> | undefined
+  const produto = gym?.product as Record<string, unknown> | undefined
+  const produtoId = Number(produto?.id)
+  const produtoDesc = produto?.description ? String(produto.description) : null
+
   // 4.1 — Access Control `validate`: confirma ticket válido HOJE. É essa
   // chamada que origina o repasse (CLAUDE.md 12.3). Sem validate positivo NÃO
   // registramos presença: geraria uma entrada "a reconciliar" que nunca
@@ -148,6 +157,8 @@ Deno.serve(async (req) => {
       p_cliente: clienteId,
       p_momento: new Date().toISOString(),
       p_evento_externo: eventoId,
+      p_product_id: Number.isFinite(produtoId) ? produtoId : null,
+      p_product_desc: produtoDesc,
     },
   )
   if (erroRpc) {

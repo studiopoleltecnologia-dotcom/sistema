@@ -1276,6 +1276,27 @@ export type Database = {
         Update: { lida_em?: string | null }
         Relationships: []
       }
+      wellhub_planos: {
+        Row: {
+          atualizada_em: string
+          atualizado_por: string | null
+          ativo: boolean
+          confirmado: boolean
+          descricao: string | null
+          product_id: number
+          valor_centavos: number
+          visto_em: string
+        }
+        Insert: never
+        Update: {
+          ativo?: boolean
+          confirmado?: boolean
+          descricao?: string | null
+          valor_centavos?: number
+          atualizado_por?: string | null
+        }
+        Relationships: []
+      }
       tipos_notificacao: {
         Row: {
           ativo: boolean
@@ -2711,6 +2732,7 @@ export type Database = {
       }
       presencas: {
         Row: {
+          wellhub_product_id: number | null
           agendamento_id: string | null
           atualizada_em: string
           canal: Database["public"]["Enums"]["canal_aula"]
