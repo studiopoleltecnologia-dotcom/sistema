@@ -23,6 +23,7 @@ const CONTRATACOES_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=co
 const AGENDA_ERP = 'https://sistema.studiopolel.com.br/#/agenda'
 const MATRICULAS_PAUSAS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=pausas'
 const MATRICULAS_CONVIDADOS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=convidados'
+const MATRICULAS_EM_ABERTO = 'https://sistema.studiopolel.com.br/#/matriculas?aba=em_aberto'
 // ?v muda quando a logo troca — fura o cache do Gmail (que guarda imagem por URL).
 const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png?v=2'
 const MAX_TENTATIVAS = 5
@@ -538,6 +539,29 @@ function render(tipo: string, d: Dados): Render {
           { texto: 'Falar com a gente', url: PORTAL }),
       }
     }
+    // ---- A cobrança que não foi paga (A27) ----
+    // A gestão foi explícita sobre o limite: "não precisa ser algo no
+    // sistema, será algo manual. O sistema só precisa nos avisar que a
+    // cobrança não foi realizada." Então este e-mail não propõe régua de
+    // cobrança nem fala em liberar vaga — ele conta o que houve e diz
+    // quem é a pessoa, que é o que permite agir.
+    case 'cobranca_falhou':
+      return {
+        assunto: `Cobrança não paga — ${esc(d.nome)}`,
+        html: layout('Uma cobrança venceu sem pagamento',
+          `A cobrança de <strong style="color:#241f33">${esc(d.nome)}</strong> venceu e não foi paga.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Plano</td><td style="padding:3px 0;color:#241f33">${esc(d.plano)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Valor</td><td style="padding:3px 0;color:#241f33">${fmtReais(Number(d.valor_centavos ?? 0))}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Venceu em</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.vencimento as string)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Telefone</td><td style="padding:3px 0;color:#241f33">${esc(d.telefone) || '—'}</td></tr>
+           </table><br>
+           O plano ficou como <strong>pagamento em aberto</strong>: o aluno não consegue agendar novas aulas até regularizar, e os créditos dele não foram apagados.
+           ${d.turma_fixa
+             ? '<br><br><strong style="color:#241f33">Atenção: este aluno tem turma fixa.</strong> A vaga continua guardada — o sistema não libera sozinho. Se for o caso de oferecê-la a outra pessoa, isso é feito à mão na matrícula.'
+             : ''}`,
+          { texto: 'Ver quem está em aberto', url: MATRICULAS_EM_ABERTO }),
+      }
     default:
       return null
   }
