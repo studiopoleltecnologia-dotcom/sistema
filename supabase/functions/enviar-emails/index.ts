@@ -21,6 +21,7 @@ const MATRICULAS_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=canc
 // A fila de pedidos de contratação — é desta aba que a gestão aprova a vaga.
 const CONTRATACOES_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=contratacoes'
 const AGENDA_ERP = 'https://sistema.studiopolel.com.br/#/agenda'
+const MATRICULAS_PAUSAS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=pausas'
 // ?v muda quando a logo troca — fura o cache do Gmail (que guarda imagem por URL).
 const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png?v=2'
 const MAX_TENTATIVAS = 5
@@ -387,6 +388,79 @@ function render(tipo: string, d: Dados): Render {
            <br><br>
            Quer fazer a aula mesmo assim? Reabra em <strong>Agenda → Canceladas</strong>: a vaga volta a ser oferecida, mas os alunos avisados precisam agendar de novo.`,
           { texto: 'Abrir a Agenda', url: AGENDA_ERP }),
+      }
+    }
+    // ---- Pausa do plano (regulamento §7) ----
+    // Seis avisos para um fluxo que o aluno não vê acontecer: ele pede e
+    // espera. Sem e-mail em cada passo, a única forma de saber em que pé
+    // está é abrir o app — e a pausa mexe na data de cobrança dele, que é
+    // a informação que mais gera dúvida depois.
+    case 'pausa_solicitada': {
+      const dias = (d.dias as number) ?? 0
+      return {
+        assunto: `Pausa solicitada — ${esc(d.nome)} · ${dias} dias`,
+        html: layout('Pedido de pausa de plano',
+          `${esc(d.nome)} pediu pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong> em ${esc(d.solicitada_em)}.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Tipo</td><td style="padding:3px 0;color:#241f33">${esc(d.tipo)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Período</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.inicio as string)} a ${dataCompleta(d.fim as string)} (${dias} dias)</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Telefone</td><td style="padding:3px 0;color:#241f33">${esc(d.telefone) || '—'}</td></tr>
+             ${d.observacao ? `<tr><td style="padding:3px 12px 3px 0;color:#928aa6;vertical-align:top">Observação</td><td style="padding:3px 0;color:#241f33">“${esc(d.observacao)}”</td></tr>` : ''}
+           </table><br>
+           <strong style="color:#241f33">A pausa só vale depois de aprovada.</strong> Enquanto isso o plano segue ativo e a cobrança também.`,
+          { texto: 'Ver pedidos de pausa', url: MATRICULAS_PAUSAS }),
+      }
+    }
+    case 'pausa_recebida':
+      return {
+        assunto: 'Recebemos seu pedido de pausa',
+        html: layout('Pedido de pausa recebido',
+          `Oi, ${nome}! Recebemos seu pedido de pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong> em ${esc(d.solicitada_em)}, de ${dataCompleta(d.inicio as string)} a ${dataCompleta(d.fim as string)}.<br><br>
+           <strong style="color:#241f33">Seu plano continua ativo até a pausa ser confirmada</strong> — inclusive a cobrança. A equipe analisa e você recebe um e-mail com a resposta.<br><br>
+           A data e a hora deste pedido ficam registradas: é o que garante que ele foi feito antes da pausa começar.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'pausa_aprovada':
+      return {
+        assunto: 'Sua pausa foi aprovada',
+        html: layout('Pausa aprovada',
+          `Oi, ${nome}! Sua pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong> está confirmada para <strong>${dataCompleta(d.inicio as string)} a ${dataCompleta(d.fim as string)}</strong>.<br><br>
+           Durante esse período a cobrança e o ciclo ficam <strong style="color:#241f33">congelados</strong>: você não é cobrado, não perde créditos, e os dias pausados são devolvidos no fim da vigência.<br><br>
+           Quer voltar antes? É só avisar — você só "gasta" os dias que de fato pausar.
+           ${d.motivo ? `<br><br>Observação da equipe: ${esc(d.motivo)}` : ''}`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'pausa_recusada':
+      return {
+        assunto: 'Sobre o seu pedido de pausa',
+        html: layout('Não conseguimos aprovar a pausa',
+          `Oi, ${nome}. Não foi possível aprovar a pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong>.<br><br>
+           <strong style="color:#241f33">Motivo:</strong> ${esc(d.motivo)}<br><br>
+           Seu plano <strong>continua ativo normalmente</strong>, sem nenhuma alteração. Se quiser conversar sobre outra data, é só responder este e-mail.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'pausa_iniciada':
+      return {
+        assunto: 'Seu plano está pausado',
+        html: layout('Plano pausado 🤍',
+          `Oi, ${nome}! A partir de hoje seu plano <strong style="color:#241f33">${esc(d.plano)}</strong> está pausado, com volta prevista para <strong>${dataCompleta(d.fim as string)}</strong>.<br><br>
+           Enquanto estiver pausado você não é cobrado e não consegue agendar aulas. Seus créditos ficam guardados: a validade deles anda junto com a pausa.<br><br>
+           Até já! 💜`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    // O único e-mail da série que precisa dizer um número novo: a data de
+    // cobrança do aluno MUDOU, porque a pausa empurra o aniversário do
+    // ciclo. Descobrir isso só quando a cobrança chega em outro dia é o
+    // tipo de surpresa que gera desconfiança.
+    case 'pausa_encerrada': {
+      const dias = (d.dias as number) ?? 0
+      return {
+        assunto: 'Seu plano voltou!',
+        html: layout('De volta aos treinos 💜',
+          `Oi, ${nome}! Seu plano <strong style="color:#241f33">${esc(d.plano)}</strong> está ativo de novo e você já pode agendar.<br><br>
+           A pausa durou <strong>${dias} ${dias === 1 ? 'dia' : 'dias'}</strong>, e esses dias foram devolvidos no fim da sua vigência${d.nova_vigencia ? `: ela agora vai até <strong>${dataCompleta(d.nova_vigencia as string)}</strong>` : ''}.<br><br>
+           <strong style="color:#241f33">Por isso a sua data de cobrança mudou</strong> — ela acompanhou os dias pausados, para você não pagar por tempo que não usou.`,
+          { texto: 'Agendar uma aula', url: PORTAL }),
       }
     }
     default:

@@ -457,7 +457,13 @@ function AvisoDaAgenda({
   if (principais.some((p) => p.status === 'inadimplente')) motivo = 'pagamento'
   else if (suspensaoAte) motivo = 'suspenso'
   else if (!temCreditoVivo) {
-    motivo = temTurmaFixa && !temCreditos ? 'so_turma_fixa' : temCreditos ? 'sem_credito' : 'sem_plano'
+    motivo = principais.some((p) => p.status === 'pausada')
+      ? 'plano_pausado'
+      : temTurmaFixa && !temCreditos
+        ? 'so_turma_fixa'
+        : temCreditos
+          ? 'sem_credito'
+          : 'sem_plano'
   } else if (limite !== null && futuras >= limite) motivo = 'limite'
 
   const linkPlanos = (texto: string) => (
@@ -491,6 +497,22 @@ function AvisoDaAgenda({
         <Aviso tom="info" titulo="Sua turma fixa já está garantida — não precisa agendar" className="mb-4"
           acao={linkPlanos('Aula avulsa ou crédito extra')}>
           Para fazer outras aulas, compre uma aula avulsa ou crédito extra.
+        </Aviso>
+      )
+    case 'plano_pausado':
+      return (
+        <Aviso
+          tom="info"
+          titulo="Seu plano está pausado"
+          className="mb-4"
+          acao={
+            <Link to="../meu-plano" className="text-xs font-semibold underline underline-offset-2">
+              Ver meu plano
+            </Link>
+          }
+        >
+          Enquanto a pausa durar não dá para agendar. Seus créditos ficam guardados: a validade
+          deles anda junto com a pausa.
         </Aviso>
       )
     case 'sem_credito':
@@ -983,6 +1005,8 @@ function DetalheAula({
         sem_plano: 'Para agendar, você precisa de um plano ou de uma aula avulsa.',
         so_turma_fixa: 'Seu plano de turma fixa dá acesso só à sua turma. Para esta aula, compre uma aula avulsa ou crédito extra.',
         sem_credito: 'Você não tem créditos válidos para esta data.',
+        plano_pausado:
+          'Seu plano está pausado. Seus créditos ficam guardados até a volta — a validade deles anda junto com a pausa.',
         pagamento: 'Seu plano está com pagamento em aberto. Regularize na recepção para voltar a agendar.',
       }[e.motivo]
       break

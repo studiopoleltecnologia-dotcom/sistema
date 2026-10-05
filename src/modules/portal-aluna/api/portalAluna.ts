@@ -239,6 +239,66 @@ export async function turmasParaAssentoFixo() {
 }
 
 /**
+ * A pausa do plano deste aluno, quando há uma em aberto.
+ *
+ * Em aberto = pedida, aprovada à espera da data, ou em curso. Pausa
+ * encerrada não interessa a esta tela: o plano já voltou, e o histórico
+ * quem lê é a equipe.
+ */
+export async function minhaPausa() {
+  const { data, error } = await requireSupabase()
+    .from('vw_pausas')
+    .select('*')
+    .in('status', ['solicitada', 'aprovada', 'ativa'])
+    .order('inicio', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Pode pausar este plano, e por quantos dias.
+ *
+ * A conta é do banco (`direito_a_pausa`) e não da tela: o limite muda com
+ * o formato do plano (15 dias no mensal, 30 no semestral, 90 com
+ * atestado), com o intervalo desde a última pausa e com a situação da
+ * matrícula. Replicar isso no front seria a segunda versão da regra.
+ */
+export async function direitoAPausa(matriculaId: string, atestado = false) {
+  const { data, error } = await requireSupabase().rpc('direito_a_pausa', {
+    p_matricula: matriculaId,
+    p_tipo: atestado ? 'atestado' : 'regular',
+  })
+  if (error) throw error
+  return data?.[0] ?? null
+}
+
+export async function solicitarPausa(args: {
+  matriculaId: string
+  inicio: string
+  fim: string
+  atestado?: boolean
+  observacao?: string
+}) {
+  const { data, error } = await requireSupabase().rpc('solicitar_pausa', {
+    p_matricula: args.matriculaId,
+    p_inicio: args.inicio,
+    p_fim: args.fim,
+    p_tipo: args.atestado ? 'atestado' : 'regular',
+    p_observacao: args.observacao,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Desistir da pausa, enquanto ela não começou. */
+export async function desistirDaPausa(id: string) {
+  const { error } = await requireSupabase().rpc('cancelar_pausa', { p_pausa: id })
+  if (error) throw error
+}
+
+/**
  * Desistir do pedido.
  *
  * Existe porque a espera é longa: quem pede turma fixa fica dias

@@ -25,7 +25,12 @@ import type {
  * dele aparece na tela.
  */
 
-export type MotivoForaDoPlano = 'sem_plano' | 'so_turma_fixa' | 'sem_credito' | 'pagamento'
+export type MotivoForaDoPlano =
+  | 'sem_plano'
+  | 'so_turma_fixa'
+  | 'sem_credito'
+  | 'pagamento'
+  | 'plano_pausado'
 
 export type EstadoAula =
   | { tipo: 'cancelada'; motivo: MotivoCancelamentoAula; mensagem: string | null }
@@ -99,6 +104,9 @@ export function planoQuePaga(data: string, ctx: ContextoAluno): MeuPlano | null 
 function motivoSemCredito(ctx: ContextoAluno): MotivoForaDoPlano {
   const vigentes = ctx.planos.filter((p) => planoVigente(p, ctx.hoje))
   if (vigentes.some((p) => p.status === 'inadimplente')) return 'pagamento'
+  // Antes do 'sem_credito': quem está pausado TEM crédito guardado, e
+  // dizer que ele acabou seria mentira — o que falta é o plano voltar.
+  if (vigentes.some((p) => p.status === 'pausada')) return 'plano_pausado'
   const temCreditos = vigentes.some((p) => formatoDoPlano(p) !== 'turma_fixa' && p.gera_credito)
   if (temCreditos) return 'sem_credito'
   if (vigentes.some((p) => formatoDoPlano(p) === 'turma_fixa')) return 'so_turma_fixa'

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Coins, FileText, Sparkles } from 'lucide-react'
+import { CalendarCheck, Coins, FileText, PauseCircle, Sparkles } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { diaDaRenovacao } from '../../lib/ciclo'
 import { Button } from '../../components/ui/Button'
@@ -8,8 +8,9 @@ import { cn } from '../../components/ui/cn'
 import { mensagemDoBanco } from './aulas'
 import { Aviso, Cabecalho, Carregando, Cartao, Dado, ErroCarregar } from './components/Basicos'
 import { MeusDocumentos } from './components/contrato/MeusDocumentos'
-import { useDesistirSolicitacao, useSolicitacaoAberta } from './hooks/usePortalAluna'
+import { useDesistirSolicitacao, useMinhaPausa, useSolicitacaoAberta } from './hooks/usePortalAluna'
 import { Folha } from './components/Folha'
+import { PausaEmAberto, PedirPausa } from './components/PausarPlano'
 import { fmtPreco } from './components/planos/catalogo'
 import { RegrasDoPlano } from './components/RegrasDoPlano'
 import { SolicitarCancelamento } from './components/SolicitarCancelamento'
@@ -34,6 +35,7 @@ import {
   fmtCreditos,
   formatoDoPlano,
   periodoDoPlano,
+  podePausar,
   podeSolicitarCancelamento,
   precoDoPlano,
   proximaRenovacaoEfetiva,
@@ -65,6 +67,7 @@ export function MeuPlanoPage() {
   const lotes = useMeusLotes()
   const [regrasDe, setRegrasDe] = useState<MeuPlano | null>(null)
   const [cancelarDe, setCancelarDe] = useState<MeuPlano | null>(null)
+  const [pausarDe, setPausarDe] = useState<MeuPlano | null>(null)
 
   const hoje = hojeIso()
   const { principais, pacotes, ultimoEncerrado } = separarPlanos(planos.data ?? [], hoje)
@@ -102,6 +105,7 @@ export function MeuPlanoPage() {
               lotes={(lotes.data ?? []).filter((l) => l.matricula_id === p.matricula_id)}
               onRegras={() => setRegrasDe(p)}
               onCancelar={() => setCancelarDe(p)}
+              onPausar={() => setPausarDe(p)}
             />
           ))}
 
@@ -123,6 +127,16 @@ export function MeuPlanoPage() {
       )}
 
       {cancelarDe && <SolicitarCancelamento plano={cancelarDe} onFechar={() => setCancelarDe(null)} />}
+
+      {pausarDe && (
+        <Folha titulo="Pausar o meu plano" onFechar={() => setPausarDe(null)}>
+          <PedirPausa
+            plano={pausarDe}
+            onFechar={() => setPausarDe(null)}
+            onPedida={() => setPausarDe(null)}
+          />
+        </Folha>
+      )}
     </div>
   )
 }
@@ -242,12 +256,14 @@ function PlanoDetalhado({
   lotes,
   onRegras,
   onCancelar,
+  onPausar,
 }: {
   plano: MeuPlano
   turmas: TurmaFixa[]
   lotes: LoteCredito[]
   onRegras: () => void
   onCancelar: () => void
+  onPausar: () => void
 }) {
   const formato = formatoDoPlano(p)
   const situacao = situacaoDoPlano(p)
@@ -287,6 +303,7 @@ function PlanoDetalhado({
           </dl>
 
           <AvisoDePagamento plano={p} />
+          <AvisoDePausa matricula={p.matricula_id} />
         </Cartao>
 
         {/* ---- 2. O que ele tem para usar ---- */}
@@ -297,7 +314,12 @@ function PlanoDetalhado({
         )}
 
         {/* ---- 3. Renovação e cancelamento ---- */}
-        <RenovacaoECancelamento plano={p} onRegras={onRegras} onCancelar={onCancelar} />
+        <RenovacaoECancelamento
+          plano={p}
+          onRegras={onRegras}
+          onCancelar={onCancelar}
+          onPausar={onPausar}
+        />
       </div>
 
       {/* ---- 4. Detalhes do contrato ---- */}
@@ -358,6 +380,19 @@ function Fato({ rotulo, children }: { rotulo: string; children: ReactNode }) {
       <dd className="mt-0.5 text-base font-semibold text-neutral-900">{children}</dd>
     </div>
   )
+}
+
+/**
+ * O estado da pausa dentro do cartão do plano.
+ *
+ * Lê a pausa em aberto do aluno e só desenha se ela for DESTE plano:
+ * quem tem dois planos não pode ver o aviso da pausa de um no cartão do
+ * outro.
+ */
+function AvisoDePausa({ matricula }: { matricula: string }) {
+  const { data: pausa } = useMinhaPausa()
+  if (!pausa || pausa.matricula_id !== matricula) return null
+  return <PausaEmAberto pausa={pausa} />
 }
 
 function AvisoDePagamento({ plano: p }: { plano: MeuPlano }) {
@@ -514,10 +549,12 @@ function RenovacaoECancelamento({
   plano: p,
   onRegras,
   onCancelar,
+  onPausar,
 }: {
   plano: MeuPlano
   onRegras: () => void
   onCancelar: () => void
+  onPausar: () => void
 }) {
   const retirar = useRetirarSolicitacao()
   const [confirmandoRetirar, setConfirmandoRetirar] = useState(false)
@@ -689,6 +726,12 @@ function RenovacaoECancelamento({
           <FileText className="size-3.5" />
           Ver regras do plano
         </Button>
+        {podePausar(p) && (
+          <Button size="sm" variant="ghost" onClick={onPausar} className="text-neutral-600">
+            <PauseCircle className="size-3.5" />
+            Pausar o plano
+          </Button>
+        )}
         {podeSolicitarCancelamento(p) && (
           <Button
             size="sm"
