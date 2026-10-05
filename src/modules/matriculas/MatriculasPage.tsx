@@ -12,6 +12,7 @@ import { fmtCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
 import { AprovacoesContratacao } from './components/AprovacoesContratacao'
 import { BonusCreditos } from './components/BonusCreditos'
+import { Desistencia } from './components/Desistencia'
 import { MatriculaDetalhe } from './components/MatriculaDetalhe'
 import { MatriculaForm } from './components/MatriculaForm'
 import { SolicitacoesCancelamento } from './components/SolicitacoesCancelamento'
@@ -78,6 +79,7 @@ export function MatriculasPage() {
 
   const [novo, setNovo] = useState(false)
   const [bonus, setBonus] = useState<MatriculaCompleta | null>(null)
+  const [desistencia, setDesistencia] = useState<MatriculaCompleta | null>(null)
   // Por id e não pelo objeto: a lista é revalidada em segundo plano, e
   // guardar a matrícula congelada deixaria o painel mostrando o saldo
   // de antes da ação que acabou de acontecer dentro dele.
@@ -261,6 +263,7 @@ export function MatriculasPage() {
             })
           }
           onBonus={() => setBonus(aberta)}
+          onDesistencia={() => setDesistencia(aberta)}
           onInadimplir={() =>
             // Era a única das quatro sem duplo-check: um clique bloqueava
             // o aluno de agendar. Bloquear quem pagou é um erro que só
@@ -317,6 +320,9 @@ export function MatriculasPage() {
 
       {novo && <MatriculaForm onFechar={() => setNovo(false)} />}
       {bonus && <BonusCreditos matricula={bonus} onFechar={() => setBonus(null)} />}
+      {desistencia && (
+        <Desistencia matricula={desistencia} onFechar={() => setDesistencia(null)} />
+      )}
       {confirmar.dialogo}
     </div>
   )

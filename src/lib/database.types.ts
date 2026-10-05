@@ -1596,6 +1596,28 @@ export type Database = {
           },
         ]
       }
+      desistencias: {
+        Row: {
+          aulas_utilizadas: number
+          cliente_id: string
+          comprada_em: string
+          criada_em: string
+          decidida_por: string | null
+          devolvido_centavos: number
+          dias_desde_compra: number
+          id: string
+          matricula_id: string
+          motivo: string | null
+          origem_contratacao: string | null
+          pago_centavos: number
+          produto_nome: string
+          retido_centavos: number
+          valor_aula_avulsa_centavos: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       despesas_recorrentes: {
         Row: {
           ativa: boolean
@@ -4754,6 +4776,28 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_desistencias: {
+        Row: {
+          aulas_utilizadas: number | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          comprada_em: string | null
+          criada_em: string | null
+          decisor_nome: string | null
+          devolvido_centavos: number | null
+          dias_desde_compra: number | null
+          id: string | null
+          matricula_id: string | null
+          motivo: string | null
+          origem_contratacao: string | null
+          pago_centavos: number | null
+          produto_nome: string | null
+          retido_centavos: number | null
+          valor_aula_avulsa_centavos: number | null
+        }
+        Relationships: []
+      }
       vw_pausas: {
         Row: {
           ativada_em: string | null
@@ -5619,6 +5663,27 @@ export type Database = {
         }[]
       }
       valor_a_cobrar: { Args: { p_solicitacao: string }; Returns: number }
+      desistencia_possivel: {
+        Args: { p_matricula: string }
+        Returns: {
+          pode: boolean
+          motivo: string | null
+          comprada_em: string | null
+          dias_desde_compra: number
+          prazo_ate: string | null
+          pago_centavos: number
+          aulas_utilizadas: number
+          valor_aula_avulsa_centavos: number
+          retido_centavos: number
+          devolver_centavos: number
+          origem_contratacao: string | null
+          alerta: string | null
+        }[]
+      }
+      desistir_da_contratacao: {
+        Args: { p_matricula: string; p_motivo?: string }
+        Returns: number
+      }
       direito_a_pausa: {
         Args: { p_matricula: string; p_tipo?: Database["public"]["Enums"]["tipo_pausa"] }
         Returns: {
