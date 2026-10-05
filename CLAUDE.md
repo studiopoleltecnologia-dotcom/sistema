@@ -409,9 +409,9 @@ produto antes — a proposta é tolerância *assimétrica*, não um knob genéri
 
 ### 9.8 Cancelamento de plano pelo portal (21/09/2026)
 
-Regulamento v3, item 7.1: pedido com **≥ 5 dias** de antecedência da
-renovação impede aquela renovação; depois disso, vale para a seguinte. O
-pedido é "confirmado por escrito por nós". Implementado em
+Pedido com **≥ 10 dias** de antecedência da renovação impede aquela
+renovação; depois disso, vale para a seguinte. O pedido é "confirmado por
+escrito por nós". Implementado em
 `20260921200000_portal_meu_plano_cancelamento.sql`:
 
 - **O aluno pede, a gestão encerra.** `solicitar_cancelamento_plano()` só
@@ -422,9 +422,20 @@ pedido é "confirmado por escrito por nós". Implementado em
 - **Uma conta de prazo só:** `regras_cancelamento_plano()`. A tela lê via
   `meus_planos()`, a solicitação grava o resultado como retrato. Não
   recalcular prazo no front.
-- O "5" é `config_agendamento.dias_antecedencia_cancelamento_plano`. A data
+- O "10" é `config_agendamento.dias_antecedencia_cancelamento_plano`. A data
   de referência é a de **São Paulo** (`now() at time zone …`), não
   `current_date` — o banco roda em UTC.
+- ⚠️ **Era 5 até 05/10/2026** (A28, `20261011120000`): o regulamento v3 de
+  setembro dizia 5, e os três documentos de 01/10 dizem 10. Decisão da
+  gestão: valem os documentos. O texto do contrato não foi editado — a
+  cláusula lê o marcador `{{DIAS_ANTECEDENCIA_CANCELAMENTO}}`.
+- **`dias_aviso_fim_compromisso` tem de ser MAIOR que esse prazo**, agora
+  por constraint (`config_aviso_antes_do_prazo`). O aviso do fim do
+  semestral (7.7) existe para dar tempo de decidir: igual ao prazo, ele
+  chegaria no último dia. Subiu de 10 para 15 junto com a mudança.
+- Os `coalesce(…, 5)` que sobraram em quatro funções são **inalcançáveis**
+  (a coluna é `not null`); ficaram para não reescrever quatro funções por
+  um ramo morto.
 - Pedido dentro do prazo e ainda pendente **segura** cobrança e renovação em
   `processar_assinaturas()`. Confirmado fora do prazo, a matrícula fica com
   `cancelada_em` + `renova_automaticamente = true` + `cancelamento_efetivo_em`
