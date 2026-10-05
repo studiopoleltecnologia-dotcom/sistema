@@ -1259,6 +1259,54 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes: {
+        Row: {
+          criada_em: string
+          dados: Json
+          descricao: string | null
+          id: string
+          lida_em: string | null
+          link: string | null
+          ref: string | null
+          socia_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: never
+        Update: { lida_em?: string | null }
+        Relationships: []
+      }
+      tipos_notificacao: {
+        Row: {
+          ativo: boolean
+          descricao: string | null
+          email_padrao: boolean
+          link: string | null
+          ordem: number
+          rotulo: string
+          tipo: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      preferencias_notificacao: {
+        Row: {
+          atualizada_em: string
+          no_sistema: boolean
+          por_email: boolean
+          socia_id: string
+          tipo: string
+        }
+        Insert: {
+          no_sistema?: boolean
+          por_email?: boolean
+          socia_id: string
+          tipo: string
+        }
+        Update: { no_sistema?: boolean; por_email?: boolean }
+        Relationships: []
+      }
       parq_documentos: {
         Row: {
           aprovado: boolean | null
@@ -5683,6 +5731,36 @@ export type Database = {
       desistir_da_contratacao: {
         Args: { p_matricula: string; p_motivo?: string }
         Returns: number
+      }
+      minhas_notificacoes: {
+        Args: { p_limite?: number; p_so_nao_lidas?: boolean }
+        Returns: {
+          id: string
+          tipo: string
+          titulo: string
+          descricao: string | null
+          link: string | null
+          criada_em: string
+          lida_em: string | null
+        }[]
+      }
+      notificacoes_nao_lidas: { Args: Record<string, never>; Returns: number }
+      marcar_notificacao_lida: { Args: { p_id: string }; Returns: undefined }
+      marcar_notificacoes_lidas: { Args: Record<string, never>; Returns: number }
+      minhas_preferencias_notificacao: {
+        Args: Record<string, never>
+        Returns: {
+          tipo: string
+          rotulo: string
+          descricao: string | null
+          no_sistema: boolean
+          por_email: boolean
+          ordem: number
+        }[]
+      }
+      salvar_preferencia_notificacao: {
+        Args: { p_tipo: string; p_no_sistema: boolean; p_por_email: boolean }
+        Returns: undefined
       }
       direito_a_pausa: {
         Args: { p_matricula: string; p_tipo?: Database["public"]["Enums"]["tipo_pausa"] }

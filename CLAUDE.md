@@ -472,6 +472,28 @@ alunos não atingido, outro (exige recado).
 - Reserva feita pelo app (Wellhub/ClassPass) é cancelada aqui, mas **não**
   no app — a tela avisa a equipe (backlog A20).
 
+### 9.10 Avisos da equipe: o sino (05/10/2026)
+
+`20261014120000_notificacoes.sql`. O ERP tem filas que esperam resposta
+(contratação, cancelamento, pausa, convidado, aula cancelada por quórum,
+cobrança vencida) e, até então, a única forma de saber era e-mail para
+todas as sócias de gestão, sempre.
+
+- **O catálogo manda:** `tipos_notificacao` lista os avisos que são **da
+  equipe**. Tipo listado lá vira sino; tipo de fora continua só e-mail.
+  **Aviso novo para a equipe = uma linha nessa tabela**, não código.
+- **O desvio mora em `enfileirar_email()`**, não nos chamadores — foi o
+  que evitou reescrever cinco funções (três delas grandes). O custo está
+  dito: quem lê `solicitar_pausa()` não vê o sino acender.
+- **A preferência é por sócia e por tipo** (`preferencias_notificacao`),
+  com dois canais independentes. Linha ausente = padrão do catálogo, o
+  que deixa o padrão livre para mudar sem reescrever escolha de ninguém.
+- A dedup é o **mesmo `ref`** da fila de e-mails: reentrega de webhook
+  não vira dois avisos.
+- Público = `emails_gestao()` (função = gestão). Levar à secretária é uma
+  linha ali, mas é decisão de produto — ela resolve convidado e check-in
+  pendente, então faz sentido quando pedirem.
+
 ---
 
 ## 10. Skills do projeto (a criar conforme padrões surgem)
