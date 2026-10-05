@@ -58,8 +58,24 @@ export function PlanosWellhub() {
     onError: (e) => setErro((e as Error).message),
   })
 
+  const { data: referencia } = useQuery({
+    queryKey: ['wellhub-precos-referencia'],
+    queryFn: async () => {
+      const { data, error } = await requireSupabase()
+        .from('wellhub_precos_referencia')
+        .select('*')
+        .order('nome')
+      if (error) throw error
+      return data
+    },
+  })
+
   if (isLoading) return null
-  if ((planos ?? []).length === 0) return null
+  // Com a lista vazia o cartão ainda aparece, se houver preço combinado:
+  // antes do primeiro check-in de cada plano não há nada em
+  // `wellhub_planos`, e esconder tudo faria o valor combinado sumir da
+  // vista de quem o informou.
+  if ((planos ?? []).length === 0 && (referencia ?? []).length === 0) return null
 
   return (
     <Card className="mb-5">
@@ -120,6 +136,17 @@ export function PlanosWellhub() {
       </div>
 
       {erro && <p className="mt-3 text-sm text-danger-600">{erro}</p>}
+
+      {(referencia ?? []).length > 0 && (
+        <p className="mt-3 border-t border-neutral-100 pt-2 text-[11px] leading-relaxed text-neutral-500">
+          <strong className="text-neutral-600">Preços combinados com a Wellhub:</strong>{' '}
+          {(referencia ?? []).map((r) => `${r.nome} ${fmtCentavos(r.valor_centavos)}`).join(' · ')}.
+          <span className="block text-neutral-400">
+            É daqui que um plano novo nasce com o valor certo, sem precisar perguntar. Depois
+            disso quem vale é a lista acima.
+          </span>
+        </p>
+      )}
 
       <p className="mt-3 text-[11px] leading-relaxed text-neutral-400">
         Mudar o valor vale para os check-ins <strong>daqui para frente</strong>. Os que já estão

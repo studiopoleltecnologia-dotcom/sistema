@@ -1276,6 +1276,17 @@ export type Database = {
         Update: { lida_em?: string | null }
         Relationships: []
       }
+      wellhub_precos_referencia: {
+        Row: {
+          atualizada_em: string
+          nome: string
+          observacao: string | null
+          valor_centavos: number
+        }
+        Insert: { nome: string; valor_centavos: number; observacao?: string | null }
+        Update: { valor_centavos?: number; observacao?: string | null }
+        Relationships: []
+      }
       wellhub_planos: {
         Row: {
           atualizada_em: string
@@ -5232,7 +5243,7 @@ export type Database = {
           p_mes: string
           p_valor_total_centavos: number
         }
-        Returns: number
+        Returns: Json
       }
       confirmar_cancelamento_plano: {
         Args: { p_observacao?: string; p_solicitacao: string }
