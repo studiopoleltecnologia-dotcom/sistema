@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Coins, FileText, PauseCircle, Sparkles } from 'lucide-react'
+import { CalendarCheck, Coins, FileText, PauseCircle, Sparkles, UserPlus } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { diaDaRenovacao } from '../../lib/ciclo'
 import { Button } from '../../components/ui/Button'
@@ -8,9 +8,19 @@ import { cn } from '../../components/ui/cn'
 import { mensagemDoBanco } from './aulas'
 import { Aviso, Cabecalho, Carregando, Cartao, Dado, ErroCarregar } from './components/Basicos'
 import { MeusDocumentos } from './components/contrato/MeusDocumentos'
-import { useDesistirSolicitacao, useMinhaPausa, useSolicitacaoAberta } from './hooks/usePortalAluna'
+import {
+  useDesistirSolicitacao,
+  useMeusConvidados,
+  useMinhaPausa,
+  useSolicitacaoAberta,
+} from './hooks/usePortalAluna'
 import { Folha } from './components/Folha'
 import { PausaEmAberto, PedirPausa } from './components/PausarPlano'
+import {
+  ConviteEmAberto,
+  IndicarConvidado,
+  podeConvidar,
+} from './components/ConvidarAlguem'
 import { fmtPreco } from './components/planos/catalogo'
 import { RegrasDoPlano } from './components/RegrasDoPlano'
 import { SolicitarCancelamento } from './components/SolicitarCancelamento'
@@ -68,6 +78,7 @@ export function MeuPlanoPage() {
   const [regrasDe, setRegrasDe] = useState<MeuPlano | null>(null)
   const [cancelarDe, setCancelarDe] = useState<MeuPlano | null>(null)
   const [pausarDe, setPausarDe] = useState<MeuPlano | null>(null)
+  const [convidarDe, setConvidarDe] = useState<MeuPlano | null>(null)
 
   const hoje = hojeIso()
   const { principais, pacotes, ultimoEncerrado } = separarPlanos(planos.data ?? [], hoje)
@@ -106,6 +117,7 @@ export function MeuPlanoPage() {
               onRegras={() => setRegrasDe(p)}
               onCancelar={() => setCancelarDe(p)}
               onPausar={() => setPausarDe(p)}
+              onConvidar={() => setConvidarDe(p)}
             />
           ))}
 
@@ -134,6 +146,16 @@ export function MeuPlanoPage() {
             plano={pausarDe}
             onFechar={() => setPausarDe(null)}
             onPedida={() => setPausarDe(null)}
+          />
+        </Folha>
+      )}
+
+      {convidarDe && (
+        <Folha titulo="Convidar alguém" onFechar={() => setConvidarDe(null)}>
+          <IndicarConvidado
+            plano={convidarDe}
+            onFechar={() => setConvidarDe(null)}
+            onIndicado={() => setConvidarDe(null)}
           />
         </Folha>
       )}
@@ -257,6 +279,7 @@ function PlanoDetalhado({
   onRegras,
   onCancelar,
   onPausar,
+  onConvidar,
 }: {
   plano: MeuPlano
   turmas: TurmaFixa[]
@@ -264,6 +287,7 @@ function PlanoDetalhado({
   onRegras: () => void
   onCancelar: () => void
   onPausar: () => void
+  onConvidar: () => void
 }) {
   const formato = formatoDoPlano(p)
   const situacao = situacaoDoPlano(p)
@@ -304,6 +328,7 @@ function PlanoDetalhado({
 
           <AvisoDePagamento plano={p} />
           <AvisoDePausa matricula={p.matricula_id} />
+          <AvisoDeConvidado matricula={p.matricula_id} />
         </Cartao>
 
         {/* ---- 2. O que ele tem para usar ---- */}
@@ -319,6 +344,7 @@ function PlanoDetalhado({
           onRegras={onRegras}
           onCancelar={onCancelar}
           onPausar={onPausar}
+          onConvidar={onConvidar}
         />
       </div>
 
@@ -393,6 +419,28 @@ function AvisoDePausa({ matricula }: { matricula: string }) {
   const { data: pausa } = useMinhaPausa()
   if (!pausa || pausa.matricula_id !== matricula) return null
   return <PausaEmAberto pausa={pausa} />
+}
+
+/**
+ * O convite deste plano, quando há um que ainda diz algo ao aluno.
+ *
+ * Recusado também aparece, porque é a única forma de o aluno saber o
+ * motivo sem abrir o e-mail — mas por tempo limitado: um "não deu" de
+ * três meses atrás no cartão do plano é ruído, e pior, faria parecer
+ * que o benefício segue travado.
+ */
+function AvisoDeConvidado({ matricula }: { matricula: string }) {
+  const { data: convites } = useMeusConvidados()
+  const limite = new Date(Date.now() - 15 * 86400000).toISOString()
+  const convite = (convites ?? []).find(
+    (c) =>
+      c.matricula_id === matricula &&
+      (c.status === 'solicitado' ||
+        c.status === 'confirmado' ||
+        (c.status === 'recusado' && (c.decidida_em ?? '') > limite)),
+  )
+  if (!convite) return null
+  return <ConviteEmAberto convite={convite} />
 }
 
 function AvisoDePagamento({ plano: p }: { plano: MeuPlano }) {
@@ -550,11 +598,13 @@ function RenovacaoECancelamento({
   onRegras,
   onCancelar,
   onPausar,
+  onConvidar,
 }: {
   plano: MeuPlano
   onRegras: () => void
   onCancelar: () => void
   onPausar: () => void
+  onConvidar: () => void
 }) {
   const retirar = useRetirarSolicitacao()
   const [confirmandoRetirar, setConfirmandoRetirar] = useState(false)
@@ -726,6 +776,12 @@ function RenovacaoECancelamento({
           <FileText className="size-3.5" />
           Ver regras do plano
         </Button>
+        {podeConvidar(p) && (
+          <Button size="sm" variant="secondary" onClick={onConvidar}>
+            <UserPlus className="size-3.5" />
+            Convidar alguém
+          </Button>
+        )}
         {podePausar(p) && (
           <Button size="sm" variant="ghost" onClick={onPausar} className="text-neutral-600">
             <PauseCircle className="size-3.5" />

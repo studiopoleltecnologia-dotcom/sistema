@@ -1222,6 +1222,43 @@ export type Database = {
         }
         Relationships: []
       }
+      convidados: {
+        Row: {
+          agendamento_id: string | null
+          atualizada_em: string
+          ciclo: number
+          convidado_cliente_id: string
+          criada_em: string
+          data: string
+          decidida_em: string | null
+          decidida_por: string | null
+          id: string
+          matricula_id: string
+          motivo_decisao: string | null
+          observacao: string | null
+          solicitada_em: string
+          solicitada_por: string | null
+          status: Database["public"]["Enums"]["status_convidado"]
+          titular_cliente_id: string
+          turma_id: string
+        }
+        Insert: {
+          ciclo: number
+          convidado_cliente_id: string
+          data: string
+          matricula_id: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_convidado"]
+          titular_cliente_id: string
+          turma_id: string
+        }
+        Update: {
+          motivo_decisao?: string | null
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_convidado"]
+        }
+        Relationships: []
+      }
       parq_documentos: {
         Row: {
           aprovado: boolean | null
@@ -4682,6 +4719,39 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_convidados: {
+        Row: {
+          agendamento_id: string | null
+          capacidade: number | null
+          ciclo: number | null
+          convidado_cliente_id: string | null
+          convidado_email: string | null
+          convidado_funil: Database["public"]["Enums"]["estagio_funil"] | null
+          convidado_nome: string | null
+          convidado_telefone: string | null
+          convidado_ultima_aula: string | null
+          data: string | null
+          decidida_em: string | null
+          decisor_nome: string | null
+          devolve_beneficio: boolean | null
+          horario: string | null
+          id: string | null
+          matricula_id: string | null
+          modalidade: string | null
+          motivo_decisao: string | null
+          observacao: string | null
+          plano_nome: string | null
+          solicitada_em: string | null
+          status: Database["public"]["Enums"]["status_convidado"] | null
+          titular_cliente_id: string | null
+          titular_email: string | null
+          titular_nome: string | null
+          turma_id: string | null
+          turma_rotulo: string | null
+          vagas: number | null
+        }
+        Relationships: []
+      }
       vw_pausas: {
         Row: {
           ativada_em: string | null
@@ -5476,6 +5546,62 @@ export type Database = {
         Args: { p_imediato?: boolean; p_turma_nova: string; p_vinculo: string }
         Returns: string
       }
+      elegibilidade_convidado: {
+        Args: { p_cliente: string }
+        Returns: { ok: boolean; motivo: string | null }[]
+      }
+      beneficio_convidado: {
+        Args: { p_matricula: string }
+        Returns: {
+          tem: boolean
+          por_ciclo: number
+          ciclo: number
+          usado: boolean
+          motivo: string | null
+        }[]
+      }
+      indicar_convidado: {
+        Args: {
+          p_matricula: string
+          p_nome: string
+          p_telefone: string
+          p_turma: string
+          p_data: string
+          p_email?: string
+          p_observacao?: string
+        }
+        Returns: string
+      }
+      confirmar_convidado: { Args: { p_convite: string }; Returns: string }
+      recusar_convidado: {
+        Args: { p_convite: string; p_motivo: string }
+        Returns: undefined
+      }
+      cancelar_convidado: { Args: { p_convite: string }; Returns: string }
+      convite_devolve_beneficio: {
+        Args: { p_convite: string }
+        Returns: boolean
+      }
+      meus_convidados: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          matricula_id: string
+          plano_nome: string
+          status: Database["public"]["Enums"]["status_convidado"]
+          data: string
+          horario: string
+          turma_rotulo: string
+          convidado_nome: string
+          convidado_telefone: string | null
+          observacao: string | null
+          motivo_decisao: string | null
+          solicitada_em: string
+          decidida_em: string | null
+          pode_desistir: boolean
+          devolve_beneficio: boolean
+        }[]
+      }
       direito_a_pausa: {
         Args: { p_matricula: string; p_tipo?: Database["public"]["Enums"]["tipo_pausa"] }
         Returns: {
@@ -5576,7 +5702,13 @@ export type Database = {
         | "documento_aprovado"
         | "documento_recusado"
       base_percentual: "mensalidade_contratada"
-      canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa" | "totalpass"
+      canal_aula:
+        | "mensalista"
+        | "wellhub"
+        | "classpass"
+        | "avulsa"
+        | "totalpass"
+        | "convidado"
       categoria_entrada:
         | "mensalista"
         | "wellhub"
@@ -5622,6 +5754,7 @@ export type Database = {
         | "outros"
         | "portal_aluna"
         | "totalpass"
+        | "convidado"
       plano_tipo: "creditos" | "semanal"
       rotina_checklist: "abertura" | "fechamento"
       status_agendamento: "agendado" | "cancelado"
@@ -5642,6 +5775,13 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      status_convidado:
+        | "solicitado"
+        | "confirmado"
+        | "recusado"
+        | "cancelado"
+        | "compareceu"
+        | "faltou"
       status_pausa:
         | "solicitada"
         | "aprovada"
@@ -5824,7 +5964,7 @@ export const Constants = {
         "documento_recusado",
       ],
       base_percentual: ["mensalidade_contratada"],
-      canal_aula: ["mensalista", "wellhub", "classpass", "avulsa", "totalpass"],
+      canal_aula: ["mensalista", "wellhub", "classpass", "avulsa", "totalpass", "convidado"],
       categoria_entrada: [
         "mensalista",
         "wellhub",
@@ -5873,6 +6013,7 @@ export const Constants = {
         "outros",
         "portal_aluna",
         "totalpass",
+        "convidado",
       ],
       plano_tipo: ["creditos", "semanal"],
       rotina_checklist: ["abertura", "fechamento"],
@@ -5896,6 +6037,14 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      status_convidado: [
+        "solicitado",
+        "confirmado",
+        "recusado",
+        "cancelado",
+        "compareceu",
+        "faltou",
+      ],
       status_pausa: [
         "solicitada",
         "aprovada",
