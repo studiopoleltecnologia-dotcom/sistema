@@ -132,12 +132,19 @@ function render(tipo: string, d: Dados): Render {
       const valor = fmtReais(d.valor_centavos as number)
       const venc = dataExtenso(d.vencimento as string)
       const url = (d.url as string) || PORTAL
+      // O abatimento da experimental (10.1) precisa estar DITO: o aluno
+      // comparou o preço na tela do plano e vai estranhar um valor
+      // menor. Dizer que é o desconto dele transforma susto em bônus.
+      const abatido = Number(d.abatimento_centavos ?? 0)
       return {
         assunto: 'Sua mensalidade do Studio Pole L',
         html: layout('Mensalidade disponível 💜',
           `Oi, ${nome}! A mensalidade de <strong style="color:#241f33">${produto}</strong> já pode ser paga.<br><br>
            Valor: <strong>${valor}</strong><br>
            Vence em: <strong>${venc}</strong><br><br>
+           ${abatido > 0
+             ? `Já com <strong>${fmtReais(abatido)}</strong> abatidos da sua aula experimental 💜 O abatimento vale nesta primeira cobrança.<br><br>`
+             : ''}
            É só abrir o link e escolher como pagar.`,
           { texto: 'Pagar agora', url }),
       }

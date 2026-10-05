@@ -259,7 +259,15 @@ function PagamentoPendente() {
             Falta ler e aceitar o Contrato de Adesão. O pagamento é liberado em seguida.
           </>
         ) : url ? (
-          'Seus créditos são liberados assim que o pagamento for confirmado.'
+          <>
+            {(pedido.abatimento_centavos ?? 0) > 0 && (
+              <span className="mb-1 block font-medium text-success-700">
+                Já com {fmtPreco(pedido.abatimento_centavos ?? 0)} abatidos da sua aula
+                experimental.
+              </span>
+            )}
+            Seus créditos são liberados assim que o pagamento for confirmado.
+          </>
         ) : (
           'Estamos gerando o link. Ele chega no seu e-mail em alguns minutos.'
         )}

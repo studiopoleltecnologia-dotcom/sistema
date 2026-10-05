@@ -3428,6 +3428,8 @@ export type Database = {
       }
       solicitacoes_contratacao: {
         Row: {
+          abatimento_centavos: number
+          abatimento_origem_id: string | null
           atualizada_em: string
           cliente_id: string
           criada_em: string
@@ -4785,6 +4787,8 @@ export type Database = {
       }
       vw_solicitacoes: {
         Row: {
+          abatimento_centavos: number | null
+          valor_a_cobrar_centavos: number | null
           cliente_email: string | null
           cliente_id: string | null
           cliente_nome: string | null
@@ -5602,6 +5606,19 @@ export type Database = {
           devolve_beneficio: boolean
         }[]
       }
+      abatimento_disponivel: {
+        Args: { p_cliente: string }
+        Returns: {
+          tem: boolean
+          valor_centavos: number
+          origem_matricula_id: string | null
+          produto_nome: string | null
+          experiencia_em: string | null
+          prazo_ate: string | null
+          motivo: string | null
+        }[]
+      }
+      valor_a_cobrar: { Args: { p_solicitacao: string }; Returns: number }
       direito_a_pausa: {
         Args: { p_matricula: string; p_tipo?: Database["public"]["Enums"]["tipo_pausa"] }
         Returns: {
