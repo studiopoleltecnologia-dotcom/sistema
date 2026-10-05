@@ -22,6 +22,7 @@ const MATRICULAS_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=canc
 const CONTRATACOES_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=contratacoes'
 const AGENDA_ERP = 'https://sistema.studiopolel.com.br/#/agenda'
 const MATRICULAS_PAUSAS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=pausas'
+const MATRICULAS_CONVIDADOS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=convidados'
 // ?v muda quando a logo troca — fura o cache do Gmail (que guarda imagem por URL).
 const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png?v=2'
 const MAX_TENTATIVAS = 5
@@ -463,6 +464,45 @@ function render(tipo: string, d: Dados): Render {
           { texto: 'Agendar uma aula', url: PORTAL }),
       }
     }
+    // ---- Convidado do semestral (regulamento 11.1) ----
+    // O convidado não tem conta no portal, então o e-mail é o único canal
+    // deste fluxo: quem indicou só descobre a decisão por aqui. O aviso à
+    // gestão carrega o telefone de propósito — é o que permite dar um
+    // retorno à pessoa quando o convite é recusado por nível.
+    case 'convidado_indicado':
+      return {
+        assunto: `Convidado indicado — ${esc(d.convidado)} (${esc(d.nome)})`,
+        html: layout('Um convidado esperando confirmação',
+          `${esc(d.nome)} indicou um convidado em ${esc(d.solicitada_em)}.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Convidado</td><td style="padding:3px 0;color:#241f33">${esc(d.convidado)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Telefone</td><td style="padding:3px 0;color:#241f33">${esc(d.telefone_convidado) || '—'}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Aula</td><td style="padding:3px 0;color:#241f33">${esc(d.turma)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Data</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.data as string)}${d.horario ? ` às ${hhmm(d.horario as string)}` : ''}</td></tr>
+             ${d.observacao ? `<tr><td style="padding:3px 12px 3px 0;color:#928aa6;vertical-align:top">Observação</td><td style="padding:3px 0;color:#241f33">“${esc(d.observacao)}”</td></tr>` : ''}
+           </table><br>
+           O sistema já conferiu plano ativo, carência de 6 meses, benefício do ciclo e se o titular está nessa aula.
+           <strong style="color:#241f33">O que falta é a sua parte: nível e segurança.</strong> A vaga só é tomada quando você confirmar.`,
+          { texto: 'Ver os convidados', url: MATRICULAS_CONVIDADOS }),
+      }
+    case 'convidado_confirmado':
+      return {
+        assunto: `Convidado confirmado — ${esc(d.convidado)}`,
+        html: layout('Convidado confirmado 💜',
+          `Oi, ${nome}! <strong style="color:#241f33">${esc(d.convidado)}</strong> está confirmado na sua aula de ${esc(d.turma)}, em ${dataCompleta(d.data as string)}.<br><br>
+           A vaga já está reservada no nome dele. Peça para chegar uns 10 minutos antes, com roupa de treino — na primeira vez tem um cadastrinho rápido na recepção.<br><br>
+           Se ele não puder mais vir, avise com antecedência pelo app: dentro do prazo de cancelamento da aula, o seu convidado do ciclo volta a ficar disponível.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'convidado_recusado':
+      return {
+        assunto: 'Sobre o seu convidado',
+        html: layout('Não conseguimos confirmar o convidado',
+          `Oi, ${nome}. Não foi possível confirmar <strong style="color:#241f33">${esc(d.convidado)}</strong> na aula de ${esc(d.turma)}, em ${dataCompleta(d.data as string)}.<br><br>
+           <strong style="color:#241f33">Motivo:</strong> ${esc(d.motivo)}<br><br>
+           <strong>O seu convidado deste ciclo não foi gasto</strong> — você pode indicar outra pessoa, ou a mesma em outra aula. Se quiser ajuda para escolher a turma, é só responder este e-mail.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
     default:
       return null
   }

@@ -25,6 +25,8 @@ import {
 import { useContratacoesAbertas } from './hooks/useContratacoes'
 import { usePausasEmAberto } from './hooks/usePausas'
 import { SolicitacoesPausa } from './components/SolicitacoesPausa'
+import { useConvidadosEmAberto } from './hooks/useConvidados'
+import { FilaConvidados } from './components/FilaConvidados'
 import type { MatriculaCompleta } from './types'
 
 type Filtro =
@@ -35,6 +37,7 @@ type Filtro =
   | 'em_aberto'
   | 'cancelamentos'
   | 'pausas'
+  | 'convidados'
 const FILTROS = [
   'todas',
   'contratacoes',
@@ -43,6 +46,7 @@ const FILTROS = [
   'em_aberto',
   'cancelamentos',
   'pausas',
+  'convidados',
 ] as const satisfies readonly Filtro[]
 
 /**
@@ -59,11 +63,13 @@ export function MatriculasPage() {
   const { data: pedidos } = useSolicitacoesPendentes()
   const { data: contratacoes } = useContratacoesAbertas()
   const { data: pausas } = usePausasEmAberto()
+  const { data: convidados } = useConvidadosEmAberto()
   const { data: funcao } = useMinhaFuncao()
   // Secretária acompanha a operação (quem está ativo, em qual turma)
   // mas não mexe em cobrança nem cancela. A RLS já recusa; aqui é só
   // para não oferecer o clique.
   const ehGestao = funcao === 'gestao'
+  const ehOperacional = funcao === 'gestao' || funcao === 'secretaria'
   const confirmar = useConfirmar()
 
   const renovar = useRenovarCiclo()
@@ -90,8 +96,9 @@ export function MatriculasPage() {
       cancelamentos: pedidos?.length ?? 0,
       contratacoes: contratacoes?.length ?? 0,
       pausas: pausas?.length ?? 0,
+      convidados: convidados?.length ?? 0,
     }
-  }, [matriculas, pedidos, contratacoes, pausas])
+  }, [matriculas, pedidos, contratacoes, pausas, convidados])
 
   const comPedido = useMemo(() => new Set((pedidos ?? []).map((p) => p.matricula_id)), [pedidos])
 
@@ -104,6 +111,7 @@ export function MatriculasPage() {
     if (filtro === 'cancelamentos') return []
     // Idem para a fila de contratações (AprovacoesContratacao).
     if (filtro === 'contratacoes') return []
+    if (filtro === 'convidados') return []
     return l
   }, [matriculas, filtro])
 
@@ -165,6 +173,17 @@ export function MatriculasPage() {
             ...(contagens.pausas > 0
               ? [{ value: 'pausas' as Filtro, label: `Pausas (${contagens.pausas})` }]
               : []),
+            // Convidados (regulamento 11.1): idem. Fica ao lado das
+            // pausas porque as duas são benefício de plano, e as duas
+            // esperam uma decisão da equipe.
+            ...(contagens.convidados > 0
+              ? [
+                  {
+                    value: 'convidados' as Filtro,
+                    label: `Convidados (${contagens.convidados})`,
+                  },
+                ]
+              : []),
           ]}
         />
       )}
@@ -179,12 +198,16 @@ export function MatriculasPage() {
 
       {filtro === 'pausas' && <SolicitacoesPausa pausas={pausas ?? []} gestao={ehGestao} />}
 
+      {filtro === 'convidados' && (
+        <FilaConvidados convidados={convidados ?? []} podeDecidir={ehOperacional} />
+      )}
+
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
       {/* Só nas abas que listam matrícula. Na fila de contratações, um
           "nenhuma matrícula ativa" embaixo dos pedidos diria o oposto do
           que a tela mostra: há gente contratando, só não pagou ainda. */}
-      {!isLoading && contagens.todas === 0 && filtro !== 'contratacoes' && filtro !== 'cancelamentos' && filtro !== 'pausas' && (
+      {!isLoading && contagens.todas === 0 && filtro !== 'contratacoes' && filtro !== 'cancelamentos' && filtro !== 'pausas' && filtro !== 'convidados' && (
         <EmptyState
           icon={Users}
           title="Nenhuma matrícula ativa"

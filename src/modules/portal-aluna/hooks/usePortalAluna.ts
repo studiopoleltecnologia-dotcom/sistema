@@ -3,9 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   agendarAula,
   atualizarMeuCliente,
+  beneficioConvidado,
   cancelarAgendamento,
   contratarPlano,
   desistirDaPausa,
+  desistirDoConvidado,
+  indicarConvidado,
+  meusConvidados,
   desistirDaSolicitacao,
   direitoAPausa,
   minhaPausa,
@@ -387,4 +391,48 @@ export function useRetirarSolicitacao() {
     mutationFn: retirarSolicitacaoCancelamento,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['portal-meus-planos'] }),
   })
+}
+
+// ------------------------------------------------------------
+// O convidado do semestral (regulamento 11.1)
+// ------------------------------------------------------------
+
+/** Os convites deste aluno, do mais recente para o mais antigo. */
+export function useMeusConvidados() {
+  return useQuery({ queryKey: ['portal-convidados'], queryFn: meusConvidados })
+}
+
+/**
+ * Tem convidado neste ciclo?
+ *
+ * Só com a folha aberta. A resposta depende do ciclo corrente e de haver
+ * convite consumindo o benefício — conta que o banco já faz em
+ * `beneficio_convidado`, e que a tela não repete.
+ */
+export function useBeneficioConvidado(matriculaId: string | null) {
+  return useQuery({
+    queryKey: ['portal-convidados', 'beneficio', matriculaId],
+    queryFn: () => beneficioConvidado(matriculaId!),
+    enabled: Boolean(matriculaId),
+  })
+}
+
+function useInvalidarConvidado() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['portal-convidados'] })
+    // A confirmação do convite cria uma reserva na turma: a vaga que a
+    // agenda mostra muda, mesmo sem o aluno ter agendado nada.
+    qc.invalidateQueries({ queryKey: ['portal-vagas'] })
+  }
+}
+
+export function useIndicarConvidado() {
+  const invalidar = useInvalidarConvidado()
+  return useMutation({ mutationFn: indicarConvidado, onSuccess: invalidar })
+}
+
+export function useDesistirDoConvidado() {
+  const invalidar = useInvalidarConvidado()
+  return useMutation({ mutationFn: desistirDoConvidado, onSuccess: invalidar })
 }

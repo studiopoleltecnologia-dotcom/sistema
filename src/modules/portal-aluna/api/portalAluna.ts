@@ -454,3 +454,72 @@ export async function obterMinhaSuspensao(clienteId: string, hoje: string) {
   if (error) throw error
   return data
 }
+
+// ------------------------------------------------------------
+// O convidado do semestral (regulamento 11.1)
+// ------------------------------------------------------------
+
+/**
+ * Os convites deste aluno — abertos e encerrados.
+ *
+ * Por RPC e não por `vw_convidados`: a view faz join no cadastro do
+ * convidado, que a RLS do portal esconde do titular (e com razão). Sob
+ * `security_invoker` ela devolveria zero linhas aqui.
+ */
+export async function meusConvidados() {
+  const { data, error } = await requireSupabase().rpc('meus_convidados')
+  if (error) throw error
+  return data ?? []
+}
+
+/** Este plano tem convidado disponível no ciclo corrente? */
+export async function beneficioConvidado(matriculaId: string) {
+  const { data, error } = await requireSupabase().rpc('beneficio_convidado', {
+    p_matricula: matriculaId,
+  })
+  if (error) throw error
+  return data?.[0] ?? null
+}
+
+/**
+ * Indicar o convidado do ciclo.
+ *
+ * O banco é que recusa: plano ativo do convidado, carência de 6 meses,
+ * benefício já usado, turma errada no dia e titular que não está naquela
+ * aula. A tela não repete nenhuma dessas contas — mostra a mensagem.
+ */
+export async function indicarConvidado(args: {
+  matriculaId: string
+  nome: string
+  telefone: string
+  turmaId: string
+  data: string
+  email?: string
+  observacao?: string
+}) {
+  const { data, error } = await requireSupabase().rpc('indicar_convidado', {
+    p_matricula: args.matriculaId,
+    p_nome: args.nome,
+    p_telefone: args.telefone,
+    p_turma: args.turmaId,
+    p_data: args.data,
+    p_email: args.email,
+    p_observacao: args.observacao,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Desistir do convite.
+ *
+ * Devolve `'beneficio_devolvido'` ou `'beneficio_consumido'` — a tela
+ * avisa qual dos dois ANTES do clique, lendo `devolve_beneficio`.
+ */
+export async function desistirDoConvidado(id: string) {
+  const { data, error } = await requireSupabase().rpc('cancelar_convidado', {
+    p_convite: id,
+  })
+  if (error) throw error
+  return data
+}
