@@ -9,6 +9,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { cn } from '../../../../components/ui/cn'
+import { fmtDataCompleta } from '../../datas'
 import { AjudaWhatsApp } from '../AjudaWhatsApp'
 import { LinkFolha } from './Escolhas'
 import { SeletorTurmaPortal } from './SeletorTurmaPortal'
@@ -135,8 +136,11 @@ function Cobranca({ produto: p, comoPaga = true }: { produto: Produto; comoPaga?
  * de benefício quando acumula — a mesma informação, nos dois sentidos,
  * sem o aluno ter que inferir qual é o caso dele.
  */
-function Expiracao({ produto: p }: { produto: Produto }) {
-  const texto = expiracaoDoPlano(p)
+function Expiracao({ produto: p, ate }: { produto: Produto; ate?: string | null }) {
+  // O crédito extra vale "N dias, limitado ao ciclo vigente" — e dizer
+  // só o N é dizer meia cláusula para quem está no fim do ciclo. Com a
+  // data na mão, a tela diz a que importa.
+  const texto = ate ? `Vale até ${fmtDataCompleta(ate)}, o fim do seu ciclo atual` : expiracaoDoPlano(p)
   if (!texto) return null
   const acumula = p.acumula_creditos
   return (
@@ -155,11 +159,13 @@ function Expiracao({ produto: p }: { produto: Produto }) {
       )}
       <span>
         <strong className="font-semibold">{texto}.</strong>{' '}
-        {acumula
-          ? `O saldo acumula até ${p.teto_acumulo_ciclos + 1}× os créditos do ciclo, e expira no fim do compromisso de ${p.ciclos_compromisso} meses.`
-          : p.renova_automaticamente
-            ? 'Os créditos valem só dentro do mês contratado. O que você não usar até a renovação não passa para o mês seguinte.'
-            : 'Depois desse prazo o crédito não pode mais ser usado.'}
+        {ate
+          ? 'Ele é um extra do plano que você já tem, então acompanha o ciclo dele e não passa para o seguinte.'
+          : acumula
+            ? `O saldo acumula até ${p.teto_acumulo_ciclos + 1}× os créditos do ciclo, e expira no fim do compromisso de ${p.ciclos_compromisso} meses.`
+            : p.renova_automaticamente
+              ? 'Os créditos valem só dentro do mês contratado. O que você não usar até a renovação não passa para o mês seguinte.'
+              : 'Depois desse prazo o crédito não pode mais ser usado.'}
       </span>
     </div>
   )
@@ -192,6 +198,7 @@ export function ConfirmarCompra({
   produto: p,
   horasCancelamento,
   abatimento,
+  validadeAte,
   selos,
   erro,
   pendente,
@@ -203,6 +210,8 @@ export function ConfirmarCompra({
   horasCancelamento: number | null
   /** Abatimento da experimental, quando este produto e este aluno têm. */
   abatimento: Abatimento | null
+  /** Crédito extra: a data em que ele expira de verdade (fim do ciclo). */
+  validadeAte?: string | null
   selos: string[]
   erro: string | null
   pendente: boolean
@@ -243,7 +252,7 @@ export function ConfirmarCompra({
         {temCredito && <Item>Faltou sem cancelar, o crédito é consumido.</Item>}
       </Lista>
 
-      <Expiracao produto={p} />
+      <Expiracao produto={p} ate={validadeAte} />
 
       <Cobranca produto={p} />
 
