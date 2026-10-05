@@ -510,6 +510,34 @@ function render(tipo: string, d: Dados): Render {
            <strong>O seu convidado deste ciclo não foi gasto</strong> — você pode indicar outra pessoa, ou a mesma em outra aula. Se quiser ajuda para escolher a turma, é só responder este e-mail.`,
           { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
       }
+    // ---- Desistência de 7 dias (regulamento 9.7 / CDC art. 49) ----
+    // Este e-mail é o comprovante do acerto para o lado de lá. Quem
+    // desiste fica esperando um Pix: sem o valor por escrito, não tem
+    // como conferir se o que chegou está certo.
+    case 'desistencia_registrada': {
+      const aulas = (d.aulas as number) ?? 0
+      const retido = Number(d.retido_centavos ?? 0)
+      const devolvido = Number(d.devolvido_centavos ?? 0)
+      return {
+        assunto: 'Sua desistência foi registrada',
+        html: layout('Desistência registrada',
+          `Oi, ${nome}. Registramos a sua desistência de <strong style="color:#241f33">${esc(d.produto)}</strong>,
+           dentro do prazo de arrependimento previsto no art. 49 do Código de Defesa do Consumidor.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Valor pago</td><td style="padding:3px 0;color:#241f33">${fmtReais(Number(d.pago_centavos ?? 0))}</td></tr>
+             ${retido > 0
+               ? `<tr><td style="padding:3px 12px 3px 0;color:#928aa6">Aulas utilizadas</td><td style="padding:3px 0;color:#241f33">${aulas} ${aulas === 1 ? 'aula' : 'aulas'} · ${fmtReais(retido)}</td></tr>`
+               : ''}
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6"><strong>A devolver</strong></td><td style="padding:3px 0;color:#241f33"><strong>${fmtReais(devolvido)}</strong></td></tr>
+           </table><br>
+           ${devolvido > 0
+             ? 'A devolução é feita por Pix pela equipe. Se a chave que você quer usar for diferente da do pagamento, é só responder este e-mail.<br><br>'
+             : ''}
+           Seu plano foi encerrado hoje e as aulas que estavam marcadas foram canceladas.
+           Esperamos ver você por aqui outra vez 💜`,
+          { texto: 'Falar com a gente', url: PORTAL }),
+      }
+    }
     default:
       return null
   }
