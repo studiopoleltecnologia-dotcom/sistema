@@ -44,6 +44,7 @@ import {
   TituloPlano,
 } from './components/planos/Detalhes'
 import { Cabecalho } from './components/Basicos'
+import { hojeIso, somarDias } from './datas'
 import { Folha } from './components/Folha'
 import { AjudaWhatsApp } from './components/AjudaWhatsApp'
 import { RegrasEssenciais } from './components/planos/Detalhes'
@@ -105,6 +106,29 @@ export function PlanosPage() {
     a mesma condição que solicitar_contratacao() aplica no banco.
   */
   const { data: abatimento } = useAbatimentoDisponivel()
+  /*
+    Crédito extra (A29): a validade real é o MENOR entre os dias do
+    produto e o fim do ciclo do plano que torna a pessoa elegível — a
+    mesma conta que matricular_produto() aplica ao criar o lote. A tela
+    mostra a data em vez do prazo porque "30 dias" num ciclo que fecha em
+    3 é meia cláusula.
+  */
+  const exigePlanoAtivo = useMemo(
+    () => new Set((requisitos ?? []).filter((r) => r.tipo === 'plano_ativo').map((r) => r.produto_id)),
+    [requisitos],
+  )
+  const fimDoCiclo = useMemo(() => {
+    const fins = (meusPlanos ?? [])
+      .filter((m) => m.status === 'ativa' && m.data_fim)
+      .map((m) => m.data_fim as string)
+    return fins.length > 0 ? fins.sort()[fins.length - 1] : null
+  }, [meusPlanos])
+  const validadeDoExtra = (p: Produto | null) => {
+    if (!p || !fimDoCiclo || !exigePlanoAtivo.has(p.id)) return null
+    const dias = p.validade_creditos_dias ?? p.periodicidade_dias
+    const porDias = somarDias(hojeIso(), dias)
+    return porDias < fimDoCiclo ? porDias : fimDoCiclo
+  }
   const abatimentoDoProduto = (p: Produto | null) =>
     p && abatimento?.tem && p.renova_automaticamente && p.preco_centavos > 0
       ? { valor_centavos: abatimento.valor_centavos, prazo_ate: abatimento.prazo_ate }
@@ -481,6 +505,7 @@ export function PlanosPage() {
             produto={produtoDaFolha}
             horasCancelamento={horasCancelamento(produtoDaFolha)}
             abatimento={abatimentoDoProduto(produtoDaFolha)}
+            validadeAte={validadeDoExtra(produtoDaFolha)}
             selos={selosPorProduto.get(produtoDaFolha.id) ?? []}
             erro={erro}
             pendente={contratar.isPending}
