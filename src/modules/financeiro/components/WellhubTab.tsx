@@ -48,6 +48,12 @@ export function WellhubTab() {
   const [valores, setValores] = useState<Record<string, string>>({})
   const [datas, setDatas] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<string | null>(null)
+  /*
+    O retrato do acerto, guardado depois de conciliar. É a resposta para
+    "o preço que combinamos com a Wellhub ainda está valendo?" — e some
+    da tela junto com a competência, então precisa ser mostrado na hora.
+  */
+  const [acerto, setAcerto] = useState<Acerto | null>(null)
 
   const conciliar = useMutation({
     mutationFn: async (args: { mes: string; valor_centavos: number; data: string }) => {
@@ -59,8 +65,9 @@ export function WellhubTab() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
+    onSuccess: (resultado) => {
       setErro(null)
+      setAcerto(resultado as Acerto)
       qc.invalidateQueries({ queryKey: ['wellhub-pendentes'] })
       qc.invalidateQueries({ queryKey: ['entradas'] })
       qc.invalidateQueries({ queryKey: ['mei'] })
@@ -89,6 +96,8 @@ export function WellhubTab() {
       </p>
 
       {erro && <p className="mb-3 text-sm text-danger-600">{erro}</p>}
+
+      {acerto && <ResultadoDoAcerto acerto={acerto} onFechar={() => setAcerto(null)} />}
 
       {meses.length === 0 ? (
         <EmptyState
@@ -153,5 +162,84 @@ export function WellhubTab() {
         </div>
       )}
     </div>
+  )
+}
+
+/** O que `conciliar_wellhub()` devolve depois de fechar a competência. */
+type Acerto = {
+  check_ins: number
+  previsto_centavos: number
+  real_centavos: number
+  diferenca_centavos: number
+  por_plano: { plano: string; check_ins: number; previsto_centavos: number }[]
+}
+
+/**
+ * Previsto × real, logo depois de conciliar.
+ *
+ * A gestão foi direta sobre por que isto precisa existir: *"isso pode
+ * mudar/alterar... a construção do sistema não pode ser 100% baseada em
+ * cima disso"*. A tabela de preços por plano é um palpite; o relatório
+ * do Portal é o que aconteceu. A diferença entre os dois é a única forma
+ * de saber que o palpite envelheceu — e ela só aparece neste momento,
+ * porque depois do acerto a competência some da tela.
+ */
+function ResultadoDoAcerto({ acerto, onFechar }: { acerto: Acerto; onFechar: () => void }) {
+  const dif = acerto.diferenca_centavos
+  // 2% de folga: repasse nunca bate ao centavo (primeira visita, teto de
+  // visitas no mês, ajuste deles). Abaixo disso não é notícia.
+  const relevante = acerto.previsto_centavos > 0
+    && Math.abs(dif) > acerto.previsto_centavos * 0.02
+
+  return (
+    <Card className="mb-4 border-brand-200 bg-brand-50/40">
+      <CardHeader
+        title="Competência fechada"
+        subtitle={`${acerto.check_ins} check-in${acerto.check_ins === 1 ? '' : 's'} conciliados`}
+        action={
+          <Button size="sm" variant="ghost" onClick={onFechar}>
+            Fechar
+          </Button>
+        }
+      />
+      <div className="flex flex-wrap gap-6 text-sm">
+        <span>
+          <span className="block text-xs text-neutral-500">Previsto</span>
+          <strong className="text-neutral-800">{fmtCentavos(acerto.previsto_centavos)}</strong>
+        </span>
+        <span>
+          <span className="block text-xs text-neutral-500">Repasse real</span>
+          <strong className="text-neutral-900">{fmtCentavos(acerto.real_centavos)}</strong>
+        </span>
+        <span>
+          <span className="block text-xs text-neutral-500">Diferença</span>
+          <strong className={dif < 0 ? 'text-danger-700' : 'text-success-700'}>
+            {dif > 0 ? '+' : ''}
+            {fmtCentavos(dif)}
+          </strong>
+        </span>
+      </div>
+
+      {acerto.por_plano.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-0.5 border-t border-brand-100 pt-2">
+          {acerto.por_plano.map((p) => (
+            <li key={p.plano} className="flex items-center gap-2 text-xs text-neutral-600">
+              <span className="flex-1 truncate">{p.plano}</span>
+              <span>{p.check_ins} check-in{p.check_ins === 1 ? '' : 's'}</span>
+              <span className="w-24 text-right">{fmtCentavos(p.previsto_centavos)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {relevante && (
+        <p className="mt-3 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-xs leading-relaxed text-warning-800">
+          O repasse ficou {dif < 0 ? 'abaixo' : 'acima'} da previsão em{' '}
+          <strong>{fmtCentavos(Math.abs(dif))}</strong>. Pode ser só a primeira visita de quem veio
+          pela primeira vez (que não é paga) ou o teto de visitas do mês — mas se a diferença se
+          repetir, vale conferir o valor de cada plano na tabela acima.
+        </p>
+      )}
+    </Card>
   )
 }

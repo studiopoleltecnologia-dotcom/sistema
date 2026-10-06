@@ -674,6 +674,17 @@ no portal, essa marcação deve chamar o `validate`. **Ainda não implementado**
     valor. Não bloqueia e não deixa de lançar: o check-in aconteceu.
   - Isso melhora a **previsão**. A verdade do dinheiro continua sendo a
     conciliação do repasse (12.6), que é manual por falta de API.
+  - **A primeira visita da pessoa não é repassada** (regra da Wellhub,
+    confirmada pela gestão em 05/10): `integrar_presenca()` não lança
+    previsão no primeiro check-in de cada cliente. A aula acontece e a
+    professora é paga igual — o que não existe é o repasse.
+  - `wellhub_precos_referencia` guarda o que foi **combinado** com eles, por
+    nome ("Silver+", "Gold"). Serve para um plano novo nascer com o valor
+    certo; depois do primeiro check-in quem manda é `wellhub_planos`.
+  - ⚠️ **O preço combinado muda.** Por isso `conciliar_wellhub()` devolve
+    previsto × real × diferença (com detalhe por plano) e a tela mostra: é
+    essa diferença que avisa que a tabela envelheceu. O sistema prevê, o
+    relatório corrige — ele nunca depende de a tabela estar certa.
 - **A turma do check-in não vem no payload.** A Access Control API notifica
   *acesso ao estúdio*, não aula. Com duas salas, o horário não desambigua — daí
   a fila `checkins_pendentes` (seção 9.7). O webhook responde JSON:
