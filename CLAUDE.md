@@ -685,6 +685,29 @@ no portal, essa marcação deve chamar o `validate`. **Ainda não implementado**
     previsto × real × diferença (com detalhe por plano) e a tela mostra: é
     essa diferença que avisa que a tabela envelheceu. O sistema prevê, o
     relatório corrige — ele nunca depende de a tabela estar certa.
+  - 🔴 **O relatório real derrubou a premissa do plano por assinante**
+    (06/10/2026, `20261020120000`). Lendo o arquivo de setembro: a tarifa
+    **muda no TEMPO** (27,13 de 02 a 24/09; 30,77 em 30/09 e 01/10), nenhum
+    dia tem duas tarifas pagas convivendo, e a coluna "Produto" do relatório
+    é **o nosso serviço** ("Dança e Outros Serviços", "Pole Dance") — não
+    Silver+/Gold, que não aparecem em lugar nenhum. Ou seja: `gym.product`
+    do payload é o nosso produto, e não a assinatura, ao contrário do que a
+    nossa referência de API afirmava.
+  - ✅ **Visita experimental paga R$ 0,00**, e o relatório marca isso em
+    coluna própria (23 de 159 em setembro). A heurística "primeira visita da
+    pessoa" acerta 22 dos 23 — serve de palpite, mas quem sabe é o arquivo.
+  - **O caminho certo é importar o relatório linha a linha**
+    (`importar_repasse_wellhub`): ele traz data, hora, **ID do Wellhub**
+    (= `clientes.gympass_id`), produto, tipo e valor pago. Casa por
+    (gympass_id, data) e grava o valor REAL. As duas sobras — check-in que
+    eles pagaram sem presença nossa, e presença nossa sem linha deles — são
+    o achado que um total nunca mostra.
+  - A previsão **se calibra sozinha**: a importação grava a tarifa do
+    check-in pago mais recente. Ninguém mantém preço à mão.
+  - ⚠️ No arquivo, o ID do Wellhub vem em **notação científica**
+    (`2.306547018225E12`) porque o Excel trata 13 dígitos como número. O
+    parser desfaz; sem isso **nenhuma linha casa**, e o erro é silencioso —
+    parece aluno que não registramos.
 - **A turma do check-in não vem no payload.** A Access Control API notifica
   *acesso ao estúdio*, não aula. Com duas salas, o horário não desambigua — daí
   a fila `checkins_pendentes` (seção 9.7). O webhook responde JSON:
