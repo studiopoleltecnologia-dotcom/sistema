@@ -1276,6 +1276,28 @@ export type Database = {
         Update: { lida_em?: string | null }
         Relationships: []
       }
+      wellhub_repasse_linhas: {
+        Row: {
+          cliente_id: string | null
+          competencia: string
+          data: string
+          gympass_id: string
+          hora: string | null
+          id: string
+          importada_em: string
+          importada_por: string | null
+          moeda: string | null
+          presenca_id: string | null
+          produto: string | null
+          situacao: string
+          tipo_checkin: string | null
+          valor_centavos: number
+          visitante: string | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       wellhub_precos_referencia: {
         Row: {
           atualizada_em: string
@@ -4879,6 +4901,20 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_repasse_sem_presenca: {
+        Row: {
+          cliente_conhecido: string | null
+          competencia: string | null
+          data: string | null
+          gympass_id: string | null
+          hora: string | null
+          produto: string | null
+          tipo_checkin: string | null
+          valor_centavos: number | null
+          visitante: string | null
+        }
+        Relationships: []
+      }
       vw_pausas: {
         Row: {
           ativada_em: string | null
@@ -5236,6 +5272,10 @@ export type Database = {
           p_validade?: string
         }
         Returns: string
+      }
+      importar_repasse_wellhub: {
+        Args: { p_competencia: string; p_linhas: Json; p_data_caixa?: string }
+        Returns: Json
       }
       conciliar_wellhub: {
         Args: {

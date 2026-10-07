@@ -10,6 +10,7 @@ import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import type { Entrada } from '../types'
 import { PlanosWellhub } from './PlanosWellhub'
+import { ImportarRepasseWellhub } from './ImportarRepasseWellhub'
 
 function usePendentesWellhub() {
   return useQuery({
@@ -85,9 +86,13 @@ export function WellhubTab() {
 
   return (
     <div className="max-w-3xl">
-      {/* Os valores por plano vêm antes da conciliação de propósito: é a
-          previsão que a lista de baixo usa, e plano sem valor confirmado
-          significa previsão errada esperando o dia 15. */}
+      {/* A importação do relatório vem primeiro: ela é o caminho certo
+          desde que o relatório de setembro mostrou que o valor por
+          check-in não é previsível — varia no tempo, e só o arquivo
+          deles sabe. A conciliação por total, abaixo, ficou como saída
+          para quando não houver o detalhe. */}
+      <ImportarRepasseWellhub />
+
       <PlanosWellhub />
       <p className="mb-4 text-xs text-neutral-400">
         Confira o valor do repasse na aba Financeiro do Portal do Parceiro Wellhub
