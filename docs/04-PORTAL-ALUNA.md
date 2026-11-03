@@ -87,8 +87,59 @@ e-mail sai na hora do cancelamento.
 que o plano passa a mensal e por quanto; o aluno recebe e-mail antes da virada
 (com o prazo de cancelamento) e quando ela acontece.
 
-**Ainda não coberto** (ver 05-BACKLOG §6): forma de pagamento real (depende do
-Asaas), pausa do plano pelo portal.
+**Ainda não coberto** (ver 05-BACKLOG §6): pausa do plano pelo portal.
+
+---
+
+### Contratação pelo portal — dois caminhos, um deles com vaga a confirmar (01/10/2026)
+
+> Prevalece sobre o fluxograma da §3.2, que descrevia cartão salvo e
+> matrícula no ato. Quem decide o caminho é `produtos.politica_contratacao`.
+
+**Por crédito, avulso, experimental — `automatica`.** O aluno escolhe,
+aceita o Contrato de Adesão e paga. Ninguém aprova nada:
+`solicitar_contratacao()` já devolve o pedido em `aguardando_pagamento`.
+
+**Mensalidade por turma fixa — `aprovacao_previa`.** A vaga sai da
+capacidade da sala durante toda a vigência (regulamento 2.3.1), então a
+ordem é outra:
+
+```
+aluno escolhe a turma na grade  →  pede
+  →  pedido em aguardando_aprovacao, ZERO cobrança
+  →  equipe confere a vaga e aprova  (revalida o assento)
+  →  aluno aceita o contrato  →  aluno paga  →  assento criado
+```
+
+A combinação "turma fixa + automática" é **impossível no banco**
+(constraint `turma_fixa_exige_aprovacao`): ninguém é cobrado antes de a
+vaga estar confirmada, e isso não depende de ninguém marcar a opção certa
+na tela de produtos.
+
+**A grade que o aluno vê para escolher** vem de
+`turmas_para_assento_fixo()`, com a vaga calculada na **próxima ocorrência**
+de cada turma somando assento fixo e reserva por crédito — a mesma conta
+que `validar_assento_fixo()` usa para aceitar ou recusar
+(`ocupacao_assento_fixo()`). As modalidades que não aceitam turma fixa
+(2.3.6) não entram na lista; a regra aparece embaixo dela, nomeando quais
+são. Turma elegível **sem vaga** aparece desabilitada.
+
+**"Nenhuma cobrança antes da confirmação" é dito três vezes:** na folha do
+pedido (antes do botão), na tela de pedido recebido e no e-mail. É a dúvida
+que gera mensagem no WhatsApp.
+
+**Em "Meu plano"**, o pedido aberto tem três estados visíveis, e o terceiro
+não existia:
+
+| estado | o que a tela mostra |
+|---|---|
+| `aguardando_aprovacao` | as turmas pedidas, "nenhum valor foi cobrado" e **Desistir deste pedido** |
+| `aguardando_pagamento` sem contrato aceito | **Ler e aceitar** → abre o contrato em Planos (`?contrato=<id>`) |
+| `aguardando_pagamento` com contrato aceito | **Pagar agora** |
+
+O do meio é obrigatório para a turma fixa — o aceite só acontece depois da
+aprovação — e a tela antes dizia "estamos gerando o link" para um link que
+nunca sairia, porque `registrar_cobranca()` recusa cobrança sem contrato.
 
 ---
 
@@ -274,7 +325,8 @@ journey
 
 Cobre a regra §9.5 do CLAUDE.md: Wellhub não precisa de conta para o básico. A
 jornada só entra no Portal se ela **quiser algo a mais** (ex: comprar o
-complemento Passe Livre ou a ponte Studio+, já definidos na estratégia de
+complemento Passe Livre (a ponte Studio+ foi descontinuada em 01/10/2026),
+já definido na estratégia de
 migração Wellhub discutida com a equipe):
 
 1. Continua agendando/check-in **pelo app Wellhub normalmente** — zero

@@ -12,6 +12,7 @@ import { fmtCentavos } from '../../lib/dinheiro'
 import { useMinhaFuncao } from '../../lib/funcao'
 import { AprovacoesContratacao } from './components/AprovacoesContratacao'
 import { BonusCreditos } from './components/BonusCreditos'
+import { Desistencia } from './components/Desistencia'
 import { MatriculaDetalhe } from './components/MatriculaDetalhe'
 import { MatriculaForm } from './components/MatriculaForm'
 import { SolicitacoesCancelamento } from './components/SolicitacoesCancelamento'
@@ -23,9 +24,21 @@ import {
   useSolicitacoesPendentes,
 } from './hooks/useMatriculas'
 import { useContratacoesAbertas } from './hooks/useContratacoes'
+import { usePausasEmAberto } from './hooks/usePausas'
+import { SolicitacoesPausa } from './components/SolicitacoesPausa'
+import { useConvidadosEmAberto } from './hooks/useConvidados'
+import { FilaConvidados } from './components/FilaConvidados'
 import type { MatriculaCompleta } from './types'
 
-type Filtro = 'todas' | 'contratacoes' | 'creditos' | 'turma_fixa' | 'em_aberto' | 'cancelamentos'
+type Filtro =
+  | 'todas'
+  | 'contratacoes'
+  | 'creditos'
+  | 'turma_fixa'
+  | 'em_aberto'
+  | 'cancelamentos'
+  | 'pausas'
+  | 'convidados'
 const FILTROS = [
   'todas',
   'contratacoes',
@@ -33,6 +46,8 @@ const FILTROS = [
   'turma_fixa',
   'em_aberto',
   'cancelamentos',
+  'pausas',
+  'convidados',
 ] as const satisfies readonly Filtro[]
 
 /**
@@ -48,11 +63,14 @@ export function MatriculasPage() {
   const { data: matriculas, isLoading } = useMatriculasCompletas()
   const { data: pedidos } = useSolicitacoesPendentes()
   const { data: contratacoes } = useContratacoesAbertas()
+  const { data: pausas } = usePausasEmAberto()
+  const { data: convidados } = useConvidadosEmAberto()
   const { data: funcao } = useMinhaFuncao()
   // Secretária acompanha a operação (quem está ativo, em qual turma)
   // mas não mexe em cobrança nem cancela. A RLS já recusa; aqui é só
   // para não oferecer o clique.
   const ehGestao = funcao === 'gestao'
+  const ehOperacional = funcao === 'gestao' || funcao === 'secretaria'
   const confirmar = useConfirmar()
 
   const renovar = useRenovarCiclo()
@@ -61,6 +79,7 @@ export function MatriculasPage() {
 
   const [novo, setNovo] = useState(false)
   const [bonus, setBonus] = useState<MatriculaCompleta | null>(null)
+  const [desistencia, setDesistencia] = useState<MatriculaCompleta | null>(null)
   // Por id e não pelo objeto: a lista é revalidada em segundo plano, e
   // guardar a matrícula congelada deixaria o painel mostrando o saldo
   // de antes da ação que acabou de acontecer dentro dele.
@@ -78,8 +97,10 @@ export function MatriculasPage() {
       em_aberto: l.filter((m) => m.saldo.status === 'inadimplente').length,
       cancelamentos: pedidos?.length ?? 0,
       contratacoes: contratacoes?.length ?? 0,
+      pausas: pausas?.length ?? 0,
+      convidados: convidados?.length ?? 0,
     }
-  }, [matriculas, pedidos, contratacoes])
+  }, [matriculas, pedidos, contratacoes, pausas, convidados])
 
   const comPedido = useMemo(() => new Set((pedidos ?? []).map((p) => p.matricula_id)), [pedidos])
 
@@ -92,6 +113,7 @@ export function MatriculasPage() {
     if (filtro === 'cancelamentos') return []
     // Idem para a fila de contratações (AprovacoesContratacao).
     if (filtro === 'contratacoes') return []
+    if (filtro === 'convidados') return []
     return l
   }, [matriculas, filtro])
 
@@ -148,6 +170,22 @@ export function MatriculasPage() {
                   },
                 ]
               : []),
+            // Pausas (regulamento §7): mesma regra das outras filas —
+            // a aba existe quando há o que responder ou acompanhar.
+            ...(contagens.pausas > 0
+              ? [{ value: 'pausas' as Filtro, label: `Pausas (${contagens.pausas})` }]
+              : []),
+            // Convidados (regulamento 11.1): idem. Fica ao lado das
+            // pausas porque as duas são benefício de plano, e as duas
+            // esperam uma decisão da equipe.
+            ...(contagens.convidados > 0
+              ? [
+                  {
+                    value: 'convidados' as Filtro,
+                    label: `Convidados (${contagens.convidados})`,
+                  },
+                ]
+              : []),
           ]}
         />
       )}
@@ -160,12 +198,18 @@ export function MatriculasPage() {
         <SolicitacoesCancelamento solicitacoes={pedidos ?? []} gestao={ehGestao} />
       )}
 
+      {filtro === 'pausas' && <SolicitacoesPausa pausas={pausas ?? []} gestao={ehGestao} />}
+
+      {filtro === 'convidados' && (
+        <FilaConvidados convidados={convidados ?? []} podeDecidir={ehOperacional} />
+      )}
+
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
       {/* Só nas abas que listam matrícula. Na fila de contratações, um
           "nenhuma matrícula ativa" embaixo dos pedidos diria o oposto do
           que a tela mostra: há gente contratando, só não pagou ainda. */}
-      {!isLoading && contagens.todas === 0 && filtro !== 'contratacoes' && filtro !== 'cancelamentos' && (
+      {!isLoading && contagens.todas === 0 && filtro !== 'contratacoes' && filtro !== 'cancelamentos' && filtro !== 'pausas' && filtro !== 'convidados' && (
         <EmptyState
           icon={Users}
           title="Nenhuma matrícula ativa"
@@ -219,6 +263,7 @@ export function MatriculasPage() {
             })
           }
           onBonus={() => setBonus(aberta)}
+          onDesistencia={() => setDesistencia(aberta)}
           onInadimplir={() =>
             // Era a única das quatro sem duplo-check: um clique bloqueava
             // o aluno de agendar. Bloquear quem pagou é um erro que só
@@ -275,6 +320,9 @@ export function MatriculasPage() {
 
       {novo && <MatriculaForm onFechar={() => setNovo(false)} />}
       {bonus && <BonusCreditos matricula={bonus} onFechar={() => setBonus(null)} />}
+      {desistencia && (
+        <Desistencia matricula={desistencia} onFechar={() => setDesistencia(null)} />
+      )}
       {confirmar.dialogo}
     </div>
   )

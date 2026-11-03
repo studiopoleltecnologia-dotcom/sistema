@@ -1,13 +1,26 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Coins, FileText, Sparkles } from 'lucide-react'
+import { CalendarCheck, Coins, FileText, PauseCircle, Sparkles, UserPlus } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { diaDaRenovacao } from '../../lib/ciclo'
 import { Button } from '../../components/ui/Button'
 import { cn } from '../../components/ui/cn'
 import { mensagemDoBanco } from './aulas'
 import { Aviso, Cabecalho, Carregando, Cartao, Dado, ErroCarregar } from './components/Basicos'
+import { MeusDocumentos } from './components/contrato/MeusDocumentos'
+import {
+  useDesistirSolicitacao,
+  useMeusConvidados,
+  useMinhaPausa,
+  useSolicitacaoAberta,
+} from './hooks/usePortalAluna'
 import { Folha } from './components/Folha'
+import { PausaEmAberto, PedirPausa } from './components/PausarPlano'
+import {
+  ConviteEmAberto,
+  IndicarConvidado,
+  podeConvidar,
+} from './components/ConvidarAlguem'
 import { fmtPreco } from './components/planos/catalogo'
 import { RegrasDoPlano } from './components/RegrasDoPlano'
 import { SolicitarCancelamento } from './components/SolicitarCancelamento'
@@ -32,6 +45,7 @@ import {
   fmtCreditos,
   formatoDoPlano,
   periodoDoPlano,
+  podePausar,
   podeSolicitarCancelamento,
   precoDoPlano,
   proximaRenovacaoEfetiva,
@@ -63,6 +77,8 @@ export function MeuPlanoPage() {
   const lotes = useMeusLotes()
   const [regrasDe, setRegrasDe] = useState<MeuPlano | null>(null)
   const [cancelarDe, setCancelarDe] = useState<MeuPlano | null>(null)
+  const [pausarDe, setPausarDe] = useState<MeuPlano | null>(null)
+  const [convidarDe, setConvidarDe] = useState<MeuPlano | null>(null)
 
   const hoje = hojeIso()
   const { principais, pacotes, ultimoEncerrado } = separarPlanos(planos.data ?? [], hoje)
@@ -82,6 +98,8 @@ export function MeuPlanoPage() {
         }
       />
 
+      <PagamentoPendente />
+
       {planos.error ? (
         <ErroCarregar onTentar={() => planos.refetch()} />
       ) : planos.isLoading ? (
@@ -98,12 +116,21 @@ export function MeuPlanoPage() {
               lotes={(lotes.data ?? []).filter((l) => l.matricula_id === p.matricula_id)}
               onRegras={() => setRegrasDe(p)}
               onCancelar={() => setCancelarDe(p)}
+              onPausar={() => setPausarDe(p)}
+              onConvidar={() => setConvidarDe(p)}
             />
           ))}
 
           {pacotes.length > 0 && <OutrosPacotes pacotes={pacotes} lotes={lotes.data ?? []} />}
         </div>
       )}
+
+      {/* Documentos vêm DEPOIS do plano e fora do bloco condicional: quem
+          não tem plano ativo hoje pode ter contrato de um plano antigo, e
+          o PAR-Q existe independentemente de haver plano. */}
+      <div className="mt-10">
+        <MeusDocumentos />
+      </div>
 
       {regrasDe && (
         <Folha titulo="Regras do seu plano" onFechar={() => setRegrasDe(null)}>
@@ -112,6 +139,139 @@ export function MeuPlanoPage() {
       )}
 
       {cancelarDe && <SolicitarCancelamento plano={cancelarDe} onFechar={() => setCancelarDe(null)} />}
+
+      {pausarDe && (
+        <Folha titulo="Pausar o meu plano" onFechar={() => setPausarDe(null)}>
+          <PedirPausa
+            plano={pausarDe}
+            onFechar={() => setPausarDe(null)}
+            onPedida={() => setPausarDe(null)}
+          />
+        </Folha>
+      )}
+
+      {convidarDe && (
+        <Folha titulo="Convidar alguém" onFechar={() => setConvidarDe(null)}>
+          <IndicarConvidado
+            plano={convidarDe}
+            onFechar={() => setConvidarDe(null)}
+            onIndicado={() => setConvidarDe(null)}
+          />
+        </Folha>
+      )}
+    </div>
+  )
+}
+
+// ------------------------------------------------------------
+// Pagamento em aberto
+// ------------------------------------------------------------
+
+/**
+ * O link de pagamento da contratação que o aluno já aceitou.
+ *
+ * Antes ele existia só no e-mail (backlog 11.4, item 14). Quem apagou a
+ * mensagem, ou cujo e-mail caiu no spam, ficava sem caminho — com o
+ * contrato aceito e nenhum botão para pagar. Aqui ele fica.
+ *
+ * Aparece acima dos planos de propósito: é a única coisa nesta tela que
+ * o aluno precisa FAZER.
+ */
+function PagamentoPendente() {
+  const { data: pedido } = useSolicitacaoAberta()
+  const desistir = useDesistirSolicitacao()
+  if (!pedido) return null
+
+  const aguardandoEquipe = pedido.status === 'aguardando_aprovacao'
+  const url = pedido.url_pagamento as string | null
+  const turmaFixa = (pedido.turmas_fixas ?? 0) > 0
+  const turmas = pedido.turmas_rotulo ?? []
+  /*
+    Aprovado mas sem contrato aceito: o passo que falta é O DELE, e esta
+    tela dizia "estamos gerando o link" — para um link que nunca sairia,
+    porque `registrar_cobranca()` recusa emitir cobrança sem contrato.
+    Quem pede turma fixa cai sempre aqui, já que o aceite só acontece
+    depois da aprovação.
+  */
+  const faltaContrato = !aguardandoEquipe && !pedido.contrato_aceito
+
+  const titulo = aguardandoEquipe
+    ? turmaFixa
+      ? 'Confirmando a sua vaga'
+      : 'Pedido em análise pela equipe'
+    : faltaContrato
+      ? `Falta aceitar o contrato — ${pedido.produto_nome}`
+      : `Pagamento em aberto — ${pedido.produto_nome}`
+
+  return (
+    <div className="mb-8">
+      <Aviso
+        tom={aguardandoEquipe ? 'info' : 'atencao'}
+        titulo={titulo}
+        acao={
+          aguardandoEquipe ? undefined : faltaContrato ? (
+            <Link
+              to={`../planos?contrato=${pedido.id}`}
+              className="inline-flex rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+            >
+              Ler e aceitar
+            </Link>
+          ) : url ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+            >
+              Pagar agora
+            </a>
+          ) : undefined
+        }
+      >
+        {aguardandoEquipe ? (
+          <>
+            {turmaFixa && turmas.length > 0 && (
+              <span className="mb-1 block font-medium text-neutral-800">{turmas.join(' · ')}</span>
+            )}
+            {turmaFixa
+              ? 'Sua vaga fica guardada durante todo o plano, então ela sai da capacidade da turma — a equipe confere se há lugar antes de qualquer cobrança. Nenhum valor foi cobrado, e você é avisado por e-mail.'
+              : 'A equipe confirma seu pedido antes de qualquer cobrança. Nenhum valor foi cobrado, e você é avisado por e-mail.'}
+            <button
+              onClick={() => pedido.id && desistir.mutate(String(pedido.id))}
+              disabled={desistir.isPending}
+              className="mt-2 block text-xs font-medium text-neutral-500 underline underline-offset-2 hover:text-neutral-800 disabled:opacity-50"
+            >
+              {desistir.isPending ? 'Cancelando…' : 'Desistir deste pedido'}
+            </button>
+            {desistir.isError && (
+              <span className="mt-1 block text-xs text-danger-600">
+                {mensagemDoBanco(desistir.error, 'Não foi possível cancelar o pedido agora.')}
+              </span>
+            )}
+          </>
+        ) : faltaContrato ? (
+          <>
+            {turmaFixa && turmas.length > 0 && (
+              <span className="mb-1 block font-medium text-neutral-800">
+                Vaga confirmada: {turmas.join(' · ')}
+              </span>
+            )}
+            Falta ler e aceitar o Contrato de Adesão. O pagamento é liberado em seguida.
+          </>
+        ) : url ? (
+          <>
+            {(pedido.abatimento_centavos ?? 0) > 0 && (
+              <span className="mb-1 block font-medium text-success-700">
+                Já com {fmtPreco(pedido.abatimento_centavos ?? 0)} abatidos da sua aula
+                experimental.
+              </span>
+            )}
+            Seus créditos são liberados assim que o pagamento for confirmado.
+          </>
+        ) : (
+          'Estamos gerando o link. Ele chega no seu e-mail em alguns minutos.'
+        )}
+      </Aviso>
     </div>
   )
 }
@@ -126,12 +286,16 @@ function PlanoDetalhado({
   lotes,
   onRegras,
   onCancelar,
+  onPausar,
+  onConvidar,
 }: {
   plano: MeuPlano
   turmas: TurmaFixa[]
   lotes: LoteCredito[]
   onRegras: () => void
   onCancelar: () => void
+  onPausar: () => void
+  onConvidar: () => void
 }) {
   const formato = formatoDoPlano(p)
   const situacao = situacaoDoPlano(p)
@@ -171,6 +335,8 @@ function PlanoDetalhado({
           </dl>
 
           <AvisoDePagamento plano={p} />
+          <AvisoDePausa matricula={p.matricula_id} />
+          <AvisoDeConvidado matricula={p.matricula_id} />
         </Cartao>
 
         {/* ---- 2. O que ele tem para usar ---- */}
@@ -181,7 +347,13 @@ function PlanoDetalhado({
         )}
 
         {/* ---- 3. Renovação e cancelamento ---- */}
-        <RenovacaoECancelamento plano={p} onRegras={onRegras} onCancelar={onCancelar} />
+        <RenovacaoECancelamento
+          plano={p}
+          onRegras={onRegras}
+          onCancelar={onCancelar}
+          onPausar={onPausar}
+          onConvidar={onConvidar}
+        />
       </div>
 
       {/* ---- 4. Detalhes do contrato ---- */}
@@ -242,6 +414,41 @@ function Fato({ rotulo, children }: { rotulo: string; children: ReactNode }) {
       <dd className="mt-0.5 text-base font-semibold text-neutral-900">{children}</dd>
     </div>
   )
+}
+
+/**
+ * O estado da pausa dentro do cartão do plano.
+ *
+ * Lê a pausa em aberto do aluno e só desenha se ela for DESTE plano:
+ * quem tem dois planos não pode ver o aviso da pausa de um no cartão do
+ * outro.
+ */
+function AvisoDePausa({ matricula }: { matricula: string }) {
+  const { data: pausa } = useMinhaPausa()
+  if (!pausa || pausa.matricula_id !== matricula) return null
+  return <PausaEmAberto pausa={pausa} />
+}
+
+/**
+ * O convite deste plano, quando há um que ainda diz algo ao aluno.
+ *
+ * Recusado também aparece, porque é a única forma de o aluno saber o
+ * motivo sem abrir o e-mail — mas por tempo limitado: um "não deu" de
+ * três meses atrás no cartão do plano é ruído, e pior, faria parecer
+ * que o benefício segue travado.
+ */
+function AvisoDeConvidado({ matricula }: { matricula: string }) {
+  const { data: convites } = useMeusConvidados()
+  const limite = new Date(Date.now() - 15 * 86400000).toISOString()
+  const convite = (convites ?? []).find(
+    (c) =>
+      c.matricula_id === matricula &&
+      (c.status === 'solicitado' ||
+        c.status === 'confirmado' ||
+        (c.status === 'recusado' && (c.decidida_em ?? '') > limite)),
+  )
+  if (!convite) return null
+  return <ConviteEmAberto convite={convite} />
 }
 
 function AvisoDePagamento({ plano: p }: { plano: MeuPlano }) {
@@ -326,6 +533,18 @@ function MeusCreditos({ plano: p, lotes }: { plano: MeuPlano; lotes: LoteCredito
           {vencemJuntos === 1 ? '1 crédito vence' : `${vencemJuntos} créditos vencem`} em{' '}
           <strong className="text-neutral-900">{fmtDataCompleta(proximo.validade)}</strong>. Os mais antigos são
           usados primeiro.
+          {/* A regra dita com a palavra que o aluno procura. "Vence em
+              <data>" já estava aqui, mas não responde "e se eu não usar,
+              sobra para o mês que vem?" — que é a pergunta que chega na
+              recepção. Só no plano que renova: num pacote avulso não
+              existe "ciclo seguinte" para acumular. */}
+          {p.renova_automaticamente && !p.acumula_creditos && (
+            <>
+              {' '}
+              <strong className="text-neutral-900">Eles não acumulam:</strong> o que não for usado
+              até lá não passa para o ciclo seguinte.
+            </>
+          )}
         </p>
       )}
       {p.saldo === 0 && (
@@ -386,10 +605,14 @@ function RenovacaoECancelamento({
   plano: p,
   onRegras,
   onCancelar,
+  onPausar,
+  onConvidar,
 }: {
   plano: MeuPlano
   onRegras: () => void
   onCancelar: () => void
+  onPausar: () => void
+  onConvidar: () => void
 }) {
   const retirar = useRetirarSolicitacao()
   const [confirmandoRetirar, setConfirmandoRetirar] = useState(false)
@@ -561,6 +784,18 @@ function RenovacaoECancelamento({
           <FileText className="size-3.5" />
           Ver regras do plano
         </Button>
+        {podeConvidar(p) && (
+          <Button size="sm" variant="secondary" onClick={onConvidar}>
+            <UserPlus className="size-3.5" />
+            Convidar alguém
+          </Button>
+        )}
+        {podePausar(p) && (
+          <Button size="sm" variant="ghost" onClick={onPausar} className="text-neutral-600">
+            <PauseCircle className="size-3.5" />
+            Pausar o plano
+          </Button>
+        )}
         {podeSolicitarCancelamento(p) && (
           <Button
             size="sm"

@@ -215,7 +215,10 @@ funcionando e validado pelas sócias.
 - **MEI:** limite anual **R$ 81.000** (parametrizável). Alertas em **70%, 85%, 95%**.
   Faturamento por **regime de caixa** (conta quando o dinheiro entra).
 - **Wellhub/ClassPass:** receita por **check-in**, paga em lote com **atraso** →
-  tratar como "a reconciliar", diferente de mensalista.
+  tratar como "a reconciliar", diferente de mensalista. ⚠️ **O valor do
+  check-in depende do PLANO do assinante** (Silver+, Gold…) desde 05/10/2026:
+  sai de `wellhub_planos`, não de um número único. O plano vem no payload
+  (`gym.product`) e fica em `presencas.wellhub_product_id`.
 - **Professoras:** pagas **por aluna presente** por aula → derivado da Presença.
 - **Reserva de caixa:** política sugerida 10–15% da receita, meta 3 meses de despesa.
 - **Categorias financeiras:** Entradas (Mensalistas, Wellhub, ClassPass, Avulsa,
@@ -278,8 +281,27 @@ plataformas parceiras) — referência de comparação, não de cópia de interf
   no Wix dentro do prazo e o ERP recusa a devolução do crédito.
   Dentro do prazo o crédito volta e ela pode remarcar; fora, o crédito é
   consumido.
-  ⚠️ Em 05/09/2026 o DEV estava em 4h e a **produção ainda em 3h** — conferir
-  antes de confiar no valor.
+  ✅ Conferido em 05/10/2026: **os dois ambientes estão em 4h**, e o
+  regulamento de 01/10 (item 4.5) diz o mesmo. A divergência de 05/09
+  (produção em 3h) foi resolvida.
+
+### 9.3.1 Faltas e suspensão (regulamento 4.7)
+
+**2 faltas** sem cancelamento no mesmo ciclo suspendem o agendamento
+antecipado por **20 dias** (`config_agendamento.faltas_para_suspensao` e
+`dias_suspensao_faltas`). A penalidade **não se aplica ao Plano Turma
+Fixa** — a vaga já é dela, e faltar não a transfere para ninguém.
+
+- **Suspensão não é bloqueio.** O aluno continua podendo treinar: ele
+  perde a antecedência, e passa a agendar no mesmo dia da aula ou pela
+  lista de espera. O texto da tela e do e-mail precisa dizer isso, senão
+  parece punição maior do que é.
+- ⚠️ **Era 3 faltas / 15 dias até 05/10/2026** — os números do regulamento
+  de setembro. O DEV ficou para trás e a produção já estava certa;
+  `20261017120000` alinhou os dois e corrigiu o `default` da coluna, que
+  era a origem da divergência (ambiente novo nascia errado).
+- Falta **não é presumida**: aula passada sem presença marcada não vira
+  falta automática. Ver Agenda → Faltas, segunda lista.
 
 ### 9.4 Jornada Mensalista — pacotes e créditos
 
@@ -409,9 +431,9 @@ produto antes — a proposta é tolerância *assimétrica*, não um knob genéri
 
 ### 9.8 Cancelamento de plano pelo portal (21/09/2026)
 
-Regulamento v3, item 7.1: pedido com **≥ 5 dias** de antecedência da
-renovação impede aquela renovação; depois disso, vale para a seguinte. O
-pedido é "confirmado por escrito por nós". Implementado em
+Pedido com **≥ 10 dias** de antecedência da renovação impede aquela
+renovação; depois disso, vale para a seguinte. O pedido é "confirmado por
+escrito por nós". Implementado em
 `20260921200000_portal_meu_plano_cancelamento.sql`:
 
 - **O aluno pede, a gestão encerra.** `solicitar_cancelamento_plano()` só
@@ -422,9 +444,20 @@ pedido é "confirmado por escrito por nós". Implementado em
 - **Uma conta de prazo só:** `regras_cancelamento_plano()`. A tela lê via
   `meus_planos()`, a solicitação grava o resultado como retrato. Não
   recalcular prazo no front.
-- O "5" é `config_agendamento.dias_antecedencia_cancelamento_plano`. A data
+- O "10" é `config_agendamento.dias_antecedencia_cancelamento_plano`. A data
   de referência é a de **São Paulo** (`now() at time zone …`), não
   `current_date` — o banco roda em UTC.
+- ⚠️ **Era 5 até 05/10/2026** (A28, `20261011120000`): o regulamento v3 de
+  setembro dizia 5, e os três documentos de 01/10 dizem 10. Decisão da
+  gestão: valem os documentos. O texto do contrato não foi editado — a
+  cláusula lê o marcador `{{DIAS_ANTECEDENCIA_CANCELAMENTO}}`.
+- **`dias_aviso_fim_compromisso` tem de ser MAIOR que esse prazo**, agora
+  por constraint (`config_aviso_antes_do_prazo`). O aviso do fim do
+  semestral (7.7) existe para dar tempo de decidir: igual ao prazo, ele
+  chegaria no último dia. Subiu de 10 para 15 junto com a mudança.
+- Os `coalesce(…, 5)` que sobraram em quatro funções são **inalcançáveis**
+  (a coluna é `not null`); ficaram para não reescrever quatro funções por
+  um ramo morto.
 - Pedido dentro do prazo e ainda pendente **segura** cobrança e renovação em
   `processar_assinaturas()`. Confirmado fora do prazo, a matrícula fica com
   `cancelada_em` + `renova_automaticamente = true` + `cancelamento_efetivo_em`
@@ -460,6 +493,65 @@ alunos não atingido, outro (exige recado).
   não restaura agendamentos nem recolhe reposições.
 - Reserva feita pelo app (Wellhub/ClassPass) é cancelada aqui, mas **não**
   no app — a tela avisa a equipe (backlog A20).
+
+### 9.10 Avisos da equipe: o sino (05/10/2026)
+
+`20261014120000_notificacoes.sql`. O ERP tem filas que esperam resposta
+(contratação, cancelamento, pausa, convidado, aula cancelada por quórum,
+cobrança vencida) e, até então, a única forma de saber era e-mail para
+todas as sócias de gestão, sempre.
+
+- **O catálogo manda:** `tipos_notificacao` lista os avisos que são **da
+  equipe**. Tipo listado lá vira sino; tipo de fora continua só e-mail.
+  **Aviso novo para a equipe = uma linha nessa tabela**, não código.
+- **O desvio mora em `enfileirar_email()`**, não nos chamadores — foi o
+  que evitou reescrever cinco funções (três delas grandes). O custo está
+  dito: quem lê `solicitar_pausa()` não vê o sino acender.
+- **A preferência é por sócia e por tipo** (`preferencias_notificacao`),
+  com dois canais independentes. Linha ausente = padrão do catálogo, o
+  que deixa o padrão livre para mudar sem reescrever escolha de ninguém.
+- A dedup é o **mesmo `ref`** da fila de e-mails: reentrega de webhook
+  não vira dois avisos.
+- Público = `emails_gestao()` (função = gestão). Levar à secretária é uma
+  linha ali, mas é decisão de produto — ela resolve convidado e check-in
+  pendente, então faz sentido quando pedirem.
+
+### 9.11 O regulamento oficial, e onde cada número mora
+
+**O documento vigente é de 01/10/2026** e vive FORA do repositório, em
+`DOCS OFICIAIS/01_Regulamento_do_Aluno_Studio_Pole_L_ATUALIZADO.docx`
+(com o Manual Interno e o Contrato ao lado). O repo tem só a versão de
+setembro — conferir sempre o arquivo oficial antes de afirmar uma regra.
+
+**Nenhum número do regulamento é constante no código.** Cada um sai de
+uma coluna, e o texto do contrato dinâmico lê a mesma coluna por marcador
+(`contrato_resumo()`). Mudar o parâmetro muda o sistema **e** o
+documento que o aluno aceita, de uma vez.
+
+| Regulamento | Valor | Onde mora |
+|---|---|---|
+| 4.3 máx. de aulas agendadas | 8 | `produtos.max_agendamentos_simultaneos` |
+| 4.4 janela de agendamento | 14 (mensal) / 21 (semestral) | `produtos.dias_antecedencia_agendamento` |
+| 4.5 cancelar e devolver crédito | 4h | `config.horas_cancelamento` |
+| 4.6 tolerância de atraso | 15 min | `config.minutos_tolerancia_atraso` |
+| 4.7 faltas → suspensão | 2 faltas / 20 dias | `config.faltas_para_suspensao`, `dias_suspensao_faltas` |
+| 5.1 mínimo de alunos | 2, conferido 4h antes | `config.minimo_alunos_turma`, `horas_conferencia_quorum` |
+| 6.7 crédito de reposição | 30 dias | `config.dias_validade_credito_aula_cancelada` |
+| 7.1 pausa | 15 (mensal) / 30 (semestral), 1 a cada 6 meses | `config.dias_pausa_*`, `meses_entre_pausas` |
+| 7.2 pausa com atestado | 90 dias | `config.dias_pausa_atestado` |
+| 8.2–8.5 troca de plano/turma | 5 dias | `config.dias_antecedencia_troca_plano` |
+| 9.1 cancelar o plano | 10 dias | `config.dias_antecedencia_cancelamento_plano` |
+| 9.7 desistência fora do estúdio | 7 dias | `config.dias_desistencia_fora_estudio` |
+| 10 crédito extra | validade até o fim do ciclo | teto em `matricular_produto()` (A29) |
+| 10.1 abatimento do experimental | 7 dias, o valor pago | `config.dias_abatimento_experimental` |
+| 11.1 convidado do semestral | 1 por ciclo, 6 meses sem treinar | `produtos.convidados_por_ciclo`, `config.meses_sem_treinar_convidado` |
+
+⚠️ **Divergência entre ambientes é bug silencioso.** A de faltas (3/15 no
+DEV contra 2/20 na produção) só apareceu porque a homologação comparou os
+dois lados — e teria feito o teste provar a regra errada. Antes de
+homologar qualquer coisa que leia `config_agendamento`, comparar DEV e
+produção. Parâmetro de regulamento entra por **migration** (igual nos dois
+ambientes); o que varia por ambiente mora no Vault (§14.4).
 
 ---
 
@@ -571,6 +663,51 @@ no portal, essa marcação deve chamar o `validate`. **Ainda não implementado**
 - Valor por check-in pode ser **R$ 0** (primeira visita grátis da aluna ou teto
   de pagamento por visitante atingido no mês) — é caso de negócio válido, não
   pode travar o check-in nem ser tratado como erro.
+- **O repasse varia por plano do assinante** (`20261018120000`). `gym.product`
+  no payload é, nas palavras da doc deles, "o plano do assinante (o que
+  define o repasse)". Fica em `presencas.wellhub_product_id`, e
+  `valor_checkin_wellhub()` precifica por `wellhub_planos`.
+  `config_agendamento.valor_checkin_wellhub_centavos` deixou de ser *o*
+  valor e passou a ser **o padrão de quando o plano é desconhecido**.
+  - Plano novo **se cadastra sozinho** no primeiro check-in, com
+    `confirmado = false`, e a gestão recebe aviso no sino para informar o
+    valor. Não bloqueia e não deixa de lançar: o check-in aconteceu.
+  - Isso melhora a **previsão**. A verdade do dinheiro continua sendo a
+    conciliação do repasse (12.6), que é manual por falta de API.
+  - **A primeira visita da pessoa não é repassada** (regra da Wellhub,
+    confirmada pela gestão em 05/10): `integrar_presenca()` não lança
+    previsão no primeiro check-in de cada cliente. A aula acontece e a
+    professora é paga igual — o que não existe é o repasse.
+  - `wellhub_precos_referencia` guarda o que foi **combinado** com eles, por
+    nome ("Silver+", "Gold"). Serve para um plano novo nascer com o valor
+    certo; depois do primeiro check-in quem manda é `wellhub_planos`.
+  - ⚠️ **O preço combinado muda.** Por isso `conciliar_wellhub()` devolve
+    previsto × real × diferença (com detalhe por plano) e a tela mostra: é
+    essa diferença que avisa que a tabela envelheceu. O sistema prevê, o
+    relatório corrige — ele nunca depende de a tabela estar certa.
+  - 🔴 **O relatório real derrubou a premissa do plano por assinante**
+    (06/10/2026, `20261020120000`). Lendo o arquivo de setembro: a tarifa
+    **muda no TEMPO** (27,13 de 02 a 24/09; 30,77 em 30/09 e 01/10), nenhum
+    dia tem duas tarifas pagas convivendo, e a coluna "Produto" do relatório
+    é **o nosso serviço** ("Dança e Outros Serviços", "Pole Dance") — não
+    Silver+/Gold, que não aparecem em lugar nenhum. Ou seja: `gym.product`
+    do payload é o nosso produto, e não a assinatura, ao contrário do que a
+    nossa referência de API afirmava.
+  - ✅ **Visita experimental paga R$ 0,00**, e o relatório marca isso em
+    coluna própria (23 de 159 em setembro). A heurística "primeira visita da
+    pessoa" acerta 22 dos 23 — serve de palpite, mas quem sabe é o arquivo.
+  - **O caminho certo é importar o relatório linha a linha**
+    (`importar_repasse_wellhub`): ele traz data, hora, **ID do Wellhub**
+    (= `clientes.gympass_id`), produto, tipo e valor pago. Casa por
+    (gympass_id, data) e grava o valor REAL. As duas sobras — check-in que
+    eles pagaram sem presença nossa, e presença nossa sem linha deles — são
+    o achado que um total nunca mostra.
+  - A previsão **se calibra sozinha**: a importação grava a tarifa do
+    check-in pago mais recente. Ninguém mantém preço à mão.
+  - ⚠️ No arquivo, o ID do Wellhub vem em **notação científica**
+    (`2.306547018225E12`) porque o Excel trata 13 dígitos como número. O
+    parser desfaz; sem isso **nenhuma linha casa**, e o erro é silencioso —
+    parece aluno que não registramos.
 - **A turma do check-in não vem no payload.** A Access Control API notifica
   *acesso ao estúdio*, não aula. Com duas salas, o horário não desambigua — daí
   a fila `checkins_pendentes` (seção 9.7). O webhook responde JSON:

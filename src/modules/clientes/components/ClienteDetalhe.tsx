@@ -4,6 +4,7 @@ import { Badge } from '../../../components/ui/Badge'
 import { PainelLateral } from '../../../components/ui/PainelLateral'
 import { TempoDeCasa } from './TempoDeCasa'
 import { PlanoDoCliente } from './PlanoDoCliente'
+import { DocumentosDoCliente } from './DocumentosDoCliente'
 import { fmtData, fmtDataHora } from '../../../lib/datas'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { useMinhaFuncao } from '../../../lib/funcao'
@@ -169,6 +170,11 @@ export function ClienteDetalhe({
         <TempoDeCasa clienteId={cliente.id} />
 
         <PlanoDoCliente clienteId={cliente.id} clienteNome={cliente.nome} gestao={gestao} />
+
+        {/* Só gestão: contrato é prova comercial e PAR-Q é dado de saúde.
+            A secretaria faz a operação dela sem abrir nenhum dos dois, e o
+            banco aplica o mesmo recorte — a tela não é a trava. */}
+        {gestao && <DocumentosDoCliente clienteId={cliente.id} />}
 
         {gestao && (
           <>

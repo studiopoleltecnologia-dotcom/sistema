@@ -7,6 +7,7 @@ import {
   Gift,
   History,
   RotateCw,
+  Scale,
   User,
   Wallet,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ import { PainelLateral } from '../../../components/ui/PainelLateral'
 import { fmtData, fmtDataHora } from '../../../lib/datas'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { useHistoricoMatricula } from '../hooks/useMatriculas'
+import { useDesistenciaPossivel } from '../hooks/useDesistencias'
 import { TurmasVinculadas } from './TurmasVinculadas'
 import type { MatriculaCompleta } from '../types'
 
@@ -47,6 +49,7 @@ export function MatriculaDetalhe({
   onBonus,
   onInadimplir,
   onCancelar,
+  onDesistencia,
   onFechar,
 }: {
   matricula: MatriculaCompleta
@@ -56,10 +59,17 @@ export function MatriculaDetalhe({
   onBonus: () => void
   onInadimplir: () => void
   onCancelar: () => void
+  onDesistencia: () => void
   onFechar: () => void
 }) {
   const s = m.saldo
   const { data: historico, isLoading } = useHistoricoMatricula(s.matricula_id ?? null)
+  /*
+    A desistência de 7 dias (9.7) só aparece quando de fato cabe: ela é
+    rara e some sozinha depois do prazo. Deixá-la à vista o tempo todo
+    poria uma acao que devolve dinheiro ao lado das do dia a dia.
+  */
+  const { data: desistencia } = useDesistenciaPossivel(s.matricula_id ?? null)
   const emAberto = s.status === 'inadimplente'
   const cancelando = Boolean(s.cancelamento_efetivo_em)
   const situacao = SITUACAO[s.status ?? ''] ?? { rotulo: s.status ?? '—', variante: 'neutral' as const }
@@ -201,6 +211,15 @@ export function MatriculaDetalhe({
                       titulo="Cancelar assinatura"
                       ajuda="Para a cobrança automática. O ciclo já pago continua valendo."
                       onClick={onCancelar}
+                    />
+                  )}
+                  {desistencia?.pode && (
+                    <Acao
+                      icone={Scale}
+                      tom="perigosa"
+                      titulo="Desistência de 7 dias"
+                      ajuda="Compra feita fora do estúdio, art. 49 do CDC: desfaz o contrato e devolve o que foi pago, menos as aulas usadas."
+                      onClick={onDesistencia}
                     />
                   )}
                 </div>

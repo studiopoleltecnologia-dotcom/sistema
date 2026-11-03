@@ -40,6 +40,7 @@ const MOTIVO_CURTO: Record<MotivoForaDoPlano, string> = {
   so_turma_fixa: 'Fora do seu plano',
   sem_credito: 'Sem crédito',
   pagamento: 'Pagamento pendente',
+  plano_pausado: 'Plano pausado',
 }
 
 /**

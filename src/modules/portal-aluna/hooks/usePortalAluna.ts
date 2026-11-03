@@ -1,10 +1,21 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  abatimentoDisponivel,
   agendarAula,
   atualizarMeuCliente,
+  beneficioConvidado,
   cancelarAgendamento,
   contratarPlano,
+  desistirDaPausa,
+  desistirDoConvidado,
+  indicarConvidado,
+  meusConvidados,
+  desistirDaSolicitacao,
+  direitoAPausa,
+  minhaPausa,
+  solicitarPausa,
+  turmasParaAssentoFixo,
   criarContaAluna,
   entrarListaEspera,
   listarAulasCanceladas,
@@ -16,6 +27,8 @@ import {
   listarMinhaFila,
   listarMinhasTurmasFixas,
   listarPlanos,
+  listarRestricoesCatalogo,
+  minhaSolicitacaoAberta,
   listarVagas,
   meuCadastroPrevio,
   obterConfigAgendamento,
@@ -150,6 +163,25 @@ export function usePlanos() {
   return useQuery({ queryKey: ['portal-planos'], queryFn: listarPlanos })
 }
 
+/**
+ * O impedimento de cada produto para este aluno, indexado por produto.
+ *
+ * Fica separado de `usePlanos()` de propósito: o catálogo é igual para
+ * todo mundo e cacheia bem; o veredito é pessoal e muda quando o aluno
+ * completa o cadastro ou faz a primeira aula.
+ */
+export function useRestricoesCatalogo() {
+  const q = useQuery({ queryKey: ['portal-restricoes-catalogo'], queryFn: listarRestricoesCatalogo })
+  const porProduto = useMemo(() => {
+    const m = new Map<string, { motivo: string; codigo: string }>()
+    for (const r of q.data ?? []) {
+      if (r.motivo) m.set(r.produto_id, { motivo: r.motivo, codigo: r.codigo })
+    }
+    return m
+  }, [q.data])
+  return { ...q, porProduto }
+}
+
 export function useConfigAgendamento() {
   return useQuery({ queryKey: ['portal-config-agendamento'], queryFn: obterConfigAgendamento })
 }
@@ -251,9 +283,99 @@ export function useSairListaEspera() {
   return useMutation({ mutationFn: sairListaEspera, onSuccess: invalidar })
 }
 
+/**
+ * As turmas que aceitam assento fixo, com a vaga de cada uma.
+ *
+ * `staleTime` curto de propósito: a vaga muda quando outra pessoa reserva,
+ * e escolher uma turma que acabou de lotar significa ver o erro do banco
+ * no clique de confirmar.
+ */
+export function useTurmasAssentoFixo(ativo = true) {
+  return useQuery({
+    queryKey: ['portal-turmas-assento-fixo'],
+    queryFn: turmasParaAssentoFixo,
+    enabled: ativo,
+    staleTime: 30_000,
+  })
+}
+
 export function useContratarPlano() {
   const invalidar = useInvalidarAgenda()
-  return useMutation({ mutationFn: contratarPlano, onSuccess: invalidar })
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: contratarPlano,
+    onSuccess: () => {
+      invalidar()
+      qc.invalidateQueries({ queryKey: ['portal-solicitacao-aberta'] })
+    },
+  })
+}
+
+/**
+ * O pedido que o aluno deixou pela metade.
+ *
+ * Existe para RETOMAR, não para informar: quem fecha a aba no passo do
+ * contrato volta e encontra `solicitar_contratacao` recusando ("já existe
+ * um pedido em aberto"). Sem isto, a saída seria cancelar o pedido e
+ * começar de novo — por um clique em "voltar".
+ */
+/** A pausa em aberto deste aluno — pedida, aprovada ou em curso. */
+export function useMinhaPausa() {
+  return useQuery({ queryKey: ['portal-pausa'], queryFn: minhaPausa })
+}
+
+/**
+ * Pode pausar, e por quantos dias.
+ *
+ * A conta é do banco (`direito_a_pausa`): o limite muda com o formato do
+ * plano (15 dias no mensal, 30 no semestral, 90 com atestado), com o
+ * intervalo desde a última pausa e com a situação da matrícula. Replicar
+ * isso aqui seria a segunda versão da regra, e as duas divergiriam.
+ *
+ * Só consulta com a folha aberta: a resposta depende do tipo escolhido.
+ */
+export function useDireitoAPausa(matriculaId: string | null, atestado: boolean) {
+  return useQuery({
+    queryKey: ['portal-pausa', 'direito', matriculaId, atestado],
+    queryFn: () => direitoAPausa(matriculaId!, atestado),
+    enabled: Boolean(matriculaId),
+  })
+}
+
+function useInvalidarPausa() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['portal-pausa'] })
+    // A pausa muda o status e a vigência da matrícula, e estica a validade
+    // dos créditos — é o que "Meu plano" e a lista de lotes leem.
+    qc.invalidateQueries({ queryKey: ['portal-meus-planos'] })
+    qc.invalidateQueries({ queryKey: ['portal-lotes'] })
+  }
+}
+
+export function useSolicitarPausa() {
+  const invalidar = useInvalidarPausa()
+  return useMutation({ mutationFn: solicitarPausa, onSuccess: invalidar })
+}
+
+export function useDesistirDaPausa() {
+  const invalidar = useInvalidarPausa()
+  return useMutation({ mutationFn: desistirDaPausa, onSuccess: invalidar })
+}
+
+export function useDesistirSolicitacao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: desistirDaSolicitacao,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['portal-solicitacao-aberta'] }),
+  })
+}
+
+export function useSolicitacaoAberta() {
+  return useQuery({
+    queryKey: ['portal-solicitacao-aberta'],
+    queryFn: minhaSolicitacaoAberta,
+  })
 }
 
 export function useSolicitarCancelamento() {
@@ -269,5 +391,64 @@ export function useRetirarSolicitacao() {
   return useMutation({
     mutationFn: retirarSolicitacaoCancelamento,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['portal-meus-planos'] }),
+  })
+}
+
+// ------------------------------------------------------------
+// O convidado do semestral (regulamento 11.1)
+// ------------------------------------------------------------
+
+/** Os convites deste aluno, do mais recente para o mais antigo. */
+export function useMeusConvidados() {
+  return useQuery({ queryKey: ['portal-convidados'], queryFn: meusConvidados })
+}
+
+/**
+ * Tem convidado neste ciclo?
+ *
+ * Só com a folha aberta. A resposta depende do ciclo corrente e de haver
+ * convite consumindo o benefício — conta que o banco já faz em
+ * `beneficio_convidado`, e que a tela não repete.
+ */
+export function useBeneficioConvidado(matriculaId: string | null) {
+  return useQuery({
+    queryKey: ['portal-convidados', 'beneficio', matriculaId],
+    queryFn: () => beneficioConvidado(matriculaId!),
+    enabled: Boolean(matriculaId),
+  })
+}
+
+function useInvalidarConvidado() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['portal-convidados'] })
+    // A confirmação do convite cria uma reserva na turma: a vaga que a
+    // agenda mostra muda, mesmo sem o aluno ter agendado nada.
+    qc.invalidateQueries({ queryKey: ['portal-vagas'] })
+  }
+}
+
+export function useIndicarConvidado() {
+  const invalidar = useInvalidarConvidado()
+  return useMutation({ mutationFn: indicarConvidado, onSuccess: invalidar })
+}
+
+export function useDesistirDoConvidado() {
+  const invalidar = useInvalidarConvidado()
+  return useMutation({ mutationFn: desistirDoConvidado, onSuccess: invalidar })
+}
+
+/**
+ * O abatimento da experimental deste aluno (regulamento 10.1).
+ *
+ * Fica na tela do catálogo, ANTES de ele escolher: é a informação que
+ * faz a pessoa voltar dentro dos 7 dias, e é inútil depois do pedido.
+ */
+export function useAbatimentoDisponivel() {
+  const clienteId = usePortalClienteId()
+  return useQuery({
+    queryKey: ['portal-abatimento', clienteId],
+    queryFn: () => abatimentoDisponivel(clienteId!),
+    enabled: Boolean(clienteId),
   })
 }

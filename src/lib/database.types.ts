@@ -573,6 +573,8 @@ export type Database = {
         Row: {
           asaas_customer_id: string | null
           atualizada_em: string
+          autoriza_imagem: boolean | null
+          autoriza_imagem_em: string | null
           contato_emergencia_nome: string | null
           contato_emergencia_parentesco: string | null
           contato_emergencia_telefone: string | null
@@ -591,6 +593,9 @@ export type Database = {
           origem: Database["public"]["Enums"]["origem_cliente"]
           primeiro_contato: string
           responsavel_id: string | null
+          responsavel_legal_cpf: string | null
+          responsavel_legal_nome: string | null
+          responsavel_legal_vinculo: string | null
           telefone: string | null
           ultima_aula: string | null
           ultima_conversa: string | null
@@ -599,6 +604,8 @@ export type Database = {
         Insert: {
           asaas_customer_id?: string | null
           atualizada_em?: string
+          autoriza_imagem?: boolean | null
+          autoriza_imagem_em?: string | null
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
@@ -617,6 +624,9 @@ export type Database = {
           origem?: Database["public"]["Enums"]["origem_cliente"]
           primeiro_contato?: string
           responsavel_id?: string | null
+          responsavel_legal_cpf?: string | null
+          responsavel_legal_nome?: string | null
+          responsavel_legal_vinculo?: string | null
           telefone?: string | null
           ultima_aula?: string | null
           ultima_conversa?: string | null
@@ -625,6 +635,8 @@ export type Database = {
         Update: {
           asaas_customer_id?: string | null
           atualizada_em?: string
+          autoriza_imagem?: boolean | null
+          autoriza_imagem_em?: string | null
           contato_emergencia_nome?: string | null
           contato_emergencia_parentesco?: string | null
           contato_emergencia_telefone?: string | null
@@ -643,6 +655,9 @@ export type Database = {
           origem?: Database["public"]["Enums"]["origem_cliente"]
           primeiro_contato?: string
           responsavel_id?: string | null
+          responsavel_legal_cpf?: string | null
+          responsavel_legal_nome?: string | null
+          responsavel_legal_vinculo?: string | null
           telefone?: string | null
           ultima_aula?: string | null
           ultima_conversa?: string | null
@@ -782,6 +797,48 @@ export type Database = {
           },
         ]
       }
+      conferencias_quorum: {
+        Row: {
+          agendados: number
+          cancelamento_id: string | null
+          conferida_em: string
+          data: string
+          decisao: string
+          fixos: number
+          id: string
+          inicio_da_aula: string
+          minimo: number
+          motivo: string | null
+          turma_id: string
+        }
+        Insert: {
+          agendados: number
+          cancelamento_id?: string | null
+          conferida_em?: string
+          data: string
+          decisao: string
+          fixos: number
+          id?: string
+          inicio_da_aula: string
+          minimo: number
+          motivo?: string | null
+          turma_id: string
+        }
+        Update: {
+          agendados?: number
+          cancelamento_id?: string | null
+          conferida_em?: string
+          data?: string
+          decisao?: string
+          fixos?: number
+          id?: string
+          inicio_da_aula?: string
+          minimo?: number
+          motivo?: string | null
+          turma_id?: string
+        }
+        Relationships: []
+      }
       config_agendamento: {
         Row: {
           atualizada_em: string
@@ -792,10 +849,14 @@ export type Database = {
           dias_validade_credito_aula_cancelada: number
           faltas_para_suspensao: number
           horas_cancelamento: number
+          horas_conferencia_quorum: number
+          minutos_tolerancia_conferencia: number
           id: boolean
           max_reposicoes_por_matricula: number
+          minimo_alunos_turma: number
           minutos_reserva_espera: number
           minutos_tolerancia_atraso: number
+          valor_checkin_totalpass_centavos: number
           valor_checkin_wellhub_centavos: number
         }
         Insert: {
@@ -807,10 +868,14 @@ export type Database = {
           dias_validade_credito_aula_cancelada?: number
           faltas_para_suspensao?: number
           horas_cancelamento?: number
+          horas_conferencia_quorum?: number
+          minutos_tolerancia_conferencia?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
+          minimo_alunos_turma?: number
           minutos_reserva_espera?: number
           minutos_tolerancia_atraso?: number
+          valor_checkin_totalpass_centavos?: number
           valor_checkin_wellhub_centavos?: number
         }
         Update: {
@@ -822,10 +887,14 @@ export type Database = {
           dias_validade_credito_aula_cancelada?: number
           faltas_para_suspensao?: number
           horas_cancelamento?: number
+          horas_conferencia_quorum?: number
+          minutos_tolerancia_conferencia?: number
           id?: boolean
           max_reposicoes_por_matricula?: number
+          minimo_alunos_turma?: number
           minutos_reserva_espera?: number
           minutos_tolerancia_atraso?: number
+          valor_checkin_totalpass_centavos?: number
           valor_checkin_wellhub_centavos?: number
         }
         Relationships: []
@@ -833,29 +902,38 @@ export type Database = {
       config_cadastro: {
         Row: {
           atualizada_em: string
+          exigir_contrato: boolean
           exigir_cpf: boolean
           exigir_cpf_email_no_lead: boolean
           exigir_email: boolean
+          exigir_parq: boolean
           exigir_sobrenome: boolean
           id: boolean
+          validade_parq_meses: number
           validar_telefone_br: boolean
         }
         Insert: {
           atualizada_em?: string
+          exigir_contrato?: boolean
           exigir_cpf?: boolean
           exigir_cpf_email_no_lead?: boolean
           exigir_email?: boolean
+          exigir_parq?: boolean
           exigir_sobrenome?: boolean
           id?: boolean
+          validade_parq_meses?: number
           validar_telefone_br?: boolean
         }
         Update: {
           atualizada_em?: string
+          exigir_contrato?: boolean
           exigir_cpf?: boolean
           exigir_cpf_email_no_lead?: boolean
           exigir_email?: boolean
+          exigir_parq?: boolean
           exigir_sobrenome?: boolean
           id?: boolean
+          validade_parq_meses?: number
           validar_telefone_br?: boolean
         }
         Relationships: []
@@ -987,6 +1065,484 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      config_estudio: {
+        Row: {
+          atualizada_em: string
+          cnpj: string | null
+          endereco: string | null
+          id: boolean
+          razao_social: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          atualizada_em?: string
+          cnpj?: string | null
+          endereco?: string | null
+          id?: boolean
+          razao_social?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          atualizada_em?: string
+          cnpj?: string | null
+          endereco?: string | null
+          id?: boolean
+          razao_social?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      contrato_clausulas: {
+        Row: {
+          condicao: string[]
+          corpo_html: string
+          criada_em: string
+          id: string
+          nivel: number
+          ordem: number
+          titulo: string
+          versao_id: string
+        }
+        Insert: {
+          condicao?: string[]
+          corpo_html: string
+          criada_em?: string
+          id?: string
+          nivel?: number
+          ordem: number
+          titulo: string
+          versao_id: string
+        }
+        Update: {
+          condicao?: string[]
+          corpo_html?: string
+          criada_em?: string
+          id?: string
+          nivel?: number
+          ordem?: number
+          titulo?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      contrato_versoes: {
+        Row: {
+          criada_em: string
+          criada_por: string | null
+          id: string
+          notas: string | null
+          versao: string
+          vigente: boolean
+          vigente_desde: string
+        }
+        Insert: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          notas?: string | null
+          versao: string
+          vigente?: boolean
+          vigente_desde: string
+        }
+        Update: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          notas?: string | null
+          versao?: string
+          vigente?: boolean
+          vigente_desde?: string
+        }
+        Relationships: []
+      }
+      contratos: {
+        Row: {
+          aceito_em: string
+          cliente_id: string
+          cobranca_id: string | null
+          corpo_html: string
+          criado_em: string
+          forma_pagamento: string | null
+          hash_corpo: string
+          id: string
+          ip: string | null
+          matricula_id: string | null
+          produto_id: string
+          provider_ref: string | null
+          resumo: Json
+          solicitacao_id: string
+          tags: string[]
+          user_agent: string | null
+          valor_centavos: number
+          versao: string
+          versao_id: string
+        }
+        Insert: {
+          aceito_em?: string
+          cliente_id: string
+          cobranca_id?: string | null
+          corpo_html: string
+          criado_em?: string
+          forma_pagamento?: string | null
+          hash_corpo: string
+          id?: string
+          ip?: string | null
+          matricula_id?: string | null
+          produto_id: string
+          provider_ref?: string | null
+          resumo: Json
+          solicitacao_id: string
+          tags: string[]
+          user_agent?: string | null
+          valor_centavos: number
+          versao: string
+          versao_id: string
+        }
+        Update: {
+          aceito_em?: string
+          cliente_id?: string
+          cobranca_id?: string | null
+          corpo_html?: string
+          criado_em?: string
+          forma_pagamento?: string | null
+          hash_corpo?: string
+          id?: string
+          ip?: string | null
+          matricula_id?: string | null
+          produto_id?: string
+          provider_ref?: string | null
+          resumo?: Json
+          solicitacao_id?: string
+          tags?: string[]
+          user_agent?: string | null
+          valor_centavos?: number
+          versao?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      convidados: {
+        Row: {
+          agendamento_id: string | null
+          atualizada_em: string
+          ciclo: number
+          convidado_cliente_id: string
+          criada_em: string
+          data: string
+          decidida_em: string | null
+          decidida_por: string | null
+          id: string
+          matricula_id: string
+          motivo_decisao: string | null
+          observacao: string | null
+          solicitada_em: string
+          solicitada_por: string | null
+          status: Database["public"]["Enums"]["status_convidado"]
+          titular_cliente_id: string
+          turma_id: string
+        }
+        Insert: {
+          ciclo: number
+          convidado_cliente_id: string
+          data: string
+          matricula_id: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_convidado"]
+          titular_cliente_id: string
+          turma_id: string
+        }
+        Update: {
+          motivo_decisao?: string | null
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_convidado"]
+        }
+        Relationships: []
+      }
+      notificacoes: {
+        Row: {
+          criada_em: string
+          dados: Json
+          descricao: string | null
+          id: string
+          lida_em: string | null
+          link: string | null
+          ref: string | null
+          socia_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: never
+        Update: { lida_em?: string | null }
+        Relationships: []
+      }
+      wellhub_repasse_linhas: {
+        Row: {
+          cliente_id: string | null
+          competencia: string
+          data: string
+          gympass_id: string
+          hora: string | null
+          id: string
+          importada_em: string
+          importada_por: string | null
+          moeda: string | null
+          presenca_id: string | null
+          produto: string | null
+          situacao: string
+          tipo_checkin: string | null
+          valor_centavos: number
+          visitante: string | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      wellhub_precos_referencia: {
+        Row: {
+          atualizada_em: string
+          nome: string
+          observacao: string | null
+          valor_centavos: number
+        }
+        Insert: { nome: string; valor_centavos: number; observacao?: string | null }
+        Update: { valor_centavos?: number; observacao?: string | null }
+        Relationships: []
+      }
+      wellhub_planos: {
+        Row: {
+          atualizada_em: string
+          atualizado_por: string | null
+          ativo: boolean
+          confirmado: boolean
+          descricao: string | null
+          product_id: number
+          valor_centavos: number
+          visto_em: string
+        }
+        Insert: never
+        Update: {
+          ativo?: boolean
+          confirmado?: boolean
+          descricao?: string | null
+          valor_centavos?: number
+          atualizado_por?: string | null
+        }
+        Relationships: []
+      }
+      tipos_notificacao: {
+        Row: {
+          ativo: boolean
+          descricao: string | null
+          email_padrao: boolean
+          link: string | null
+          ordem: number
+          rotulo: string
+          tipo: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      preferencias_notificacao: {
+        Row: {
+          atualizada_em: string
+          no_sistema: boolean
+          por_email: boolean
+          socia_id: string
+          tipo: string
+        }
+        Insert: {
+          no_sistema?: boolean
+          por_email?: boolean
+          socia_id: string
+          tipo: string
+        }
+        Update: { no_sistema?: boolean; por_email?: boolean }
+        Relationships: []
+      }
+      parq_documentos: {
+        Row: {
+          aprovado: boolean | null
+          arquivo_nome: string
+          arquivo_path: string
+          avaliado_em: string | null
+          avaliado_por: string | null
+          cliente_id: string
+          emitido_em: string | null
+          enviado_em: string
+          enviado_por: string | null
+          id: string
+          motivo: string | null
+          resposta_id: string
+          valido_ate: string | null
+        }
+        Insert: {
+          aprovado?: boolean | null
+          arquivo_nome: string
+          arquivo_path: string
+          avaliado_em?: string | null
+          avaliado_por?: string | null
+          cliente_id: string
+          emitido_em?: string | null
+          enviado_em?: string
+          enviado_por?: string | null
+          id?: string
+          motivo?: string | null
+          resposta_id: string
+          valido_ate?: string | null
+        }
+        Update: {
+          aprovado?: boolean | null
+          arquivo_nome?: string
+          arquivo_path?: string
+          avaliado_em?: string | null
+          avaliado_por?: string | null
+          cliente_id?: string
+          emitido_em?: string | null
+          enviado_em?: string
+          enviado_por?: string | null
+          id?: string
+          motivo?: string | null
+          resposta_id?: string
+          valido_ate?: string | null
+        }
+        Relationships: []
+      }
+      parq_perguntas: {
+        Row: {
+          atencao_quando: boolean
+          id: string
+          ordem: number
+          texto: string
+          versao_id: string
+        }
+        Insert: {
+          atencao_quando?: boolean
+          id?: string
+          ordem: number
+          texto: string
+          versao_id: string
+        }
+        Update: {
+          atencao_quando?: boolean
+          id?: string
+          ordem?: number
+          texto?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      parq_respostas: {
+        Row: {
+          aceito_por: string | null
+          cliente_id: string
+          criada_em: string
+          id: string
+          ip: string | null
+          observacoes: string | null
+          respondido_em: string
+          respostas: Json
+          respostas_sim: number
+          responsavel_aceito_em: string | null
+          responsavel_cpf: string | null
+          responsavel_nome: string | null
+          responsavel_vinculo: string | null
+          status: Database["public"]["Enums"]["status_parq"]
+          termo_aceito_em: string
+          termo_hash: string
+          user_agent: string | null
+          validade: string
+          versao: string
+          versao_id: string
+        }
+        Insert: {
+          aceito_por?: string | null
+          cliente_id: string
+          criada_em?: string
+          id?: string
+          ip?: string | null
+          observacoes?: string | null
+          respondido_em?: string
+          respostas: Json
+          respostas_sim: number
+          responsavel_aceito_em?: string | null
+          responsavel_cpf?: string | null
+          responsavel_nome?: string | null
+          responsavel_vinculo?: string | null
+          status: Database["public"]["Enums"]["status_parq"]
+          termo_aceito_em?: string
+          termo_hash: string
+          user_agent?: string | null
+          validade: string
+          versao: string
+          versao_id: string
+        }
+        Update: {
+          aceito_por?: string | null
+          cliente_id?: string
+          criada_em?: string
+          id?: string
+          ip?: string | null
+          observacoes?: string | null
+          respondido_em?: string
+          respostas?: Json
+          respostas_sim?: number
+          responsavel_aceito_em?: string | null
+          responsavel_cpf?: string | null
+          responsavel_nome?: string | null
+          responsavel_vinculo?: string | null
+          status?: Database["public"]["Enums"]["status_parq"]
+          termo_aceito_em?: string
+          termo_hash?: string
+          user_agent?: string | null
+          validade?: string
+          versao?: string
+          versao_id?: string
+        }
+        Relationships: []
+      }
+      parq_versoes: {
+        Row: {
+          aviso_html: string
+          criada_em: string
+          id: string
+          mensagem_apto: string
+          mensagem_atencao: string
+          mensagem_menor: string
+          mensagem_renovacao: string
+          termo_html: string
+          versao: string
+          vigente: boolean
+          vigente_desde: string
+        }
+        Insert: {
+          aviso_html: string
+          criada_em?: string
+          id?: string
+          mensagem_apto: string
+          mensagem_atencao: string
+          mensagem_menor: string
+          mensagem_renovacao: string
+          termo_html: string
+          versao: string
+          vigente?: boolean
+          vigente_desde: string
+        }
+        Update: {
+          aviso_html?: string
+          criada_em?: string
+          id?: string
+          mensagem_apto?: string
+          mensagem_atencao?: string
+          mensagem_menor?: string
+          mensagem_renovacao?: string
+          termo_html?: string
+          versao?: string
+          vigente?: boolean
+          vigente_desde?: string
+        }
+        Relationships: []
       }
       creditos_eventos: {
         Row: {
@@ -1141,6 +1697,28 @@ export type Database = {
             referencedColumns: ["matricula_id"]
           },
         ]
+      }
+      desistencias: {
+        Row: {
+          aulas_utilizadas: number
+          cliente_id: string
+          comprada_em: string
+          criada_em: string
+          decidida_por: string | null
+          devolvido_centavos: number
+          dias_desde_compra: number
+          id: string
+          matricula_id: string
+          motivo: string | null
+          origem_contratacao: string | null
+          pago_centavos: number
+          produto_nome: string
+          retido_centavos: number
+          valor_aula_avulsa_centavos: number
+        }
+        Insert: never
+        Update: never
+        Relationships: []
       }
       despesas_recorrentes: {
         Row: {
@@ -2141,8 +2719,53 @@ export type Database = {
           },
         ]
       }
+      pausas_matricula: {
+        Row: {
+          ativada_em: string | null
+          atualizada_em: string
+          ciclo_na_pausa: number | null
+          cliente_id: string
+          criada_em: string
+          data_fim_antes: string | null
+          data_fim_depois: string | null
+          decidida_em: string | null
+          decidida_por: string | null
+          dia_renovacao_antes: number | null
+          dias_efetivos: number | null
+          encerrada_em: string | null
+          fim: string
+          id: string
+          inicio: string
+          lotes_estendidos: number | null
+          matricula_id: string
+          motivo_decisao: string | null
+          observacao: string | null
+          solicitada_em: string
+          solicitada_por: string | null
+          status: Database["public"]["Enums"]["status_pausa"]
+          tipo: Database["public"]["Enums"]["tipo_pausa"]
+        }
+        Insert: {
+          cliente_id: string
+          fim: string
+          inicio: string
+          matricula_id: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_pausa"]
+          tipo?: Database["public"]["Enums"]["tipo_pausa"]
+        }
+        Update: {
+          fim?: string
+          inicio?: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["status_pausa"]
+          tipo?: Database["public"]["Enums"]["tipo_pausa"]
+        }
+        Relationships: []
+      }
       presencas: {
         Row: {
+          wellhub_product_id: number | null
           agendamento_id: string | null
           atualizada_em: string
           canal: Database["public"]["Enums"]["canal_aula"]
@@ -2351,6 +2974,7 @@ export type Database = {
           ordem: number
           periodicidade_dias: number
           periodicidade_meses: number | null
+          politica_contratacao: string
           preco_centavos: number
           produto_sucessor_id: string | null
           renova_automaticamente: boolean
@@ -2381,6 +3005,7 @@ export type Database = {
           ordem?: number
           periodicidade_dias: number
           periodicidade_meses?: number | null
+          politica_contratacao?: string
           preco_centavos: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
@@ -2411,6 +3036,7 @@ export type Database = {
           ordem?: number
           periodicidade_dias?: number
           periodicidade_meses?: number | null
+          politica_contratacao?: string
           preco_centavos?: number
           produto_sucessor_id?: string | null
           renova_automaticamente?: boolean
@@ -2927,6 +3553,8 @@ export type Database = {
       }
       solicitacoes_contratacao: {
         Row: {
+          abatimento_centavos: number
+          abatimento_origem_id: string | null
           atualizada_em: string
           cliente_id: string
           criada_em: string
@@ -3181,6 +3809,7 @@ export type Database = {
           duracao_minutos: number
           horario: string
           id: string
+          minimo_alunos: number | null
           modalidade: string
           modalidade_id: string | null
           professora_id: string
@@ -3195,6 +3824,7 @@ export type Database = {
           duracao_minutos?: number
           horario: string
           id?: string
+          minimo_alunos?: number | null
           modalidade?: string
           modalidade_id?: string | null
           professora_id: string
@@ -3209,6 +3839,7 @@ export type Database = {
           duracao_minutos?: number
           horario?: string
           id?: string
+          minimo_alunos?: number | null
           modalidade?: string
           modalidade_id?: string | null
           professora_id?: string
@@ -4194,14 +4825,138 @@ export type Database = {
           },
         ]
       }
+      vw_conferencias_quorum: {
+        Row: {
+          agendados: number | null
+          cancelamento_id: string | null
+          conferida_em: string | null
+          data: string | null
+          decisao: string | null
+          fixos: number | null
+          horario: string | null
+          id: string | null
+          inicio_da_aula: string | null
+          minimo: number | null
+          modalidade: string | null
+          motivo: string | null
+          professora_nome: string | null
+          reaberta: boolean | null
+          sala_nome: string | null
+          turma_id: string | null
+        }
+        Relationships: []
+      }
+      vw_convidados: {
+        Row: {
+          agendamento_id: string | null
+          capacidade: number | null
+          ciclo: number | null
+          convidado_cliente_id: string | null
+          convidado_email: string | null
+          convidado_funil: Database["public"]["Enums"]["estagio_funil"] | null
+          convidado_nome: string | null
+          convidado_telefone: string | null
+          convidado_ultima_aula: string | null
+          data: string | null
+          decidida_em: string | null
+          decisor_nome: string | null
+          devolve_beneficio: boolean | null
+          horario: string | null
+          id: string | null
+          matricula_id: string | null
+          modalidade: string | null
+          motivo_decisao: string | null
+          observacao: string | null
+          plano_nome: string | null
+          solicitada_em: string | null
+          status: Database["public"]["Enums"]["status_convidado"] | null
+          titular_cliente_id: string | null
+          titular_email: string | null
+          titular_nome: string | null
+          turma_id: string | null
+          turma_rotulo: string | null
+          vagas: number | null
+        }
+        Relationships: []
+      }
+      vw_desistencias: {
+        Row: {
+          aulas_utilizadas: number | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          comprada_em: string | null
+          criada_em: string | null
+          decisor_nome: string | null
+          devolvido_centavos: number | null
+          dias_desde_compra: number | null
+          id: string | null
+          matricula_id: string | null
+          motivo: string | null
+          origem_contratacao: string | null
+          pago_centavos: number | null
+          produto_nome: string | null
+          retido_centavos: number | null
+          valor_aula_avulsa_centavos: number | null
+        }
+        Relationships: []
+      }
+      vw_repasse_sem_presenca: {
+        Row: {
+          cliente_conhecido: string | null
+          competencia: string | null
+          data: string | null
+          gympass_id: string | null
+          hora: string | null
+          produto: string | null
+          tipo_checkin: string | null
+          valor_centavos: number | null
+          visitante: string | null
+        }
+        Relationships: []
+      }
+      vw_pausas: {
+        Row: {
+          ativada_em: string | null
+          cliente_email: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          data_fim_antes: string | null
+          data_fim_depois: string | null
+          decidida_em: string | null
+          decisor_nome: string | null
+          dia_renovacao_antes: number | null
+          dias_efetivos: number | null
+          dias_pedidos: number | null
+          encerrada_em: string | null
+          fim: string | null
+          id: string | null
+          inicio: string | null
+          lotes_estendidos: number | null
+          matricula_id: string | null
+          motivo_decisao: string | null
+          observacao: string | null
+          plano_nome: string | null
+          semestral: boolean | null
+          solicitada_em: string | null
+          status: Database["public"]["Enums"]["status_pausa"] | null
+          tipo: Database["public"]["Enums"]["tipo_pausa"] | null
+          turma_fixa: boolean | null
+        }
+        Relationships: []
+      }
       vw_solicitacoes: {
         Row: {
+          abatimento_centavos: number | null
+          valor_a_cobrar_centavos: number | null
           cliente_email: string | null
           cliente_id: string | null
           cliente_nome: string | null
           cobranca_id: string | null
           cobranca_status: Database["public"]["Enums"]["status_cobranca"] | null
           cobranca_vencimento: string | null
+          contrato_aceito: boolean | null
           decidida_em: string | null
           decisor_nome: string | null
           forma_pagamento: string | null
@@ -4215,11 +4970,14 @@ export type Database = {
           produto_id: string | null
           produto_nome: string | null
           produto_status: Database["public"]["Enums"]["status_produto"] | null
+          politica_contratacao: string | null
           solicitada_em: string | null
           solicitante_nome: string | null
           status: Database["public"]["Enums"]["status_solicitacao"] | null
           tipo_produto: Database["public"]["Enums"]["tipo_produto"] | null
           turmas: string[] | null
+          turmas_fixas: number | null
+          turmas_rotulo: string[] | null
           url_pagamento: string | null
         }
         Relationships: [
@@ -4366,7 +5124,119 @@ export type Database = {
         Args: { p_solicitacao: string }
         Returns: undefined
       }
+      catalogo_do_aluno: {
+        Args: never
+        Returns: {
+          codigo: string
+          motivo: string
+          produto_id: string
+        }[]
+      }
       cliente_atual: { Args: never; Returns: string }
+      aceitar_contrato: {
+        Args: { p_forma_pagamento?: string; p_solicitacao: string; p_versao: string }
+        Returns: string
+      }
+      avaliar_atestado_parq: {
+        Args: {
+          p_aprovado: boolean
+          p_documento: string
+          p_motivo?: string
+          p_valido_ate?: string
+        }
+        Returns: boolean
+      }
+      contrato_aceito: { Args: { p_solicitacao: string }; Returns: boolean }
+      contrato_resumo: { Args: { p_solicitacao: string }; Returns: Json }
+      contrato_tags: { Args: { p_produto: string }; Returns: string[] }
+      definir_autorizacao_imagem: {
+        Args: { p_autoriza: boolean; p_cliente?: string }
+        Returns: boolean
+      }
+      enviar_atestado_parq: {
+        Args: {
+          p_arquivo_nome: string
+          p_arquivo_path: string
+          p_emitido_em?: string
+          p_resposta: string
+        }
+        Returns: string
+      }
+      ler_parq: {
+        Args: { p_resposta: string }
+        Returns: {
+          cliente_id: string
+          ip: string
+          observacoes: string
+          respondido_em: string
+          respostas: Json
+          responsavel_cpf: string
+          responsavel_nome: string
+          responsavel_vinculo: string
+          status: string
+          termo_aceito_em: string
+          validade: string
+          versao: string
+        }[]
+      }
+      meus_contratos: {
+        Args: never
+        Returns: {
+          aceito_em: string
+          formato: string
+          id: string
+          matricula_id: string
+          produto: string
+          status_matricula: string
+          valor_centavos: number
+          versao: string
+        }[]
+      }
+      montar_contrato: {
+        Args: { p_aceite_em?: string; p_solicitacao: string; p_versao?: string }
+        Returns: {
+          corpo_html: string
+          resumo: Json
+          tags: string[]
+          versao: string
+          versao_id: string
+        }[]
+      }
+      parq_impede_agendamento: { Args: { p_cliente: string }; Returns: string }
+      parq_situacao: {
+        Args: { p_cliente: string }
+        Returns: {
+          liberado: boolean
+          mensagem: string
+          respondido_em: string
+          resposta_id: string
+          situacao: string
+          validade: string
+          versao: string
+        }[]
+      }
+      responder_parq: {
+        Args: {
+          p_aceita_termo: boolean
+          p_cliente?: string
+          p_observacoes?: string
+          p_respostas: Json
+          p_responsavel_cpf?: string
+          p_responsavel_nome?: string
+          p_responsavel_vinculo?: string
+        }
+        Returns: string
+      }
+      vincular_contrato_ao_pagamento: {
+        Args: {
+          p_cobranca: string
+          p_forma: string
+          p_matricula: string
+          p_provider_ref: string
+          p_solicitacao: string
+        }
+        Returns: boolean
+      }
       cobranca_cancelada: {
         Args: {
           p_estorno?: boolean
@@ -4403,13 +5273,17 @@ export type Database = {
         }
         Returns: string
       }
+      importar_repasse_wellhub: {
+        Args: { p_competencia: string; p_linhas: Json; p_data_caixa?: string }
+        Returns: Json
+      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string
           p_mes: string
           p_valor_total_centavos: number
         }
-        Returns: number
+        Returns: Json
       }
       confirmar_cancelamento_plano: {
         Args: { p_observacao?: string; p_solicitacao: string }
@@ -4570,6 +5444,7 @@ export type Database = {
       impedimento_para_contratar: {
         Args: { p_cliente: string; p_produto: string }
         Returns: {
+          codigo: string
           excepcionavel: boolean
           motivo: string
         }[]
@@ -4822,12 +5697,223 @@ export type Database = {
         Args: { p_cliente: string; p_data: string; p_turma: string }
         Returns: boolean
       }
+      rotulo_turma: { Args: { p_turma: string }; Returns: string }
+      ocupacao_assento_fixo: {
+        Args: { p_de?: string; p_turma: string }
+        Returns: {
+          dia: string
+          ocupadas: number
+          capacidade: number
+          vagas: number
+        }[]
+      }
+      proxima_ocorrencia: {
+        Args: { p_de?: string; p_dia_semana: number }
+        Returns: string
+      }
       trocar_turma_fixa: {
         Args: { p_imediato?: boolean; p_turma_nova: string; p_vinculo: string }
         Returns: string
       }
-      validar_assento_fixo: {
+      elegibilidade_convidado: {
+        Args: { p_cliente: string }
+        Returns: { ok: boolean; motivo: string | null }[]
+      }
+      beneficio_convidado: {
+        Args: { p_matricula: string }
+        Returns: {
+          tem: boolean
+          por_ciclo: number
+          ciclo: number
+          usado: boolean
+          motivo: string | null
+        }[]
+      }
+      indicar_convidado: {
+        Args: {
+          p_matricula: string
+          p_nome: string
+          p_telefone: string
+          p_turma: string
+          p_data: string
+          p_email?: string
+          p_observacao?: string
+        }
+        Returns: string
+      }
+      confirmar_convidado: { Args: { p_convite: string }; Returns: string }
+      recusar_convidado: {
+        Args: { p_convite: string; p_motivo: string }
+        Returns: undefined
+      }
+      cancelar_convidado: { Args: { p_convite: string }; Returns: string }
+      convite_devolve_beneficio: {
+        Args: { p_convite: string }
+        Returns: boolean
+      }
+      meus_convidados: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          matricula_id: string
+          plano_nome: string
+          status: Database["public"]["Enums"]["status_convidado"]
+          data: string
+          horario: string
+          turma_rotulo: string
+          convidado_nome: string
+          convidado_telefone: string | null
+          observacao: string | null
+          motivo_decisao: string | null
+          solicitada_em: string
+          decidida_em: string | null
+          pode_desistir: boolean
+          devolve_beneficio: boolean
+        }[]
+      }
+      abatimento_disponivel: {
+        Args: { p_cliente: string }
+        Returns: {
+          tem: boolean
+          valor_centavos: number
+          origem_matricula_id: string | null
+          produto_nome: string | null
+          experiencia_em: string | null
+          prazo_ate: string | null
+          motivo: string | null
+        }[]
+      }
+      valor_a_cobrar: { Args: { p_solicitacao: string }; Returns: number }
+      desistencia_possivel: {
+        Args: { p_matricula: string }
+        Returns: {
+          pode: boolean
+          motivo: string | null
+          comprada_em: string | null
+          dias_desde_compra: number
+          prazo_ate: string | null
+          pago_centavos: number
+          aulas_utilizadas: number
+          valor_aula_avulsa_centavos: number
+          retido_centavos: number
+          devolver_centavos: number
+          origem_contratacao: string | null
+          alerta: string | null
+        }[]
+      }
+      desistir_da_contratacao: {
+        Args: { p_matricula: string; p_motivo?: string }
+        Returns: number
+      }
+      minhas_notificacoes: {
+        Args: { p_limite?: number; p_so_nao_lidas?: boolean }
+        Returns: {
+          id: string
+          tipo: string
+          titulo: string
+          descricao: string | null
+          link: string | null
+          criada_em: string
+          lida_em: string | null
+        }[]
+      }
+      notificacoes_nao_lidas: { Args: Record<string, never>; Returns: number }
+      marcar_notificacao_lida: { Args: { p_id: string }; Returns: undefined }
+      marcar_notificacoes_lidas: { Args: Record<string, never>; Returns: number }
+      minhas_preferencias_notificacao: {
+        Args: Record<string, never>
+        Returns: {
+          tipo: string
+          rotulo: string
+          descricao: string | null
+          no_sistema: boolean
+          por_email: boolean
+          ordem: number
+        }[]
+      }
+      salvar_preferencia_notificacao: {
+        Args: { p_tipo: string; p_no_sistema: boolean; p_por_email: boolean }
+        Returns: undefined
+      }
+      direito_a_pausa: {
+        Args: { p_matricula: string; p_tipo?: Database["public"]["Enums"]["tipo_pausa"] }
+        Returns: {
+          pode: boolean
+          motivo: string | null
+          max_dias: number
+          proxima_liberacao: string | null
+        }[]
+      }
+      solicitar_pausa: {
+        Args: {
+          p_matricula: string
+          p_inicio: string
+          p_fim: string
+          p_tipo?: Database["public"]["Enums"]["tipo_pausa"]
+          p_observacao?: string
+        }
+        Returns: string
+      }
+      aprovar_pausa: {
+        Args: { p_pausa: string; p_motivo?: string }
+        Returns: Database["public"]["Enums"]["status_pausa"]
+      }
+      recusar_pausa: { Args: { p_pausa: string; p_motivo: string }; Returns: undefined }
+      cancelar_pausa: { Args: { p_pausa: string }; Returns: undefined }
+      encerrar_pausa: { Args: { p_pausa: string; p_em?: string }; Returns: number }
+      ativar_pausa: { Args: { p_pausa: string }; Returns: undefined }
+      processar_pausas: {
+        Args: never
+        Returns: {
+          acao: string
+          pausa_id: string
+          matricula_id: string
+          dias: number
+        }[]
+      }
+      quorum_da_aula: {
         Args: { p_data: string; p_turma: string }
+        Returns: {
+          agendados: number
+          fixos: number
+          minimo: number
+          atende: boolean
+          motivo: string | null
+        }[]
+      }
+      conferir_quorum: {
+        Args: { p_agora?: string }
+        Returns: {
+          turma_id: string
+          data: string
+          decisao: string
+          agendados: number
+          minimo: number
+        }[]
+      }
+      horas_em_texto: { Args: { p: number }; Returns: string }
+      turmas_para_assento_fixo: {
+        Args: { p_cliente?: string; p_de?: string }
+        Returns: {
+          turma_id: string
+          modalidade: string
+          dia_semana: number
+          horario: string
+          duracao_minutos: number
+          professora_nome: string | null
+          sala_nome: string | null
+          categoria_cor: string | null
+          dia: string
+          capacidade: number
+          ocupadas: number
+          vagas: number
+          elegivel: boolean
+          ja_contratada: boolean
+          motivo: string | null
+        }[]
+      }
+      validar_assento_fixo: {
+        Args: { p_data?: string; p_turma: string }
         Returns: undefined
       }
       valor_da_aula: {
@@ -4842,8 +5928,20 @@ export type Database = {
       }
     }
     Enums: {
+      status_parq:
+        | "apto"
+        | "aguardando_documento"
+        | "documento_enviado"
+        | "documento_aprovado"
+        | "documento_recusado"
       base_percentual: "mensalidade_contratada"
-      canal_aula: "mensalista" | "wellhub" | "classpass" | "avulsa"
+      canal_aula:
+        | "mensalista"
+        | "wellhub"
+        | "classpass"
+        | "avulsa"
+        | "totalpass"
+        | "convidado"
       categoria_entrada:
         | "mensalista"
         | "wellhub"
@@ -4852,6 +5950,7 @@ export type Database = {
         | "workshop"
         | "evento"
         | "outros"
+        | "totalpass"
       estagio_funil:
         | "lead"
         | "pediu_informacoes"
@@ -4887,6 +5986,8 @@ export type Database = {
         | "passou_na_porta"
         | "outros"
         | "portal_aluna"
+        | "totalpass"
+        | "convidado"
       plano_tipo: "creditos" | "semanal"
       rotina_checklist: "abertura" | "fechamento"
       status_agendamento: "agendado" | "cancelado"
@@ -4907,6 +6008,21 @@ export type Database = {
         | "confirmada"
         | "cancelada"
       status_matricula: "ativa" | "pausada" | "cancelada" | "inadimplente"
+      status_convidado:
+        | "solicitado"
+        | "confirmado"
+        | "recusado"
+        | "cancelado"
+        | "compareceu"
+        | "faltou"
+      status_pausa:
+        | "solicitada"
+        | "aprovada"
+        | "ativa"
+        | "encerrada"
+        | "recusada"
+        | "cancelada"
+      tipo_pausa: "regular" | "atestado"
       status_produto: "venda" | "interno" | "legado" | "arquivado"
       status_saida: "prevista" | "paga" | "cancelada"
       status_solicitacao:
@@ -5073,8 +6189,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      status_parq: [
+        "apto",
+        "aguardando_documento",
+        "documento_enviado",
+        "documento_aprovado",
+        "documento_recusado",
+      ],
       base_percentual: ["mensalidade_contratada"],
-      canal_aula: ["mensalista", "wellhub", "classpass", "avulsa"],
+      canal_aula: ["mensalista", "wellhub", "classpass", "avulsa", "totalpass", "convidado"],
       categoria_entrada: [
         "mensalista",
         "wellhub",
@@ -5122,6 +6245,8 @@ export const Constants = {
         "passou_na_porta",
         "outros",
         "portal_aluna",
+        "totalpass",
+        "convidado",
       ],
       plano_tipo: ["creditos", "semanal"],
       rotina_checklist: ["abertura", "fechamento"],
@@ -5145,6 +6270,23 @@ export const Constants = {
         "cancelada",
       ],
       status_matricula: ["ativa", "pausada", "cancelada", "inadimplente"],
+      status_convidado: [
+        "solicitado",
+        "confirmado",
+        "recusado",
+        "cancelado",
+        "compareceu",
+        "faltou",
+      ],
+      status_pausa: [
+        "solicitada",
+        "aprovada",
+        "ativa",
+        "encerrada",
+        "recusada",
+        "cancelada",
+      ],
+      tipo_pausa: ["regular", "atestado"],
       status_produto: ["venda", "interno", "legado", "arquivado"],
       status_saida: ["prevista", "paga", "cancelada"],
       status_solicitacao: [

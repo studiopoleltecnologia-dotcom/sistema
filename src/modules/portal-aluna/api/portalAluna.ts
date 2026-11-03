@@ -182,19 +182,135 @@ export async function listarPlanos() {
 }
 
 /**
+ * Por que cada produto do catálogo pode ou não ser contratado por ESTE
+ * aluno — o mesmo veredito que trava `solicitar_contratacao()`.
+ *
+ * Existe porque a RLS não consegue filtrar elegibilidade: "já fez a
+ * experimental" é histórico de presença, não dono de linha. Sem esta
+ * chamada o catálogo oferece o que o banco vai recusar, e o aluno
+ * descobre no clique.
+ */
+export async function listarRestricoesCatalogo() {
+  const { data, error } = await requireSupabase().rpc('catalogo_do_aluno')
+  if (error) throw error
+  return data
+}
+
+/**
  * Contratar pelo portal cria um PEDIDO, não uma matrícula.
  *
  * Nada é liberado aqui: sem aprovação da gestão e sem pagamento
  * confirmado não existe matrícula, e portanto não existe crédito para
  * agendar. O aluno acompanha o pedido em “Meu plano”.
  */
-export async function contratarPlano(args: { clienteId: string; planoId: string }) {
+export async function contratarPlano(args: {
+  clienteId: string
+  planoId: string
+  /**
+   * Turma fixa: as turmas escolhidas. O banco exige exatamente
+   * `produtos.turmas_fixas` turmas distintas e confere a vaga de cada
+   * uma ANTES de criar o pedido — não dá para pedir primeiro e escolher
+   * depois, senão o pedido entraria na fila para ser recusado.
+   */
+  turmaIds?: string[]
+}) {
   const { data, error } = await requireSupabase().rpc('solicitar_contratacao', {
     p_cliente: args.clienteId,
     p_produto: args.planoId,
+    p_turmas: args.turmaIds ?? [],
   })
   if (error) throw error
   return data
+}
+
+/**
+ * A grade como quem vai assinar um assento precisa vê-la.
+ *
+ * Não é `vw_grade_publica`: aqui vem a vaga calculada para a próxima
+ * ocorrência de cada turma, somando assento fixo e reserva por crédito —
+ * a MESMA conta que `validar_assento_fixo()` usa para aceitar ou recusar.
+ * Era o furo da tela da equipe, que contava por conta própria e mostrava
+ * vaga onde o banco ia recusar.
+ */
+export async function turmasParaAssentoFixo() {
+  const { data, error } = await requireSupabase().rpc('turmas_para_assento_fixo', {})
+  if (error) throw error
+  return data ?? []
+}
+
+/**
+ * A pausa do plano deste aluno, quando há uma em aberto.
+ *
+ * Em aberto = pedida, aprovada à espera da data, ou em curso. Pausa
+ * encerrada não interessa a esta tela: o plano já voltou, e o histórico
+ * quem lê é a equipe.
+ */
+export async function minhaPausa() {
+  const { data, error } = await requireSupabase()
+    .from('vw_pausas')
+    .select('*')
+    .in('status', ['solicitada', 'aprovada', 'ativa'])
+    .order('inicio', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Pode pausar este plano, e por quantos dias.
+ *
+ * A conta é do banco (`direito_a_pausa`) e não da tela: o limite muda com
+ * o formato do plano (15 dias no mensal, 30 no semestral, 90 com
+ * atestado), com o intervalo desde a última pausa e com a situação da
+ * matrícula. Replicar isso no front seria a segunda versão da regra.
+ */
+export async function direitoAPausa(matriculaId: string, atestado = false) {
+  const { data, error } = await requireSupabase().rpc('direito_a_pausa', {
+    p_matricula: matriculaId,
+    p_tipo: atestado ? 'atestado' : 'regular',
+  })
+  if (error) throw error
+  return data?.[0] ?? null
+}
+
+export async function solicitarPausa(args: {
+  matriculaId: string
+  inicio: string
+  fim: string
+  atestado?: boolean
+  observacao?: string
+}) {
+  const { data, error } = await requireSupabase().rpc('solicitar_pausa', {
+    p_matricula: args.matriculaId,
+    p_inicio: args.inicio,
+    p_fim: args.fim,
+    p_tipo: args.atestado ? 'atestado' : 'regular',
+    p_observacao: args.observacao,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Desistir da pausa, enquanto ela não começou. */
+export async function desistirDaPausa(id: string) {
+  const { error } = await requireSupabase().rpc('cancelar_pausa', { p_pausa: id })
+  if (error) throw error
+}
+
+/**
+ * Desistir do pedido.
+ *
+ * Existe porque a espera é longa: quem pede turma fixa fica dias
+ * aguardando a confirmação da vaga, e sem esta saída a única forma de
+ * mudar de ideia seria pedir à equipe. `cancelar_solicitacao()` já
+ * aceitava o próprio aluno desde 24/09 — faltava o botão.
+ */
+export async function desistirDaSolicitacao(id: string) {
+  const { error } = await requireSupabase().rpc('cancelar_solicitacao', {
+    p_solicitacao: id,
+  })
+  if (error) throw error
 }
 
 /** O pedido em aberto do aluno, se houver — para “Meu plano” mostrar em que pé está. */
@@ -337,4 +453,93 @@ export async function obterMinhaSuspensao(clienteId: string, hoje: string) {
     .maybeSingle()
   if (error) throw error
   return data
+}
+
+// ------------------------------------------------------------
+// O convidado do semestral (regulamento 11.1)
+// ------------------------------------------------------------
+
+/**
+ * Os convites deste aluno — abertos e encerrados.
+ *
+ * Por RPC e não por `vw_convidados`: a view faz join no cadastro do
+ * convidado, que a RLS do portal esconde do titular (e com razão). Sob
+ * `security_invoker` ela devolveria zero linhas aqui.
+ */
+export async function meusConvidados() {
+  const { data, error } = await requireSupabase().rpc('meus_convidados')
+  if (error) throw error
+  return data ?? []
+}
+
+/** Este plano tem convidado disponível no ciclo corrente? */
+export async function beneficioConvidado(matriculaId: string) {
+  const { data, error } = await requireSupabase().rpc('beneficio_convidado', {
+    p_matricula: matriculaId,
+  })
+  if (error) throw error
+  return data?.[0] ?? null
+}
+
+/**
+ * Indicar o convidado do ciclo.
+ *
+ * O banco é que recusa: plano ativo do convidado, carência de 6 meses,
+ * benefício já usado, turma errada no dia e titular que não está naquela
+ * aula. A tela não repete nenhuma dessas contas — mostra a mensagem.
+ */
+export async function indicarConvidado(args: {
+  matriculaId: string
+  nome: string
+  telefone: string
+  turmaId: string
+  data: string
+  email?: string
+  observacao?: string
+}) {
+  const { data, error } = await requireSupabase().rpc('indicar_convidado', {
+    p_matricula: args.matriculaId,
+    p_nome: args.nome,
+    p_telefone: args.telefone,
+    p_turma: args.turmaId,
+    p_data: args.data,
+    p_email: args.email,
+    p_observacao: args.observacao,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Desistir do convite.
+ *
+ * Devolve `'beneficio_devolvido'` ou `'beneficio_consumido'` — a tela
+ * avisa qual dos dois ANTES do clique, lendo `devolve_beneficio`.
+ */
+export async function desistirDoConvidado(id: string) {
+  const { data, error } = await requireSupabase().rpc('cancelar_convidado', {
+    p_convite: id,
+  })
+  if (error) throw error
+  return data
+}
+
+// ------------------------------------------------------------
+// O abatimento da experimental (regulamento 10.1)
+// ------------------------------------------------------------
+
+/**
+ * Quanto a experimental deste aluno abate do plano, e até quando.
+ *
+ * A conta é do banco (`abatimento_disponivel`): o valor é o que ele
+ * efetivamente PAGOU pela experimental, e o prazo conta da experiência.
+ * Quando não tem, vem o motivo — é esse texto que a tela mostra, para a
+ * ausência do desconto não parecer defeito.
+ */
+export async function abatimentoDisponivel(clienteId: string) {
+  const { data, error } = await requireSupabase().rpc('abatimento_disponivel', {
+    p_cliente: clienteId,
+  })
+  if (error) throw error
+  return data?.[0] ?? null
 }

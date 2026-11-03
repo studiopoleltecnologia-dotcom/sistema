@@ -1,8 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
-
-const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand-500'
+import { CampoSenha } from '../../components/ui/CampoSenha'
 
 /**
  * Link de recuperação de senha chega com o token no fragmento da URL
@@ -73,31 +71,22 @@ export function DefinirNovaSenha() {
           </>
         ) : (
           <form onSubmit={handleSubmit}>
-            <label className="mb-4 block">
-              <span className="mb-1 block text-xs font-medium text-neutral-600">Nova senha</span>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className={inputCls}
-              />
-            </label>
+            <CampoSenha
+              className="mb-4"
+              rotulo="Nova senha"
+              valor={senha}
+              onChange={setSenha}
+              autoComplete="new-password"
+              dica="Mínimo de 6 caracteres."
+            />
 
-            <label className="mb-6 block">
-              <span className="mb-1 block text-xs font-medium text-neutral-600">
-                Confirmar senha
-              </span>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={confirmar}
-                onChange={(e) => setConfirmar(e.target.value)}
-                className={inputCls}
-              />
-            </label>
+            <CampoSenha
+              className="mb-6"
+              rotulo="Confirmar senha"
+              valor={confirmar}
+              onChange={setConfirmar}
+              autoComplete="new-password"
+            />
 
             {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 

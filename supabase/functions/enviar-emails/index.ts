@@ -18,6 +18,13 @@ const REMETENTE = 'Studio Pole L <contato@studiopolel.com.br>'
 const RESPONDER_PARA = 'carolinedsnunes@gmail.com'
 const PORTAL = 'https://studiopoleltecnologia-dotcom.github.io/sistema/#/portal'
 const MATRICULAS_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=cancelamentos'
+// A fila de pedidos de contratação — é desta aba que a gestão aprova a vaga.
+const CONTRATACOES_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=contratacoes'
+const AGENDA_ERP = 'https://sistema.studiopolel.com.br/#/agenda'
+const MATRICULAS_PAUSAS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=pausas'
+const MATRICULAS_CONVIDADOS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=convidados'
+const MATRICULAS_EM_ABERTO = 'https://sistema.studiopolel.com.br/#/matriculas?aba=em_aberto'
+const WELLHUB_ERP = 'https://sistema.studiopolel.com.br/#/financeiro/wellhub'
 // ?v muda quando a logo troca — fura o cache do Gmail (que guarda imagem por URL).
 const LOGO_URL = 'https://fgvxhwpqsxohqrccrlfn.supabase.co/storage/v1/object/public/publico/logo.png?v=2'
 const MAX_TENTATIVAS = 5
@@ -127,12 +134,19 @@ function render(tipo: string, d: Dados): Render {
       const valor = fmtReais(d.valor_centavos as number)
       const venc = dataExtenso(d.vencimento as string)
       const url = (d.url as string) || PORTAL
+      // O abatimento da experimental (10.1) precisa estar DITO: o aluno
+      // comparou o preço na tela do plano e vai estranhar um valor
+      // menor. Dizer que é o desconto dele transforma susto em bônus.
+      const abatido = Number(d.abatimento_centavos ?? 0)
       return {
         assunto: 'Sua mensalidade do Studio Pole L',
         html: layout('Mensalidade disponível 💜',
           `Oi, ${nome}! A mensalidade de <strong style="color:#241f33">${produto}</strong> já pode ser paga.<br><br>
            Valor: <strong>${valor}</strong><br>
            Vence em: <strong>${venc}</strong><br><br>
+           ${abatido > 0
+             ? `Já com <strong>${fmtReais(abatido)}</strong> abatidos da sua aula experimental 💜 O abatimento vale nesta primeira cobrança.<br><br>`
+             : ''}
            É só abrir o link e escolher como pagar.`,
           { texto: 'Pagar agora', url }),
       }
@@ -142,8 +156,11 @@ function render(tipo: string, d: Dados): Render {
     // a pessoa descobrir sozinha na hora de agendar." Este e-mail é a
     // parte "por escrito" — sem ele a regra vira uma surpresa ruim.
     case 'suspensao_faltas': {
-      const faltas = (d.faltas as number) ?? 3
-      const dias = (d.dias as number) ?? 15
+      // Os padrões acompanham o regulamento 4.7 de 01/10/2026 (2 faltas,
+      // 20 dias). Eles só entram se o enfileiramento vier sem os campos —
+      // mas um padrão errado é uma mentira esperando a hora de sair.
+      const faltas = (d.faltas as number) ?? 2
+      const dias = (d.dias as number) ?? 20
       const ate = dataExtenso(d.ate as string)
       return {
         assunto: 'Sobre suas aulas — agendamento antecipado pausado',
@@ -278,6 +295,293 @@ function render(tipo: string, d: Dados): Render {
           { texto: 'Ver agenda', url: `${PORTAL}/agenda` }),
       }
     }
+    // ---- Contratação ----
+    // Os quatro avisos de `solicitacoes_contratacao` NÃO EXISTIAM aqui.
+    // `avisar_aluno_contratacao()` os enfileirava desde 24/09 e o laço
+    // abaixo marcava cada um como "tipo desconhecido: …" — ou seja: todo
+    // aluno que contratou um plano pelo portal, por crédito ou não, não
+    // recebeu e-mail nenhum, e a fila foi acumulando linhas em `erro`.
+    // Achado ao fechar o fluxo da turma fixa, que depende de e-mail para
+    // existir.
+    case 'contratacao_para_aprovar': {
+      const turmas = (d.turmas as string[]) ?? []
+      const fixa = ((d.turmas_fixas as number) ?? 0) > 0
+      return {
+        assunto: `${fixa ? 'Turma fixa' : 'Contratação'} para confirmar — ${esc(d.nome)}`,
+        html: layout(fixa ? 'Pedido de turma fixa' : 'Contratação para aprovar',
+          `${esc(d.nome)} pediu <strong style="color:#241f33">${esc(d.produto)}</strong> pelo ${d.origem === 'portal' ? 'portal do aluno' : 'atendimento'} em ${esc(d.solicitada_em)}.<br><br>
+           ${fixa
+             ? `<strong style="color:#241f33">Nenhuma cobrança foi emitida.</strong> O assento sai da capacidade da sala, então o pedido espera a confirmação da vaga:<br><br>
+                <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+                  ${turmas.map((t) => `<tr><td style="padding:3px 0;color:#241f33">• ${esc(t)}</td></tr>`).join('')}
+                </table><br>
+                Confira a vaga na Agenda antes de aprovar. Aprovar é o que libera a cobrança.`
+             : '<strong style="color:#241f33">Nenhuma cobrança foi emitida.</strong> Este produto exige aprovação antes do pagamento.'}
+           <br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Valor</td><td style="padding:3px 0;color:#241f33">${fmtReais(d.valor_centavos as number)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Telefone</td><td style="padding:3px 0;color:#241f33">${esc(d.telefone) || '—'}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">E-mail</td><td style="padding:3px 0;color:#241f33">${esc(d.email) || '—'}</td></tr>
+           </table>`,
+          { texto: 'Ver pedidos de contratação', url: CONTRATACOES_ERP }),
+      }
+    }
+    case 'contratacao_aguardando_aprovacao': {
+      const turmas = (d.turmas as string[]) ?? []
+      return {
+        assunto: 'Recebemos seu pedido — estamos confirmando a vaga',
+        html: layout('Pedido recebido',
+          `Oi, ${nome}! Recebemos seu pedido de <strong style="color:#241f33">${esc(d.produto)}</strong> em ${esc(d.solicitada_em)}.<br><br>
+           ${turmas.length
+             ? `Turma${turmas.length > 1 ? 's' : ''} que você escolheu:<br>
+                <table style="border-collapse:collapse;font-size:14px;line-height:1.5;margin-top:6px">
+                  ${turmas.map((t) => `<tr><td style="padding:3px 0;color:#241f33">• ${esc(t)}</td></tr>`).join('')}
+                </table><br>
+                Como a sua vaga fica reservada durante todo o plano, ela sai da capacidade da turma — por isso a equipe confere se há lugar antes de qualquer cobrança.<br><br>`
+             : 'A equipe confirma seu pedido antes de qualquer cobrança.<br><br>'}
+           <strong style="color:#241f33">Nada foi cobrado.</strong> Você recebe um e-mail assim que a vaga for confirmada, e só então o pagamento é liberado.<br><br>
+           Mudou de ideia? Dá para desistir do pedido no app, em “Meu plano”.`,
+          { texto: 'Ver meu pedido', url: `${PORTAL}/meu-plano` }),
+      }
+    }
+    case 'contratacao_aprovada': {
+      const turmas = (d.turmas as string[]) ?? []
+      return {
+        assunto: turmas.length ? 'Sua vaga está confirmada!' : 'Sua contratação foi aprovada',
+        html: layout(turmas.length ? 'Vaga confirmada 💜' : 'Contratação aprovada',
+          `Oi, ${nome}! ${turmas.length ? 'Sua vaga está garantida' : 'Seu pedido foi aprovado'} em <strong style="color:#241f33">${esc(d.produto)}</strong>.<br><br>
+           ${turmas.length
+             ? `<table style="border-collapse:collapse;font-size:14px;line-height:1.5;margin-bottom:14px">
+                  ${turmas.map((t) => `<tr><td style="padding:3px 0;color:#241f33">• ${esc(t)}</td></tr>`).join('')}
+                </table>`
+             : ''}
+           Faltam dois passos, os dois no app: <strong style="color:#241f33">ler e aceitar o Contrato de Adesão</strong> e pagar. Valor: <strong>${fmtReais(d.valor_centavos as number)}</strong>.<br><br>
+           ${turmas.length ? 'Seu lugar fica reservado a partir do primeiro pagamento confirmado.' : 'Seus créditos são liberados assim que o pagamento for confirmado.'}`,
+          { texto: 'Aceitar o contrato e pagar', url: `${PORTAL}/meu-plano` }),
+      }
+    }
+    case 'contratacao_recusada':
+      return {
+        assunto: 'Sobre o seu pedido de plano',
+        html: layout('Não conseguimos confirmar seu pedido',
+          `Oi, ${nome}. Não foi possível seguir com o pedido de <strong style="color:#241f33">${esc(d.produto)}</strong>.<br><br>
+           <strong style="color:#241f33">Motivo:</strong> ${esc(d.motivo)}<br><br>
+           <strong>Nada foi cobrado.</strong> Se quiser, dá para escolher outra turma ou outro plano no app — e, se preferir conversar, é só responder este e-mail.`,
+          { texto: 'Ver os planos', url: `${PORTAL}/planos` }),
+      }
+    case 'contratacao_concluida':
+      return {
+        assunto: 'Tudo certo! Seu plano está ativo',
+        html: layout('Plano ativo 💜',
+          `Oi, ${nome}! Recebemos seu pagamento e o plano <strong style="color:#241f33">${esc(d.produto)}</strong> já está ativo.<br><br>
+           O contrato que você aceitou, com data e hora, fica guardado em “Meu plano → Documentos”.<br><br>
+           Bons treinos!`,
+          { texto: 'Ver minhas aulas', url: PORTAL }),
+      }
+    // Regulamento 5.1–5.2: a aula abaixo do mínimo se cancela sozinha, e a
+    // equipe fica sabendo. Cancelamento automático sem aviso é o pior dos
+    // dois mundos — ninguém confia no sistema e ninguém sabe o que houve.
+    //
+    // O assunto leva a turma e a hora porque este e-mail é lido no celular,
+    // de relance, e a pergunta é sempre "qual aula?".
+    case 'aula_cancelada_quorum': {
+      const agendados = (d.agendados as number) ?? 0
+      return {
+        assunto: `Aula cancelada por quórum — ${esc(d.turma)}`,
+        html: layout('Aula cancelada automaticamente',
+          `A aula abaixo não atingiu o mínimo de alunos até o prazo de conferência e <strong style="color:#241f33">foi cancelada pelo sistema</strong>.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Turma</td><td style="padding:3px 0;color:#241f33">${esc(d.turma)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Data</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.data as string)} às ${hhmm(d.horario as string)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Agendados</td><td style="padding:3px 0;color:#241f33">${agendados} de ${d.minimo} necessários</td></tr>
+           </table><br>
+           ${agendados > 0
+             ? 'Quem estava agendado já foi avisado por e-mail e teve o crédito devolvido.'
+             : 'Ninguém estava agendado, então não houve aviso a aluno.'}
+           <br><br>
+           Quer fazer a aula mesmo assim? Reabra em <strong>Agenda → Canceladas</strong>: a vaga volta a ser oferecida, mas os alunos avisados precisam agendar de novo.`,
+          { texto: 'Abrir a Agenda', url: AGENDA_ERP }),
+      }
+    }
+    // ---- Pausa do plano (regulamento §7) ----
+    // Seis avisos para um fluxo que o aluno não vê acontecer: ele pede e
+    // espera. Sem e-mail em cada passo, a única forma de saber em que pé
+    // está é abrir o app — e a pausa mexe na data de cobrança dele, que é
+    // a informação que mais gera dúvida depois.
+    case 'pausa_solicitada': {
+      const dias = (d.dias as number) ?? 0
+      return {
+        assunto: `Pausa solicitada — ${esc(d.nome)} · ${dias} dias`,
+        html: layout('Pedido de pausa de plano',
+          `${esc(d.nome)} pediu pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong> em ${esc(d.solicitada_em)}.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Tipo</td><td style="padding:3px 0;color:#241f33">${esc(d.tipo)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Período</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.inicio as string)} a ${dataCompleta(d.fim as string)} (${dias} dias)</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Telefone</td><td style="padding:3px 0;color:#241f33">${esc(d.telefone) || '—'}</td></tr>
+             ${d.observacao ? `<tr><td style="padding:3px 12px 3px 0;color:#928aa6;vertical-align:top">Observação</td><td style="padding:3px 0;color:#241f33">“${esc(d.observacao)}”</td></tr>` : ''}
+           </table><br>
+           <strong style="color:#241f33">A pausa só vale depois de aprovada.</strong> Enquanto isso o plano segue ativo e a cobrança também.`,
+          { texto: 'Ver pedidos de pausa', url: MATRICULAS_PAUSAS }),
+      }
+    }
+    case 'pausa_recebida':
+      return {
+        assunto: 'Recebemos seu pedido de pausa',
+        html: layout('Pedido de pausa recebido',
+          `Oi, ${nome}! Recebemos seu pedido de pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong> em ${esc(d.solicitada_em)}, de ${dataCompleta(d.inicio as string)} a ${dataCompleta(d.fim as string)}.<br><br>
+           <strong style="color:#241f33">Seu plano continua ativo até a pausa ser confirmada</strong> — inclusive a cobrança. A equipe analisa e você recebe um e-mail com a resposta.<br><br>
+           A data e a hora deste pedido ficam registradas: é o que garante que ele foi feito antes da pausa começar.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'pausa_aprovada':
+      return {
+        assunto: 'Sua pausa foi aprovada',
+        html: layout('Pausa aprovada',
+          `Oi, ${nome}! Sua pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong> está confirmada para <strong>${dataCompleta(d.inicio as string)} a ${dataCompleta(d.fim as string)}</strong>.<br><br>
+           Durante esse período a cobrança e o ciclo ficam <strong style="color:#241f33">congelados</strong>: você não é cobrado, não perde créditos, e os dias pausados são devolvidos no fim da vigência.<br><br>
+           Quer voltar antes? É só avisar — você só "gasta" os dias que de fato pausar.
+           ${d.motivo ? `<br><br>Observação da equipe: ${esc(d.motivo)}` : ''}`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'pausa_recusada':
+      return {
+        assunto: 'Sobre o seu pedido de pausa',
+        html: layout('Não conseguimos aprovar a pausa',
+          `Oi, ${nome}. Não foi possível aprovar a pausa do plano <strong style="color:#241f33">${esc(d.plano)}</strong>.<br><br>
+           <strong style="color:#241f33">Motivo:</strong> ${esc(d.motivo)}<br><br>
+           Seu plano <strong>continua ativo normalmente</strong>, sem nenhuma alteração. Se quiser conversar sobre outra data, é só responder este e-mail.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'pausa_iniciada':
+      return {
+        assunto: 'Seu plano está pausado',
+        html: layout('Plano pausado 🤍',
+          `Oi, ${nome}! A partir de hoje seu plano <strong style="color:#241f33">${esc(d.plano)}</strong> está pausado, com volta prevista para <strong>${dataCompleta(d.fim as string)}</strong>.<br><br>
+           Enquanto estiver pausado você não é cobrado e não consegue agendar aulas. Seus créditos ficam guardados: a validade deles anda junto com a pausa.<br><br>
+           Até já! 💜`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    // O único e-mail da série que precisa dizer um número novo: a data de
+    // cobrança do aluno MUDOU, porque a pausa empurra o aniversário do
+    // ciclo. Descobrir isso só quando a cobrança chega em outro dia é o
+    // tipo de surpresa que gera desconfiança.
+    case 'pausa_encerrada': {
+      const dias = (d.dias as number) ?? 0
+      return {
+        assunto: 'Seu plano voltou!',
+        html: layout('De volta aos treinos 💜',
+          `Oi, ${nome}! Seu plano <strong style="color:#241f33">${esc(d.plano)}</strong> está ativo de novo e você já pode agendar.<br><br>
+           A pausa durou <strong>${dias} ${dias === 1 ? 'dia' : 'dias'}</strong>, e esses dias foram devolvidos no fim da sua vigência${d.nova_vigencia ? `: ela agora vai até <strong>${dataCompleta(d.nova_vigencia as string)}</strong>` : ''}.<br><br>
+           <strong style="color:#241f33">Por isso a sua data de cobrança mudou</strong> — ela acompanhou os dias pausados, para você não pagar por tempo que não usou.`,
+          { texto: 'Agendar uma aula', url: PORTAL }),
+      }
+    }
+    // ---- Convidado do semestral (regulamento 11.1) ----
+    // O convidado não tem conta no portal, então o e-mail é o único canal
+    // deste fluxo: quem indicou só descobre a decisão por aqui. O aviso à
+    // gestão carrega o telefone de propósito — é o que permite dar um
+    // retorno à pessoa quando o convite é recusado por nível.
+    case 'convidado_indicado':
+      return {
+        assunto: `Convidado indicado — ${esc(d.convidado)} (${esc(d.nome)})`,
+        html: layout('Um convidado esperando confirmação',
+          `${esc(d.nome)} indicou um convidado em ${esc(d.solicitada_em)}.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Convidado</td><td style="padding:3px 0;color:#241f33">${esc(d.convidado)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Telefone</td><td style="padding:3px 0;color:#241f33">${esc(d.telefone_convidado) || '—'}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Aula</td><td style="padding:3px 0;color:#241f33">${esc(d.turma)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Data</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.data as string)}${d.horario ? ` às ${hhmm(d.horario as string)}` : ''}</td></tr>
+             ${d.observacao ? `<tr><td style="padding:3px 12px 3px 0;color:#928aa6;vertical-align:top">Observação</td><td style="padding:3px 0;color:#241f33">“${esc(d.observacao)}”</td></tr>` : ''}
+           </table><br>
+           O sistema já conferiu plano ativo, carência de 6 meses, benefício do ciclo e se o titular está nessa aula.
+           <strong style="color:#241f33">O que falta é a sua parte: nível e segurança.</strong> A vaga só é tomada quando você confirmar.`,
+          { texto: 'Ver os convidados', url: MATRICULAS_CONVIDADOS }),
+      }
+    case 'convidado_confirmado':
+      return {
+        assunto: `Convidado confirmado — ${esc(d.convidado)}`,
+        html: layout('Convidado confirmado 💜',
+          `Oi, ${nome}! <strong style="color:#241f33">${esc(d.convidado)}</strong> está confirmado na sua aula de ${esc(d.turma)}, em ${dataCompleta(d.data as string)}.<br><br>
+           A vaga já está reservada no nome dele. Peça para chegar uns 10 minutos antes, com roupa de treino — na primeira vez tem um cadastrinho rápido na recepção.<br><br>
+           Se ele não puder mais vir, avise com antecedência pelo app: dentro do prazo de cancelamento da aula, o seu convidado do ciclo volta a ficar disponível.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    case 'convidado_recusado':
+      return {
+        assunto: 'Sobre o seu convidado',
+        html: layout('Não conseguimos confirmar o convidado',
+          `Oi, ${nome}. Não foi possível confirmar <strong style="color:#241f33">${esc(d.convidado)}</strong> na aula de ${esc(d.turma)}, em ${dataCompleta(d.data as string)}.<br><br>
+           <strong style="color:#241f33">Motivo:</strong> ${esc(d.motivo)}<br><br>
+           <strong>O seu convidado deste ciclo não foi gasto</strong> — você pode indicar outra pessoa, ou a mesma em outra aula. Se quiser ajuda para escolher a turma, é só responder este e-mail.`,
+          { texto: 'Ver meu plano', url: `${PORTAL}/meu-plano` }),
+      }
+    // ---- Desistência de 7 dias (regulamento 9.7 / CDC art. 49) ----
+    // Este e-mail é o comprovante do acerto para o lado de lá. Quem
+    // desiste fica esperando um Pix: sem o valor por escrito, não tem
+    // como conferir se o que chegou está certo.
+    case 'desistencia_registrada': {
+      const aulas = (d.aulas as number) ?? 0
+      const retido = Number(d.retido_centavos ?? 0)
+      const devolvido = Number(d.devolvido_centavos ?? 0)
+      return {
+        assunto: 'Sua desistência foi registrada',
+        html: layout('Desistência registrada',
+          `Oi, ${nome}. Registramos a sua desistência de <strong style="color:#241f33">${esc(d.produto)}</strong>,
+           dentro do prazo de arrependimento previsto no art. 49 do Código de Defesa do Consumidor.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Valor pago</td><td style="padding:3px 0;color:#241f33">${fmtReais(Number(d.pago_centavos ?? 0))}</td></tr>
+             ${retido > 0
+               ? `<tr><td style="padding:3px 12px 3px 0;color:#928aa6">Aulas utilizadas</td><td style="padding:3px 0;color:#241f33">${aulas} ${aulas === 1 ? 'aula' : 'aulas'} · ${fmtReais(retido)}</td></tr>`
+               : ''}
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6"><strong>A devolver</strong></td><td style="padding:3px 0;color:#241f33"><strong>${fmtReais(devolvido)}</strong></td></tr>
+           </table><br>
+           ${devolvido > 0
+             ? 'A devolução é feita por Pix pela equipe. Se a chave que você quer usar for diferente da do pagamento, é só responder este e-mail.<br><br>'
+             : ''}
+           Seu plano foi encerrado hoje e as aulas que estavam marcadas foram canceladas.
+           Esperamos ver você por aqui outra vez 💜`,
+          { texto: 'Falar com a gente', url: PORTAL }),
+      }
+    }
+    // ---- A cobrança que não foi paga (A27) ----
+    // A gestão foi explícita sobre o limite: "não precisa ser algo no
+    // sistema, será algo manual. O sistema só precisa nos avisar que a
+    // cobrança não foi realizada." Então este e-mail não propõe régua de
+    // cobrança nem fala em liberar vaga — ele conta o que houve e diz
+    // quem é a pessoa, que é o que permite agir.
+    case 'cobranca_falhou':
+      return {
+        assunto: `Cobrança não paga — ${esc(d.nome)}`,
+        html: layout('Uma cobrança venceu sem pagamento',
+          `A cobrança de <strong style="color:#241f33">${esc(d.nome)}</strong> venceu e não foi paga.<br><br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Plano</td><td style="padding:3px 0;color:#241f33">${esc(d.plano)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Valor</td><td style="padding:3px 0;color:#241f33">${fmtReais(Number(d.valor_centavos ?? 0))}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Venceu em</td><td style="padding:3px 0;color:#241f33">${dataCompleta(d.vencimento as string)}</td></tr>
+             <tr><td style="padding:3px 12px 3px 0;color:#928aa6">Telefone</td><td style="padding:3px 0;color:#241f33">${esc(d.telefone) || '—'}</td></tr>
+           </table><br>
+           O plano ficou como <strong>pagamento em aberto</strong>: o aluno não consegue agendar novas aulas até regularizar, e os créditos dele não foram apagados.
+           ${d.turma_fixa
+             ? '<br><br><strong style="color:#241f33">Atenção: este aluno tem turma fixa.</strong> A vaga continua guardada — o sistema não libera sozinho. Se for o caso de oferecê-la a outra pessoa, isso é feito à mão na matrícula.'
+             : ''}`,
+          { texto: 'Ver quem está em aberto', url: MATRICULAS_EM_ABERTO }),
+      }
+    // ---- Plano Wellhub que o sistema não conhecia ----
+    // O repasse da Wellhub depende do plano do assinante (Silver+, Gold…),
+    // e o plano chega no payload do check-in. Quando aparece um que não
+    // está na tabela, o sistema o cadastra sozinho pelo valor padrão e
+    // pede o valor certo — porque receita prevista errada só aparece no
+    // dia 15, quando o repasse real não bate.
+    case 'wellhub_plano_novo':
+      return {
+        assunto: `Plano Wellhub novo: ${esc(d.nome)}`,
+        html: layout('Um plano Wellhub que não conhecíamos',
+          `Chegou um check-in de um plano novo: <strong style="color:#241f33">${esc(d.nome)}</strong> (id ${esc(String(d.product_id))}).<br><br>
+           Por enquanto ele entra no financeiro pelo valor padrão, ${fmtReais(Number(d.valor_padrao_centavos ?? 0))} por check-in.
+           Se o repasse desse plano for outro, é só informar — a previsão de receita passa a usar o valor certo daí em diante.<br><br>
+           Isso não trava nada: o check-in foi registrado, a aula conta na chamada e a professora é paga normalmente.`,
+          { texto: 'Informar o valor', url: WELLHUB_ERP }),
+      }
     default:
       return null
   }

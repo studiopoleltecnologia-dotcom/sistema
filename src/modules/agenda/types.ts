@@ -72,6 +72,19 @@ export const CANAL_LABEL: Record<CanalAula, string> = {
   wellhub: 'Wellhub',
   classpass: 'ClassPass',
   avulsa: 'Avulsa',
+  /*
+    "(manual)" enquanto não houver integração: hoje TODA reserva de TotalPass
+    é a equipe lançando à mão, e a professora na chamada precisa saber que
+    aquela vaga não veio de aplicativo nenhum. Quando a integração entrar, o
+    rótulo volta a ser só "TotalPass" — é a única linha que muda.
+  */
+  totalpass: 'TotalPass (manual)',
+  /*
+    O convidado do semestral (11.1). Aparece na chamada como qualquer
+    reserva — a professora precisa saber quem é aquela pessoa que não está
+    na lista de alunos, e que é a primeira aula dela aqui.
+  */
+  convidado: 'Convidado',
 }
 
 /** "19:00:00" → "19:00" */

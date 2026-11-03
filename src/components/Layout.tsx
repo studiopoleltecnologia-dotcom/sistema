@@ -27,6 +27,7 @@ import { cn } from './ui/cn'
 import { supabase } from '../lib/supabase'
 import { flags } from '../lib/flags'
 import { useMinhaFuncao, type FuncaoInterna } from '../lib/funcao'
+import { Sino } from '../modules/notificacoes/components/Sino'
 
 /**
  * Sub-item do menu: uma seção de dentro do módulo.
@@ -573,6 +574,10 @@ export function Layout() {
           <h1 className="truncate font-display text-base font-bold uppercase tracking-wide text-ink">
             {atual?.label ?? 'Studio Pole L'}
           </h1>
+          {/* O sino fica no cabeçalho e não no menu: ele precisa estar
+              visível em toda tela, inclusive nas que a pessoa abre e
+              fica. É o único lugar do ERP que avisa sem ser procurado. */}
+          <Sino />
         </header>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
           <Outlet />

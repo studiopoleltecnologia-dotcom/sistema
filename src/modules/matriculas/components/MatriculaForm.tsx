@@ -249,6 +249,7 @@ export function MatriculaForm({
               maximo={produto!.turmas_fixas}
               selecionadas={turmaIds}
               onChange={setTurmaIds}
+              clienteId={clienteId || undefined}
             />
           </div>
         )}

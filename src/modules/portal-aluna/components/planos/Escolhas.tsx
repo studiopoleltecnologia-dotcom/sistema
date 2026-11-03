@@ -2,11 +2,12 @@ import type { ReactNode } from 'react'
 import { CalendarCheck, Check, ChevronRight, Shuffle } from 'lucide-react'
 import { cn } from '../../../../components/ui/cn'
 import {
-  destaqueDoPlano,
-  entregaDoPlano,
+  expiracaoDoPlano,
   fmtPreco,
+  frequenciaSemanal,
   resumoAvulso,
   sufixoPreco,
+  tituloDoPlano,
   type Produto,
   type Recorrencia,
   type TipoPlano,
@@ -180,13 +181,21 @@ export function SeletorPeriodo({
 // ------------------------------------------------------------
 
 /**
- * Um plano: quanto entrega (o número grande), quanto custa e uma linha
- * de apoio. Nada de regras nem cobrança aqui — isso aparece na folha de
- * confirmação, antes do botão final. O cartão inteiro é clicável; o
- * "Escolher" é o sinal visual de que é.
+ * Um plano. A hierarquia foi invertida em 30/09/2026: o **preço** é o
+ * elemento dominante, não o número de aulas.
  *
- * O título não repete a navegação: dentro de "Por créditos → Semestral"
- * o cartão diz "8 aulas", não "Semestral · 8 créditos".
+ * O motivo é o que a decisão de compra realmente pesa. Dentro de "Por
+ * créditos → Mensal", os quatro planos diferem em duas coisas só —
+ * quantas aulas e quanto custa. O número de aulas era o que estava
+ * grande, num quadrado colorido, e o preço vinha depois em corpo menor:
+ * quem olhava de relance via "8" e tinha que procurar o valor. Agora é
+ * o contrário — o número de aulas é o **título** (identifica o plano) e
+ * o preço é o **destaque** (decide).
+ *
+ * As três linhas de apoio respondem, em ordem, as perguntas que vinham
+ * depois: com que frequência dá para treinar, o que acontece com o
+ * crédito que sobra, e quanto o semestral economiza. Regras completas e
+ * cobrança continuam na folha de confirmação, antes do botão final.
  */
 export function CartaoPlano({
   produto: p,
@@ -203,49 +212,64 @@ export function CartaoPlano({
   mostrarNome: boolean
   onEscolher: () => void
 }) {
-  const { numero, unidade } = destaqueDoPlano(p)
+  const frequencia = frequenciaSemanal(p)
+  const expiracao = expiracaoDoPlano(p)
   return (
     <button
       type="button"
       onClick={onEscolher}
       className={cn(
-        'flex w-full items-center gap-3 rounded-xl border p-3 text-left shadow-sm transition sm:gap-3.5 sm:p-3.5',
+        'group flex w-full flex-col rounded-xl border p-4 text-left shadow-sm transition',
         'outline-none hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-300',
         semestral
           ? 'border-brand-200 bg-brand-50/60 hover:border-brand-300'
           : 'border-neutral-200 bg-white hover:border-neutral-300',
       )}
     >
-      <span
-        className={cn(
-          'flex size-14 shrink-0 flex-col items-center justify-center rounded-lg',
-          semestral ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700',
-        )}
-      >
-        <span className="font-display text-2xl font-bold leading-none">{numero}</span>
-        <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide">{unidade}</span>
-      </span>
-
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-0.5">
-          <span className="font-display text-xl font-bold leading-tight text-neutral-900">
-            {fmtPreco(p.preco_centavos)}
+      {/* Título: identifica o plano. */}
+      <span className="flex items-start justify-between gap-2">
+        <span className="min-w-0">
+          <span className="block font-display text-base font-bold leading-tight text-neutral-900">
+            {tituloDoPlano(p)}
           </span>
-          <span className="text-xs font-medium text-neutral-500">{sufixoPreco(p)}</span>
+          {mostrarNome && (
+            <span className="mt-0.5 block truncate text-[11px] text-neutral-400">{p.nome}</span>
+          )}
         </span>
-        <span className="block text-xs leading-snug text-neutral-500">{entregaDoPlano(p)}</span>
-        {economia !== null && economia > 0 && (
-          <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-success-700">
-            Economia de {fmtPreco(economia)} no semestre
-          </span>
-        )}
-        {mostrarNome && (
-          <span className="mt-0.5 block truncate text-[11px] text-neutral-400">{p.nome}</span>
-        )}
+        <span
+          className={cn(
+            'mt-0.5 shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition',
+            semestral
+              ? 'bg-brand-600 text-white'
+              : 'bg-brand-50 text-brand-700 group-hover:bg-brand-600 group-hover:text-white',
+          )}
+        >
+          Escolher
+        </span>
       </span>
 
-      <span className="shrink-0 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white">
-        Escolher
+      {/* Destaque: decide. */}
+      <span className="mt-2 flex items-baseline gap-1">
+        <span className="font-display text-[32px] font-bold leading-none tracking-tight text-neutral-900">
+          {fmtPreco(p.preco_centavos)}
+        </span>
+        <span className="text-sm font-medium text-neutral-500">{sufixoPreco(p)}</span>
+      </span>
+
+      {economia !== null && economia > 0 && (
+        <span className="mt-1.5 self-start rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-semibold text-success-700">
+          Economia de {fmtPreco(economia)} no semestre
+        </span>
+      )}
+
+      {/* Apoio: as duas perguntas seguintes. */}
+      <span className="mt-2.5 flex flex-col gap-1 border-t border-neutral-200/70 pt-2.5 text-xs leading-snug text-neutral-500">
+        {frequencia && <span>{frequencia}, em qualquer modalidade da grade</span>}
+        {expiracao && (
+          <span className={p.acumula_creditos ? 'text-success-700' : 'font-medium text-neutral-700'}>
+            {expiracao}
+          </span>
+        )}
       </span>
     </button>
   )

@@ -405,6 +405,10 @@ export async function obterConfigAgendamento() {
 export async function atualizarConfigAgendamento(patch: {
   horas_cancelamento?: number
   valor_checkin_wellhub_centavos?: number
+  valor_checkin_totalpass_centavos?: number
+  minimo_alunos_turma?: number
+  horas_conferencia_quorum?: number
+  minutos_tolerancia_conferencia?: number
   dias_antecedencia_cobranca?: number
   dias_antecedencia_cancelamento_plano?: number
   dias_aviso_fim_compromisso?: number

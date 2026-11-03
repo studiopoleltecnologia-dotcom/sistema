@@ -158,8 +158,23 @@ function Cartao({
           <h4 className="font-display text-sm font-bold text-neutral-900">{s.cliente_nome}</h4>
           <p className="mt-0.5 text-sm text-neutral-600">{s.produto_nome}</p>
         </div>
-        <span className="shrink-0 font-display text-base font-bold text-neutral-900">
-          {(s.preco_centavos ?? 0) === 0 ? 'cortesia' : fmtCentavos(s.preco_centavos ?? 0)}
+        <span className="shrink-0 text-right">
+          <span className="block font-display text-base font-bold text-neutral-900">
+            {(s.preco_centavos ?? 0) === 0 ? 'cortesia' : fmtCentavos(s.preco_centavos ?? 0)}
+          </span>
+          {/*
+            O abatimento da experimental (10.1) aparece aqui porque a
+            cobrança vai sair MENOR que o preço do plano — e quem emite
+            precisa saber por quê antes de estranhar.
+          */}
+          {(s.abatimento_centavos ?? 0) > 0 && (
+            <span className="block text-[11px] leading-snug text-success-700">
+              −{fmtCentavos(s.abatimento_centavos ?? 0)} da experimental
+              <span className="block text-neutral-500">
+                cobrar {fmtCentavos(s.valor_a_cobrar_centavos ?? 0)}
+              </span>
+            </span>
+          )}
         </span>
       </header>
 
@@ -173,6 +188,26 @@ function Cartao({
           </Badge>
         )}
       </div>
+
+      {/* QUAIS turmas, escritas.
+          O cartão dizia só "1 turma fixa" — e a pergunta que trava a
+          aprovação é exatamente qual horário, porque é nele que se confere
+          a vaga. Quem aprovava tinha de abrir a Agenda e adivinhar.
+          `turmas_rotulo` vem da view, montado pelo banco. */}
+      {(s.turmas_rotulo?.length ?? 0) > 0 && (
+        <div className="mt-2 rounded-md border border-brand-100 bg-brand-50/60 px-2.5 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-700">
+            Vaga a confirmar
+          </p>
+          <ul className="mt-0.5 space-y-0.5">
+            {s.turmas_rotulo!.map((t) => (
+              <li key={t} className="text-xs font-medium text-neutral-800">
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* A justificativa é a autorização de exceção. Fica visível na fila
           porque é justamente o caso que merece um segundo olhar antes de
@@ -274,6 +309,15 @@ function Resolver({
           <b>{s.cliente_nome}</b> · {s.produto_nome} ·{' '}
           {cortesia ? 'cortesia' : fmtCentavos(s.preco_centavos ?? 0)}
         </p>
+
+        {(s.abatimento_centavos ?? 0) > 0 && (
+          <p className="rounded-md border border-success-200 bg-success-50 px-3 py-2 text-xs leading-relaxed text-success-800">
+            Abatimento da aula experimental: −{fmtCentavos(s.abatimento_centavos ?? 0)}. A
+            cobrança sai por <b>{fmtCentavos(s.valor_a_cobrar_centavos ?? 0)}</b>, só nesta
+            primeira — o preço do plano não muda. Por isso o cartão recorrente não serve aqui:
+            a assinatura repetiria o desconto todo mês.
+          </p>
+        )}
 
         {modo === 'aprovar' && (
           <p className="rounded-md bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-600">

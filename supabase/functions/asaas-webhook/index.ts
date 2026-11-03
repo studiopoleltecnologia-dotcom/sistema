@@ -42,9 +42,39 @@ function comparaSeguro(a: string, b: string): boolean {
 }
 
 const PAGOS = new Set(['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'])
-const VENCIDOS = new Set(['PAYMENT_OVERDUE', 'PAYMENT_CREDIT_CARD_CAPTURE_REFUSED'])
+const VENCIDOS = new Set([
+  'PAYMENT_OVERDUE',
+  'PAYMENT_CREDIT_CARD_CAPTURE_REFUSED',
+  // Recusado pela análise de risco do Asaas: o dinheiro não entrou, e para
+  // nós é o mesmo desfecho de uma captura recusada.
+  'PAYMENT_REPROVED_BY_RISK_ANALYSIS',
+])
 const CANCELADOS = new Set(['PAYMENT_DELETED'])
 const ESTORNADOS = new Set(['PAYMENT_REFUNDED', 'PAYMENT_PARTIALLY_REFUNDED'])
+
+/**
+ * Contestação no cartão. Antes caía em "ignorado": o aluno contestava, o
+ * Asaas devolvia o dinheiro, e no ERP a matrícula seguia ativa com crédito
+ * para agendar.
+ *
+ * As três fases que mapeiam para o que fazemos:
+ *
+ * · `REQUESTED` — chargeback aberto. O dinheiro sai.
+ * · `DISPUTE` — estamos contestando de volta. O dinheiro continua fora.
+ * · `AWAITING_CHARGEBACK_REVERSAL` — a reversão foi aceita e o dinheiro
+ *   está voltando, mas ainda não voltou. Continua fora.
+ *
+ * Nenhuma delas é "revertido". A volta do dinheiro chega como um
+ * `PAYMENT_RECEIVED` novo, e `cobranca_paga()` reconhece a cobrança em
+ * `chargeback` e devolve a receita. Foi feito assim de propósito: depender
+ * do nome exato do evento de reversão do Asaas seria depender de um detalhe
+ * que eu não confirmei no painel deles.
+ */
+const CONTESTADOS: Record<string, string> = {
+  PAYMENT_CHARGEBACK_REQUESTED: 'aberto',
+  PAYMENT_CHARGEBACK_DISPUTE: 'em_disputa',
+  PAYMENT_AWAITING_CHARGEBACK_REVERSAL: 'em_disputa',
+}
 
 /** Sempre 200 para desfecho de negócio — ver o cabeçalho deste arquivo. */
 const ok = (resultado: string, extra: Record<string, unknown> = {}) =>
@@ -178,6 +208,16 @@ Deno.serve(async (req) => {
       return ok(String(data), { evento })
     }
 
+    if (evento in CONTESTADOS) {
+      const { data, error } = await sb.rpc('cobranca_contestada', {
+        p_provider: 'asaas',
+        p_provider_ref: ref,
+        p_fase: CONTESTADOS[evento],
+      })
+      if (error) throw error
+      return ok(String(data), { evento })
+    }
+
     if (CANCELADOS.has(evento) || ESTORNADOS.has(evento)) {
       const { data, error } = await sb.rpc('cobranca_cancelada', {
         p_provider: 'asaas',
@@ -188,8 +228,10 @@ Deno.serve(async (req) => {
       return ok(String(data), { evento })
     }
 
-    // Todo o resto do catálogo do Asaas (PAYMENT_CREATED, _UPDATED,
-    // _BANK_SLIP_VIEWED…) é ruído para nós. 200 e segue.
+    // Todo o resto do catálogo do Asaas (PAYMENT_UPDATED,
+    // _BANK_SLIP_VIEWED, _AWAITING_RISK_ANALYSIS…) é ruído para nós: ou não
+    // muda dinheiro, ou o desfecho chega depois num evento que tratamos.
+    // 200 e segue.
     return ok('ignorado', { evento })
   } catch (e) {
     // Só chega aqui falha de infraestrutura. 500 é o certo: a
