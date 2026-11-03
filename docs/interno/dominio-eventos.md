@@ -24,13 +24,18 @@ de um ERP interno.
 ## 2. Por que ainda não foi feito
 
 A migração ficou para a próxima campanha. Quem puxava a urgência era a
-**Casinha de Portas Abertas**, de 07/11/2026 — e **a campanha caiu** (decisão
-da gestão, 02/11/2026).
+**Casinha de Portas Abertas**, de 07/11/2026 — e a decisão da gestão
+(02/11/2026) foi que **esse evento não teria página própria**.
 
-A página dela nunca chegou ao ar: ficou em `develop` e nunca foi promovida,
-então `sistema.studiopolel.com.br/portasabertas/` respondia **404** o tempo
-todo. Como o site não vai existir, os arquivos foram removidos junto com este
-registro — não houve link circulando para quebrar.
+⚠️ **O evento acontece; o que caiu foi o site.** Um registro anterior aqui
+dizia que a campanha tinha sido cancelada — estava errado, e a correção fica
+escrita para não se repetir.
+
+A página nunca chegou ao ar: ficou em `develop` e nunca foi promovida, então
+`sistema.studiopolel.com.br/portasabertas/` respondia **404** o tempo todo.
+Como não haveria site, os arquivos foram removidos — e, justamente por nunca
+ter respondido, não houve link circulando para quebrar. A divulgação correu
+por outros canais.
 
 **A decisão do domínio continua valendo** para a campanha seguinte: o que ela
 espera é só o passo a passo da §4.
