@@ -74,11 +74,24 @@ export function ListaAPagar({ itens, modo }: { itens: ItemAPagar[]; modo: 'lista
     )
   }
 
+  const comItens = BUCKETS.filter((b) => itens.some((i) => i.bucket === b.key))
+
+  /**
+   * Um prazo só, e sem atraso: o cabeçalho não informa nada que o título da
+   * seção logo acima já não diga, e repete o mesmo total. Sobe uma linha de
+   * chip e uma de soma em troca de zero informação — então não desenha.
+   *
+   * 'atrasada' é a exceção: ali o chip vermelho é o aviso, e ele vale a
+   * linha mesmo sozinho.
+   */
+  if (comItens.length === 1 && comItens[0].key !== 'atrasada') {
+    return <Linhas itens={itens} />
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      {BUCKETS.map((b) => {
+      {comItens.map((b) => {
         const lista = itens.filter((i) => i.bucket === b.key)
-        if (lista.length === 0) return null
         return (
           <div key={b.key}>
             <div className="mb-2 flex items-center gap-2">

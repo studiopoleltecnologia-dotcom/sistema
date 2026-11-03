@@ -23,7 +23,9 @@ import { cn } from '../../../components/ui/cn'
  * três formas diferentes, e escondia "a pagar" a três cliques de Saídas.
  * Cada seção migrou para dentro de Entradas ou Saídas (a direção do dinheiro
  * que já é o critério do menu), com o Lista/Calendário virando um alternador
- * dentro da tela em vez de rota própria. Ver PendentesPagar/RecorrentesCard.
+ * dentro da tela em vez de rota própria. Ver ListaAPagar; o cadastro das
+ * recorrências ficou num botão do topo de Saídas (ContasFixas), e não numa
+ * seção dentro do grupo Fixo recorrente.
  */
 type Sub = { to: string; label: string }
 type Grupo = {

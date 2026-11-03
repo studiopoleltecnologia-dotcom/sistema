@@ -4,7 +4,6 @@ import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { CardColapsavel, type ChipTom } from '../../../components/ui/CardColapsavel'
-import { EmptyState } from '../../../components/ui/EmptyState'
 import { Input } from '../../../components/ui/Input'
 import { KpiCard } from '../../../components/ui/KpiCard'
 import { Modal } from '../../../components/ui/Modal'
@@ -15,8 +14,8 @@ import { Tabs } from '../../../components/ui/Tabs'
 import { cn } from '../../../components/ui/cn'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
+import { ContasFixasModal } from '../components/ContasFixas'
 import { ListaAPagar, type BucketKey, type ItemAPagar } from '../components/ListaAPagar'
-import { RecorrentesCard } from '../components/RecorrentesCard'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
 import { mesAtual, periodoMes, type Periodo } from '../periodo'
 import {
@@ -66,7 +65,8 @@ export function SaidasPage() {
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoMes(mesAtual()))
   const [modo, setModo] = useState<'lista' | 'calendario'>('lista')
   const [novaSaida, setNovaSaida] = useState<{ tipo: TipoSaida } | null>(null)
-  const [novaRecorrencia, setNovaRecorrencia] = useState(false)
+  // null = fechado; { nova: true } = abre já no formulário (vindo do "+").
+  const [contasFixas, setContasFixas] = useState<{ nova: boolean } | null>(null)
 
   const { data: saidas, isLoading } = useSaidas(periodo)
   const { data: aPagar } = useContasAPagar()
@@ -129,7 +129,7 @@ export function SaidasPage() {
     .reduce((s, p) => s + (p.valor_centavos ?? 0), 0)
 
   function abrirNovo(grupo: GrupoSaida) {
-    if (grupo === 'fixa') setNovaRecorrencia(true)
+    if (grupo === 'fixa') setContasFixas({ nova: true })
     else setNovaSaida({ tipo: 'variavel' })
   }
 
@@ -139,10 +139,21 @@ export function SaidasPage() {
         titulo="Saídas"
         subtitulo="Tudo que sai do caixa — fixo, variável e dívidas"
         acoes={
-          <Button onClick={() => setNovaSaida({ tipo: 'variavel' })}>
-            <Plus className="size-4" />
-            Nova saída
-          </Button>
+          <>
+            {/*
+              O cadastro das contas fixas é tarefa rara e ficava enterrado no
+              fim de um card recolhível, misturado à leitura diária de "o que
+              ainda tenho para pagar". Subiu para um botão próprio.
+            */}
+            <Button variant="secondary" onClick={() => setContasFixas({ nova: false })}>
+              <Repeat className="size-4" />
+              <span className="hidden sm:inline">Contas fixas</span>
+            </Button>
+            <Button onClick={() => setNovaSaida({ tipo: 'variavel' })}>
+              <Plus className="size-4" />
+              Nova saída
+            </Button>
+          </>
         }
         filtros={
           <>
@@ -198,7 +209,23 @@ export function SaidasPage() {
             forcarAberto={pendentes.some((p) => p.bucket === 'atrasada')}
             right={
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold tabular-nums text-neutral-700">{fmtCentavos(somaPagas(grupo))}</span>
+                {/*
+                  Antes havia um número só, sem rótulo, ao lado de um KPI
+                  chamado "A pagar" — e ele era o PAGO. Os dois agora vêm
+                  nomeados, porque é a pergunta que se faz olhando o card.
+                */}
+                <div className="text-right leading-tight">
+                  {somaPendentes(grupo) > 0 && (
+                    <div className="text-sm font-semibold tabular-nums text-warning-700">
+                      {fmtCentavos(somaPendentes(grupo))}{' '}
+                      <span className="text-[10px] font-normal text-neutral-400">a pagar</span>
+                    </div>
+                  )}
+                  <div className="text-sm font-semibold tabular-nums text-neutral-700">
+                    {fmtCentavos(somaPagas(grupo))}{' '}
+                    <span className="text-[10px] font-normal text-neutral-400">pago</span>
+                  </div>
+                </div>
                 <button
                   onClick={() => abrirNovo(grupo)}
                   title={`Adicionar em ${GRUPO_SAIDA_LABEL[grupo]}`}
@@ -210,14 +237,20 @@ export function SaidasPage() {
             }
           >
             <div className="flex flex-col gap-5">
-              <Secao titulo="A pagar" total={somaPendentes(grupo)} cor="text-warning-700">
-                <ListaAPagar itens={pendentes} modo={modo} />
-              </Secao>
+              {/*
+                Seção vazia não é desenhada. Com os três grupos abertos, a
+                tela chegava a mostrar seis títulos e até quatro caixas de
+                "nada aqui" — ruído que escondia as duas ou três linhas que
+                de fato importavam no mês.
+              */}
+              {pendentes.length > 0 && (
+                <Secao titulo="A pagar" total={somaPendentes(grupo)} cor="text-warning-700">
+                  <ListaAPagar itens={pendentes} modo={modo} />
+                </Secao>
+              )}
 
-              <Secao titulo="Pago" total={somaPagas(grupo)} cor="text-success-700">
-                {pagas.length === 0 ? (
-                  <EmptyState title="Nada pago neste período." />
-                ) : (
+              {pagas.length > 0 && (
+                <Secao titulo="Pago" total={somaPagas(grupo)} cor="text-success-700">
                   <ul className="flex flex-col gap-1.5">
                     {pagas.map((s) => (
                       <li key={s.id} className={cn(LINHA_BASE, STATUS_FIN.pago.barra)}>
@@ -276,15 +309,18 @@ export function SaidasPage() {
                       </li>
                     ))}
                   </ul>
-                )}
-              </Secao>
+                </Secao>
+              )}
+
+              {pendentes.length === 0 && pagas.length === 0 && (
+                <p className="text-sm text-neutral-400">Nada neste período.</p>
+              )}
 
               {grupo === 'fixa' && (
-                <RecorrentesCard
-                  novoAberto={novaRecorrencia}
-                  onNovo={() => setNovaRecorrencia(true)}
-                  onFecharNovo={() => setNovaRecorrencia(false)}
-                />
+                <p className="text-[11px] text-neutral-400">
+                  As contas que repetem todo mês ficam em <strong>Contas fixas</strong>, no topo
+                  desta tela. O que está cadastrado lá aparece aqui sozinho, no dia de cada uma.
+                </p>
               )}
 
               {grupo === 'divida' && (
@@ -299,6 +335,12 @@ export function SaidasPage() {
       })}
 
       {novaSaida && <NovaSaidaModal tipoInicial={novaSaida.tipo} onFechar={() => setNovaSaida(null)} />}
+      {contasFixas && (
+        <ContasFixasModal
+          iniciarEmNova={contasFixas.nova}
+          onFechar={() => setContasFixas(null)}
+        />
+      )}
       {confirmar.dialogo}
     </div>
   )
