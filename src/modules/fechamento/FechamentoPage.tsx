@@ -5,6 +5,7 @@ import { cn } from '../../components/ui/cn'
 import { useProfessoras } from '../professoras/hooks/useProfessoras'
 import { FechamentoDetalhe } from './components/FechamentoDetalhe'
 import { useFechamentosMes, useHistorico, usePagamentoMes } from './hooks/useFechamento'
+import { valorEfetivoFolha } from './regras'
 
 type Vista = 'folha' | 'historico'
 const VISTAS = ['folha', 'historico'] as const satisfies readonly Vista[]
@@ -39,13 +40,17 @@ export function FechamentoPage() {
     const pg = pagamentoPor.get(prof.id)
     const fech = fechamentoPor.get(prof.id)
     const aprovado = fech?.status === 'aprovado'
-    const bruto = aprovado ? fech?.bruto_centavos ?? 0 : pg?.total_centavos ?? 0
+    const bruto = valorEfetivoFolha(fech?.bruto_centavos, pg?.total_centavos ?? 0, aprovado)
     const ajustes = (fech?.ajustes ?? []).reduce((s, a) => s + a.valor_centavos, 0)
     return {
       prof,
-      aulas: aprovado ? fech?.aulas ?? 0 : pg?.aulas ?? 0,
-      horas: aprovado ? Number(fech?.horas ?? 0) : Number(pg?.horas ?? 0),
-      alunas: aprovado ? fech?.alunas ?? 0 : pg?.alunas_presentes ?? 0,
+      aulas: valorEfetivoFolha(fech?.aulas, pg?.aulas ?? 0, aprovado),
+      horas: valorEfetivoFolha(
+        fech?.horas != null ? Number(fech.horas) : null,
+        Number(pg?.horas ?? 0),
+        aprovado,
+      ),
+      alunas: valorEfetivoFolha(fech?.alunas, pg?.alunas_presentes ?? 0, aprovado),
       bruto,
       ajustes,
       final: bruto + ajustes,
@@ -160,8 +165,9 @@ export function FechamentoPage() {
             </table>
           </div>
           <p className="mt-3 text-xs text-neutral-400">
-            Clique numa professora para ver o detalhe, lançar ajustes e aprovar. Aprovado congela o
-            mês; depois é só lançar no Financeiro.
+            Clique numa professora para digitar aulas, horas, alunos e o valor dela, lançar ajustes
+            e aprovar. Aprovar congela o mês e lança a saída no Financeiro, vencendo dia 15 do mês
+            seguinte.
           </p>
         </>
       ) : (

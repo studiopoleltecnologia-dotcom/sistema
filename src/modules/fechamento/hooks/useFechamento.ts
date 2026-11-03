@@ -7,6 +7,7 @@ import {
   listarPagamentoMes,
   reabrirFechamento,
   removerAjuste,
+  salvarResumoFolha,
 } from '../api/fechamento'
 
 export function usePagamentoMes(competencia: string) {
@@ -61,6 +62,15 @@ export function useAprovarFechamento() {
 export function useReabrirFechamento() {
   const invalidar = useInvalidarFechamentoEFinanceiro()
   return useMutation({ mutationFn: reabrirFechamento, onSuccess: invalidar })
+}
+
+/**
+ * Digitar um número da folha não mexe no Financeiro — o fechamento segue
+ * aberto e a saída só nasce na aprovação. Invalida só as queries da folha.
+ */
+export function useSalvarResumoFolha() {
+  const invalidar = useInvalidarFechamento()
+  return useMutation({ mutationFn: salvarResumoFolha, onSuccess: invalidar })
 }
 
 export function useHistorico(filtros: { professoraId?: string; ano?: string }) {
