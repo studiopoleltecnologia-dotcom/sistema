@@ -113,3 +113,42 @@ export async function listarHistorico(filtros: { professoraId?: string; ano?: st
   if (error) throw error
   return data
 }
+
+/**
+ * Grava à mão os números do mês de uma professora (aulas, horas, alunos,
+ * bruto) no fechamento ABERTO.
+ *
+ * Por que existe: a folha é fechada fora do sistema — a gestão conta as
+ * datas, as presenças e calcula a passagem num caderno. Enquanto a presença
+ * não for marcada no ERP todos os dias, `vw_pagamento_professoras` devolve
+ * zero, e o único jeito de registrar o valor real era disfarçá-lo de
+ * "bônus". O bônus vira o valor inteiro da professora no relatório, o que
+ * mente duas vezes: o bruto fica zerado e o ajuste fica gigante.
+ *
+ * `null` apaga o valor digitado e devolve a linha ao cálculo pela view —
+ * é a semântica que a coluna já tinha ("nulos = calcula ao vivo").
+ *
+ * Só mexe em fechamento `aberto`: aprovado é snapshot congelado, e o
+ * `.eq('status', 'aberto')` garante isso no banco, não só na tela.
+ */
+export async function salvarResumoFolha(args: {
+  professoraId: string
+  competencia: string
+  campos: {
+    aulas?: number | null
+    horas?: number | null
+    alunas?: number | null
+    bruto_centavos?: number | null
+  }
+}) {
+  const fech = await garantirFechamento(args.professoraId, args.competencia)
+  if (fech.status === 'aprovado') {
+    throw new Error('Este mês já está aprovado. Reabra o fechamento para editar.')
+  }
+  const { error } = await requireSupabase()
+    .from('fechamentos_professora')
+    .update(args.campos)
+    .eq('id', fech.id)
+    .eq('status', 'aberto')
+  if (error) throw error
+}
