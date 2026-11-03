@@ -7,13 +7,12 @@ que a escolha não se perca entre a decisão e a hora de fazer.
 
 ## 1. A decisão
 
-As páginas públicas de campanha (Pic Nic Day, Casinha de Portas Abertas e as
-próximas) devem morar em **`eventos.studiopolel.com.br`**, cada edição num
-caminho próprio:
+As páginas públicas de campanha (Pic Nic Day e as próximas) devem morar em
+**`eventos.studiopolel.com.br`**, cada edição num caminho próprio:
 
 ```
-eventos.studiopolel.com.br/portasabertas/
 eventos.studiopolel.com.br/picnicday/
+eventos.studiopolel.com.br/<campanha>/
 ```
 
 O motivo é o mesmo que tirou o aluno de `sistema.studiopolel.com.br`
@@ -24,10 +23,17 @@ de um ERP interno.
 
 ## 2. Por que ainda não foi feito
 
-A campanha de novembro saiu por `sistema.studiopolel.com.br/portasabertas/`
-mesmo. O link vai para o *link da bio* do Instagram, que esconde a URL de
-qualquer jeito, então o ganho era pequeno perto de mexer em DNS a cinco dias
-do evento. Decisão da gestão, consciente.
+A migração ficou para a próxima campanha. Quem puxava a urgência era a
+**Casinha de Portas Abertas**, de 07/11/2026 — e **a campanha caiu** (decisão
+da gestão, 02/11/2026).
+
+A página dela nunca chegou ao ar: ficou em `develop` e nunca foi promovida,
+então `sistema.studiopolel.com.br/portasabertas/` respondia **404** o tempo
+todo. Como o site não vai existir, os arquivos foram removidos junto com este
+registro — não houve link circulando para quebrar.
+
+**A decisão do domínio continua valendo** para a campanha seguinte: o que ela
+espera é só o passo a passo da §4.
 
 ## 3. O que existe hoje (conferido em 28/10/2026)
 
@@ -67,8 +73,8 @@ GitHub → organização `studiopoleltecnologia-dotcom` → **New repository**
 Subir, na branch `main` do repo novo:
 
 ```
-portasabertas/index.html      (e hero.jpg, logo.png)
 picnicday/index.html
+<campanha>/index.html          (e os assets dela: hero.jpg, logo.png…)
 CNAME                          <- uma linha: eventos.studiopolel.com.br
 .nojekyll                      <- arquivo vazio
 ```
@@ -103,18 +109,19 @@ resolver).
 
 ## 5. Depois de migrar: não quebrar o link antigo
 
-`sistema.studiopolel.com.br/portasabertas/` já terá circulado em story, no
-WhatsApp e no link da bio. Apagar a pasta quebra quem salvou.
+O endereço antigo da campanha — `sistema.studiopolel.com.br/<campanha>/` — já
+terá circulado em story, no WhatsApp e no link da bio. Apagar a pasta quebra
+quem salvou.
 
 Trocar o `index.html` dessa pasta por um redirecionamento, e só removê-la
 quando o evento tiver passado há tempo suficiente:
 
 ```html
 <!doctype html><meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=https://eventos.studiopolel.com.br/portasabertas/">
-<link rel="canonical" href="https://eventos.studiopolel.com.br/portasabertas/">
+<meta http-equiv="refresh" content="0; url=https://eventos.studiopolel.com.br/NOME-DA-CAMPANHA/">
+<link rel="canonical" href="https://eventos.studiopolel.com.br/NOME-DA-CAMPANHA/">
 <p>Esta página mudou de endereço.
-<a href="https://eventos.studiopolel.com.br/portasabertas/">Clique aqui</a>.</p>
+<a href="https://eventos.studiopolel.com.br/NOME-DA-CAMPANHA/">Clique aqui</a>.</p>
 ```
 
 ⚠️ A página de cada campanha tem `og:url` e `og:image` **absolutos** no
