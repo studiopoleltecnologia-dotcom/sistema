@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Scale, TrendingDown, TrendingUp } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CardColapsavel } from '../../../components/ui/CardColapsavel'
@@ -6,7 +6,7 @@ import { EmptyState } from '../../../components/ui/EmptyState'
 import { KpiCard } from '../../../components/ui/KpiCard'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
-import { mesAtual, periodoMes, type Periodo } from '../periodo'
+import { usePeriodo } from '../usePeriodo'
 import { useEntradas, useSaidas } from '../hooks/useFinanceiro'
 import { CATEGORIA_ENTRADA_LABEL } from '../types'
 
@@ -18,7 +18,7 @@ const fmtDia = (iso: string) => {
 }
 
 export function FluxoPage() {
-  const [periodo, setPeriodo] = useState<Periodo>(() => periodoMes(mesAtual()))
+  const [periodo, setPeriodo] = usePeriodo()
   const { data: entradas } = useEntradas(periodo)
   const { data: saidas } = useSaidas(periodo)
 
