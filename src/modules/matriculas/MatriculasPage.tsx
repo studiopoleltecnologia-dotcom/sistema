@@ -225,7 +225,10 @@ export function MatriculasPage() {
         />
       )}
 
-      <div className="grid gap-3 xl:grid-cols-2">
+      {/* Três colunas no monitor largo. Com dois cartões por linha a lista
+          de 11 matrículas já exigia rolagem; o cartão é um resumo, não uma
+          ficha — quem precisa do detalhe abre o painel. */}
+      <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
         {visiveis.map((m) => (
           <CartaoMatricula
             key={m.saldo.matricula_id}
@@ -355,16 +358,17 @@ function CartaoMatricula({
           onAbrir()
         }
       }}
-      className={`flex cursor-pointer flex-col gap-3 rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-neutral-300 hover:shadow-md ${
+      title={gestao ? 'Abrir para ver o histórico e agir' : undefined}
+      className={`flex cursor-pointer flex-col gap-2 rounded-lg border bg-white p-3 text-left shadow-sm transition hover:border-neutral-300 hover:shadow-md ${
         emAberto ? 'border-danger-300' : 'border-neutral-200/80'
       }`}
     >
-      <header className="flex flex-wrap items-start gap-x-3 gap-y-1">
+      <header className="flex flex-wrap items-start gap-x-3 gap-y-0.5">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base font-bold text-neutral-900">
+          <h3 className="truncate font-display text-sm font-bold text-neutral-900">
             {m.clienteNome}
           </h3>
-          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
+          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-500">
             {m.ehTurmaFixa ? (
               <CalendarRange className="size-3.5 text-success-600" />
             ) : (
@@ -384,18 +388,18 @@ function CartaoMatricula({
 
         <div className="shrink-0 text-right">
           {m.ehTurmaFixa ? (
-            <p className="font-display text-base font-bold text-neutral-900">
+            <p className="font-display text-sm font-bold text-neutral-900">
               {fmtCentavos(s.preco_contratado_centavos ?? 0)}
-              <span className="ml-1 text-[11px] font-medium text-neutral-400">/ciclo</span>
+              <span className="ml-1 text-[10px] font-medium text-neutral-400">/ciclo</span>
             </p>
           ) : (
             <p
-              className={`font-display text-lg font-bold leading-none ${
+              className={`font-display text-base font-bold leading-none ${
                 (s.saldo ?? 0) > 0 ? 'text-neutral-900' : 'text-danger-600'
               }`}
             >
               {s.saldo}
-              <span className="ml-1 text-[11px] font-medium text-neutral-400">
+              <span className="ml-1 text-[10px] font-medium text-neutral-400">
                 crédito{s.saldo === 1 ? '' : 's'}
               </span>
             </p>
@@ -433,11 +437,11 @@ function CartaoMatricula({
         </p>
       )}
 
-      {gestao && (
-        <p className="border-t border-neutral-100 pt-2.5 text-[11px] text-neutral-400">
-          Abrir para ver o histórico e agir
-        </p>
-      )}
+      {/* O "Abrir para ver o histórico e agir" saiu daqui e virou o
+          `title` do cartão: era uma linha inteira, com borda, repetida em
+          cada matrícula — e o cartão inteiro já é clicável, com cursor e
+          hover dizendo isso. Em 11 matrículas eram 11 linhas de instrução
+          ocupando a tela no lugar dos dados. */}
     </article>
   )
 }

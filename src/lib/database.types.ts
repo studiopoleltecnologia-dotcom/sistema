@@ -4740,6 +4740,17 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_wellhub_competencias: {
+        Row: {
+          check_ins: number | null
+          checkins_centavos: number | null
+          competencia: string | null
+          linhas_previsao: number | null
+          previsao_centavos: number | null
+          previsao_vence_em: string | null
+        }
+        Relationships: []
+      }
       vw_previsao_asaas: {
         Row: {
           asaas_customer_id: string | null
@@ -5203,6 +5214,18 @@ export type Database = {
       aprovar_contratacao: {
         Args: { p_motivo?: string; p_solicitacao: string }
         Returns: Database["public"]["Enums"]["status_solicitacao"]
+      }
+      prever_repasse_wellhub: {
+        Args: {
+          p_data_prevista?: string | null
+          p_mes: string
+          p_valor_centavos: number
+        }
+        Returns: Json
+      }
+      remover_previsao_repasse_wellhub: {
+        Args: { p_mes: string }
+        Returns: number
       }
       editar_previsao_asaas: {
         Args: {
