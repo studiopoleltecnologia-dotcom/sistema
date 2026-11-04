@@ -181,7 +181,22 @@ export async function desativarRecorrente(id: string) {
   if (error) throw error
 }
 
-/** Lança a recorrente como saída do mês de referência (1 clique). */
+/**
+ * Lança a recorrente como saída do mês de referência (1 clique).
+ *
+ * Enquanto não é lançada, a conta do mês **não existe como linha**: ela é
+ * uma projeção que `vw_contas_a_pagar` desenha a partir do modelo
+ * recorrente. Por isso mudar o valor de um mês passa por aqui — é preciso
+ * materializar a saída para ter o que editar.
+ *
+ * `valorCentavos` troca o valor **só deste mês**; o modelo recorrente
+ * continua com o valor de sempre, que é o certo para "a internet veio mais
+ * cara em novembro". Mudar o valor de todo mês é editar a conta fixa.
+ *
+ * `comoPrevista` faz a saída nascer em "A pagar" em vez de já paga (o
+ * default da coluna é `paga`, porque o caminho comum deste lançamento é o
+ * botão "Marcar como pago").
+ */
 export async function lancarRecorrente(args: {
   recorrente: {
     id: string
@@ -191,17 +206,23 @@ export async function lancarRecorrente(args: {
     dia_vencimento: number
   }
   mes: string
+  valorCentavos?: number
+  comoPrevista?: boolean
 }) {
   const dia = String(args.recorrente.dia_vencimento).padStart(2, '0')
+  const vencimento = `${args.mes}-${dia}`
   const { data, error } = await requireSupabase()
     .from('saidas_financeiras')
     .insert({
       descricao: args.recorrente.descricao,
-      valor_centavos: args.recorrente.valor_centavos,
+      valor_centavos: args.valorCentavos ?? args.recorrente.valor_centavos,
       categoria_id: args.recorrente.categoria_id,
-      data_caixa: `${args.mes}-${dia}`,
+      data_caixa: vencimento,
       data_competencia: `${args.mes}-01`,
       recorrente_id: args.recorrente.id,
+      ...(args.comoPrevista
+        ? { status_saida: 'prevista' as const, data_prevista: vencimento }
+        : {}),
     })
     .select()
     .single()
