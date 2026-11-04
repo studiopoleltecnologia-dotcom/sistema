@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { CalendarClock, Plus, Repeat, RotateCcw, Trash2, TrendingDown, TriangleAlert, Wallet } from 'lucide-react'
+import { CalendarClock, Pencil, Plus, Repeat, RotateCcw, Trash2, TrendingDown, TriangleAlert, Wallet } from 'lucide-react'
 import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
@@ -17,6 +17,7 @@ import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { ContasFixasModal } from '../components/ContasFixas'
 import { ListaAPagar, type BucketKey, type ItemAPagar } from '../components/ListaAPagar'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
+import { ValorEditavel } from '../components/ValorEditavel'
 import { mesAtual, periodoMes, type Periodo } from '../periodo'
 import {
   useAtualizarSaida,
@@ -84,6 +85,15 @@ export function SaidasPage() {
     const m = new Map<GrupoSaida, ItemAPagar[]>(ORDEM_GRUPO_SAIDA.map((g) => [g, []]))
     for (const p of aPagar ?? []) {
       const grupo: GrupoSaida = p.divida_id ? 'divida' : grupoDoTipo(p.tipo)
+      const daRecorrente = p.origem === 'recorrente'
+      const modelo = {
+        id: p.id!,
+        descricao: p.descricao ?? '',
+        valor_centavos: p.valor_centavos!,
+        categoria_id: p.categoria_id!,
+        dia_vencimento: Number(p.vencimento!.slice(8, 10)),
+      }
+      const mes = p.vencimento!.slice(0, 7)
       m.get(grupo)!.push({
         id: p.id!,
         valor: p.valor_centavos!,
@@ -93,18 +103,24 @@ export function SaidasPage() {
         competencia: p.competencia,
         bucket: p.bucket as BucketKey,
         acao: () =>
-          p.origem === 'recorrente'
-            ? lancar.mutate({
-                recorrente: {
-                  id: p.id!,
-                  descricao: p.descricao ?? '',
-                  valor_centavos: p.valor_centavos!,
-                  categoria_id: p.categoria_id!,
-                  dia_vencimento: Number(p.vencimento!.slice(8, 10)),
-                },
-                mes: p.vencimento!.slice(0, 7),
-              })
+          daRecorrente
+            ? lancar.mutate({ recorrente: modelo, mes })
             : atualizarSaida.mutate({ id: p.id!, patch: { status_saida: 'paga', data_caixa: hoje } }),
+        /*
+          Conta fixa ainda não lançada não é uma linha no banco — é uma
+          projeção do modelo recorrente. Então editar o valor dela lança o
+          mês com o valor novo (como "A pagar", não como paga), em vez de
+          mexer no modelo: "a internet veio mais cara em novembro" não quer
+          dizer que ela mudou de preço para sempre. Para mudar todo mês,
+          é em Contas fixas.
+        */
+        aoEditarValor: (centavos) =>
+          daRecorrente
+            ? lancar.mutate({ recorrente: modelo, mes, valorCentavos: centavos, comoPrevista: true })
+            : atualizarSaida.mutate({ id: p.id!, patch: { valor_centavos: centavos } }),
+        dicaValor: daRecorrente
+          ? 'Clique para mudar o valor só deste mês (a conta fixa continua como está)'
+          : undefined,
       })
     }
     return m
@@ -194,6 +210,15 @@ export function SaidasPage() {
         />
       </div>
 
+      {/*
+        O valor editável só se anuncia no hover, e hover não ensina nada a
+        quem não passou o mouse ali. Uma linha diz o que a tela ganhou.
+      */}
+      <p className="-mb-2 flex items-center gap-1.5 text-xs text-neutral-400">
+        <Pencil className="size-3" />
+        Clique em qualquer valor para corrigi-lo — previsto ou já pago.
+      </p>
+
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
       {ORDEM_GRUPO_SAIDA.map((grupo) => {
@@ -254,9 +279,18 @@ export function SaidasPage() {
                   <ul className="flex flex-col gap-1.5">
                     {pagas.map((s) => (
                       <li key={s.id} className={cn(LINHA_BASE, STATUS_FIN.pago.barra)}>
-                        <span className={cn('w-24 shrink-0 font-semibold tabular-nums', STATUS_FIN.pago.valor)}>
-                          {fmtCentavos(s.valor_centavos)}
-                        </span>
+                        <ValorEditavel
+                          valor={s.valor_centavos}
+                          onSalvar={(centavos) =>
+                            atualizarSaida.mutate({ id: s.id, patch: { valor_centavos: centavos } })
+                          }
+                          className={STATUS_FIN.pago.valor}
+                          dica={
+                            s.fechamento_id
+                              ? 'Valor da folha desta professora. Corrigir aqui vale para o caixa; reaprovar o fechamento sobrescreve.'
+                              : 'Clique para corrigir o valor pago'
+                          }
+                        />
                         <Badge variant="neutral">{s.categoria?.nome}</Badge>
                         <span className="flex-1 truncate text-neutral-500">
                           {s.descricao}
