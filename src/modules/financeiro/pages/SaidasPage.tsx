@@ -110,6 +110,7 @@ export function SaidasPage() {
       }
       const mes = p.vencimento!.slice(0, 7)
       m.get(grupo)!.push({
+        chave: p.chave ?? p.id!,
         id: p.id!,
         valor: p.valor_centavos!,
         categoria: p.categoria ?? '—',
