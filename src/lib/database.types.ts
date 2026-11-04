@@ -3273,6 +3273,86 @@ export type Database = {
           },
         ]
       }
+      previsoes_asaas: {
+        Row: {
+          asaas_customer_id: string
+          cliente_id: string | null
+          criado_em: string
+          descricao: string | null
+          editado_em: string | null
+          editado_por: string | null
+          fora_do_gateway: boolean
+          id: string
+          nome_no_gateway: string | null
+          oculto: boolean
+          ref: string
+          sincronizado_em: string
+          tipo: string
+          valor_centavos: number
+          vencimento: string
+        }
+        Insert: {
+          asaas_customer_id: string
+          cliente_id?: string | null
+          criado_em?: string
+          descricao?: string | null
+          editado_em?: string | null
+          editado_por?: string | null
+          fora_do_gateway?: boolean
+          id?: string
+          nome_no_gateway?: string | null
+          oculto?: boolean
+          ref: string
+          sincronizado_em?: string
+          tipo: string
+          valor_centavos: number
+          vencimento: string
+        }
+        Update: {
+          asaas_customer_id?: string
+          cliente_id?: string | null
+          criado_em?: string
+          descricao?: string | null
+          editado_em?: string | null
+          editado_por?: string | null
+          fora_do_gateway?: boolean
+          id?: string
+          nome_no_gateway?: string | null
+          oculto?: boolean
+          ref?: string
+          sincronizado_em?: string
+          tipo?: string
+          valor_centavos?: number
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "previsoes_asaas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      previsoes_asaas_sync: {
+        Row: {
+          id: boolean
+          resultado: Json | null
+          ultima_em: string | null
+        }
+        Insert: {
+          id?: boolean
+          resultado?: Json | null
+          ultima_em?: string | null
+        }
+        Update: {
+          id?: boolean
+          resultado?: Json | null
+          ultima_em?: string | null
+        }
+        Relationships: []
+      }
       reserva_movimentos: {
         Row: {
           criada_em: string
@@ -4660,6 +4740,45 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_wellhub_competencias: {
+        Row: {
+          check_ins: number | null
+          checkins_centavos: number | null
+          competencia: string | null
+          linhas_previsao: number | null
+          previsao_centavos: number | null
+          previsao_vence_em: string | null
+        }
+        Relationships: []
+      }
+      vw_previsao_asaas: {
+        Row: {
+          asaas_customer_id: string | null
+          cliente_id: string | null
+          descricao: string | null
+          editada: boolean | null
+          fora_do_gateway: boolean | null
+          id: string | null
+          mes: string | null
+          nome: string | null
+          oculto: boolean | null
+          ref: string | null
+          sem_vinculo: boolean | null
+          sincronizado_em: string | null
+          tipo: string | null
+          valor_centavos: number | null
+          vencimento: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "previsoes_asaas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_previsao_mensalidades: {
         Row: {
           ciclo: number | null
@@ -5095,6 +5214,36 @@ export type Database = {
       aprovar_contratacao: {
         Args: { p_motivo?: string; p_solicitacao: string }
         Returns: Database["public"]["Enums"]["status_solicitacao"]
+      }
+      prever_repasse_wellhub: {
+        Args: {
+          p_data_prevista?: string | null
+          p_mes: string
+          p_valor_centavos: number
+        }
+        Returns: Json
+      }
+      remover_previsao_repasse_wellhub: {
+        Args: { p_mes: string }
+        Returns: number
+      }
+      editar_previsao_asaas: {
+        Args: {
+          p_descricao?: string | null
+          p_id: string
+          p_oculto?: boolean | null
+          p_valor_centavos?: number | null
+          p_vencimento?: string | null
+        }
+        Returns: undefined
+      }
+      redefinir_previsao_asaas: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      vincular_previsao_cliente: {
+        Args: { p_cliente: string; p_id: string }
+        Returns: undefined
       }
       assentos_fixos_ocupados: {
         Args: { p_data: string; p_turma: string }

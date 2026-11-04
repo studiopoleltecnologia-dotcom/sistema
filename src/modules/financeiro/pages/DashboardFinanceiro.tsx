@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -33,11 +32,10 @@ import { cn } from '../../../components/ui/cn'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { LinhaDoCaixa } from '../components/LinhaDoCaixa'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
+import { usePeriodo } from '../usePeriodo'
 import {
   deslocarMes,
   ehMesUnico,
-  mesAtual,
-  periodoMes,
   qtdMeses,
   rotuloPeriodo,
   venceNoRecorte,
@@ -119,7 +117,7 @@ export function DashboardFinanceiro() {
   // O Resumo era o único lugar do módulo com o mês fixo no código — as demais
   // abas já deixavam escolher. Se todos os números vêm de um recorte, o
   // recorte precisa estar visível e ser trocável.
-  const [periodo, setPeriodo] = useState<Periodo>(() => periodoMes(mesAtual()))
+  const [periodo, setPeriodo] = usePeriodo()
 
   // Para o gráfico: se a pessoa já pediu vários meses, mostra os dela;
   // se pediu um mês só, mostra os 6 que terminam nele (um ponto não é linha).

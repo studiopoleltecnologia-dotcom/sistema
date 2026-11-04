@@ -72,3 +72,10 @@ jobs:
         # cron `emitir-cobrancas` (Bearer da anon_key do Vault). Liberar
         # deixaria qualquer um emitindo cobrança no gateway.
         run: supabase functions deploy --use-api asaas-cobranca --project-ref "$REF"
+
+      - name: Edge Function — asaas-previsao
+        # MANTÉM a verificação: é chamada pela tela de Previsão (JWT da
+        # gestão) e pelo cron `sincronizar-previsao-asaas` (Bearer da
+        # anon_key do Vault). A própria função ainda confere is_gestao()
+        # quando a chamada não vem do cron.
+        run: supabase functions deploy --use-api asaas-previsao --project-ref "$REF"
