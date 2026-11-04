@@ -371,7 +371,11 @@ export async function listarDividas() {
     supabase.from('dividas').select('*').order('quitada').order('criada_em'),
     supabase
       .from('saidas_financeiras')
-      .select('id, divida_id, descricao, valor_centavos, status_saida, data_caixa, data_prevista')
+      // `data_competencia` é o mês da parcela: é por ele que a tela avisa
+      // que aquele mês já tem cronograma, em vez de programar por cima.
+      .select(
+        'id, divida_id, descricao, valor_centavos, status_saida, data_caixa, data_prevista, data_competencia',
+      )
       .not('divida_id', 'is', null),
   ])
   if (error) throw error

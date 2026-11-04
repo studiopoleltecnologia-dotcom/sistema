@@ -55,8 +55,15 @@ type Credor = {
   devolvido: number
   /** Parcelas 'prevista' já agendadas, ainda não pagas. */
   programado: number
-  /** O que falta devolver, contando só empréstimos ainda em aberto. */
+  /**
+   * O que falta devolver, contando só empréstimos ainda em aberto.
+   *
+   * Quando há cronograma, é ELE que manda: um parcelamento com juros cobra
+   * mais que o principal, e medir pelo principal esconderia o juro.
+   */
   falta: number
+  /** Quanto o cronograma cobra além do principal. Zero quando não há juro. */
+  juros: number
   /**
    * Empréstimo marcado como quitado sem pagamento correspondente (perdão,
    * acerto por fora, arredondamento). Vira nota de rodapé no card em vez de
@@ -80,16 +87,24 @@ function agruparPorCredor(dividas: DividaComSaldo[]): Credor[] {
       const abertas = ordenadas.filter((d) => !d.quitada)
       const emprestado = ordenadas.reduce((s, d) => s + d.valor_centavos, 0)
       const devolvido = ordenadas.reduce((s, d) => s + d.pago_centavos, 0)
-      const falta = abertas.reduce((s, d) => s + Math.max(d.valor_centavos - d.pago_centavos, 0), 0)
+      const programado = abertas.reduce((s, d) => s + d.programado_centavos, 0)
+      const saldoPrincipal = abertas.reduce((s, d) => s + Math.max(d.valor_centavos - d.pago_centavos, 0), 0)
+      // Quem pegou R$ 6.700 e parcelou em 12 × R$ 777,13 deve R$ 9.325,56,
+      // não R$ 6.700 — a diferença é juro do parcelamento. Medir só pelo
+      // principal, como esta tela fazia, some com o juro da dívida inteira.
+      // O `max` cobre o cronograma incompleto: enquanto só parte dos meses
+      // está agendada, o principal que falta ainda é o número maior.
+      const falta = Math.max(programado, saldoPrincipal)
       return {
         nome,
         dividas: ordenadas,
         abertas,
         emprestado,
         devolvido,
-        programado: abertas.reduce((s, d) => s + d.programado_centavos, 0),
+        programado,
         falta,
-        baixado: Math.max(emprestado - devolvido - falta, 0),
+        juros: Math.max(devolvido + falta - emprestado, 0),
+        baixado: Math.max(emprestado - devolvido - saldoPrincipal, 0),
         tudoQuitado: abertas.length === 0,
         desde: ordenadas[0]?.criada_em ?? '',
       }
@@ -123,6 +138,7 @@ export function DividasPage() {
 
   const falta = devendo.reduce((s, c) => s + c.falta, 0)
   const programado = devendo.reduce((s, c) => s + c.programado, 0)
+  const juros = devendo.reduce((s, c) => s + c.juros, 0)
   const devolvido = credores.reduce((s, c) => s + c.devolvido, 0)
   const emprestado = credores.reduce((s, c) => s + c.emprestado, 0)
   const totalEmprestimos = credores.reduce((s, c) => s + c.dividas.length, 0)
@@ -157,7 +173,7 @@ export function DividasPage() {
             falta > 0
               ? `para ${plural(devendo.length, 'pessoa', 'pessoas')}${
                   programado > 0 ? ` · ${fmtCentavos(programado)} já em parcelas programadas` : ''
-                }`
+                }${juros > 0 ? ` · inclui ${fmtCentavos(juros)} de juros do parcelamento` : ''}`
               : 'nenhum empréstimo em aberto'
           }
         />
@@ -750,9 +766,26 @@ function ParcelasModal({
   const [dividaId, setDividaId] = useState(opcoes[0]?.id ?? '')
   const [linhas, setLinhas] = useState(() => [{ mes: new Date().toISOString().slice(0, 7), valor: '' }])
 
+  const [erro, setErro] = useState<string | null>(null)
+
   const alvo = opcoes.find((d) => d.id === dividaId) ?? opcoes[0]
   const falta = alvo ? Math.max(alvo.valor_centavos - alvo.pago_centavos, 0) : 0
   const soma = linhas.reduce((s, l) => s + (parseCentavos(l.valor) ?? 0), 0)
+
+  /**
+   * Os meses que já têm parcela prevista. Sem isto a tela programa por
+   * cima: foi assim que o parcelamento do Mercado Pago acabou com duas
+   * parcelas em cada mês, e o valor dobrado aparecendo em Saídas.
+   */
+  const jaAgendados = useMemo(() => {
+    const meses = new Map<string, number>()
+    for (const m of alvo?.movimentos ?? []) {
+      if (m.status_saida !== 'prevista') continue
+      const mes = (m.data_competencia ?? '').slice(0, 7)
+      if (mes) meses.set(mes, (meses.get(mes) ?? 0) + m.valor_centavos)
+    }
+    return meses
+  }, [alvo])
 
   function alterar(i: number, campo: 'mes' | 'valor', v: string) {
     setLinhas((ls) => ls.map((l, idx) => (idx === i ? { ...l, [campo]: v } : l)))
@@ -767,13 +800,37 @@ function ParcelasModal({
 
   function salvar(ev: FormEvent) {
     ev.preventDefault()
-    const parcelas = linhas
-      .map((l) => ({ mes: l.mes, valorCentavos: parseCentavos(l.valor) ?? 0 }))
-      .filter((p) => p.valorCentavos > 0 && p.mes)
-    if (parcelas.length === 0 || !alvo) return
+    setErro(null)
+    if (!alvo) return
+
+    const comMes = linhas.filter((l) => l.mes)
+    // Antes, linha sem valor era descartada em silêncio — e se todas
+    // fossem, a função saía sem gravar e sem avisar, fechando o modal como
+    // se tivesse dado certo. Era o "não está salvando" sem explicação.
+    if (comMes.some((l) => (parseCentavos(l.valor) ?? 0) <= 0)) {
+      setErro('Preencha o valor de todas as parcelas. Linha sem valor não é gravada.')
+      return
+    }
+    const parcelas = comMes.map((l) => ({ mes: l.mes, valorCentavos: parseCentavos(l.valor) ?? 0 }))
+    if (parcelas.length === 0) {
+      setErro('Informe ao menos uma parcela, com mês e valor.')
+      return
+    }
+    const repetidos = parcelas.map((p) => p.mes).filter((m) => jaAgendados.has(m))
+    if (repetidos.length > 0) {
+      setErro(
+        `Já existe parcela programada para ${repetidos.join(', ')}. Programar de novo duplicaria o valor em Saídas.`,
+      )
+      return
+    }
+
     programar.mutate(
       { dividaId: alvo.id, descricao: `Parcela — ${credor}`, parcelas },
-      { onSuccess: onFechar },
+      {
+        onSuccess: onFechar,
+        onError: (e) =>
+          setErro(e instanceof Error ? e.message : 'Não foi possível programar as parcelas.'),
+      },
     )
   }
 
@@ -798,6 +855,22 @@ function ParcelasModal({
             Falta devolver <strong className="text-neutral-800">{fmtCentavos(falta)}</strong>. Cada parcela
             aparece em Saídas → Dívidas no mês dela, como conta a pagar — ainda não é dinheiro que saiu.
           </p>
+
+          {/* O cronograma que já existe, à vista. Sem isto não há como saber
+              que aquele mês já está agendado, e programar de novo duplica. */}
+          {jaAgendados.size > 0 && (
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
+              <p className="text-xs font-medium text-neutral-700">
+                Já programado — {plural(jaAgendados.size, 'mês', 'meses')}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+                {[...jaAgendados.entries()]
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([mes, valor]) => `${mes} · ${fmtCentavos(valor)}`)
+                  .join('  ·  ')}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -836,6 +909,12 @@ function ParcelasModal({
             {soma > falta && ' — acima do saldo'}
           </span>
         </div>
+
+        {erro && (
+          <p className="mt-3 rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-xs text-danger-700">
+            {erro}
+          </p>
+        )}
 
         <div className="mt-5 flex justify-end gap-2">
           <button

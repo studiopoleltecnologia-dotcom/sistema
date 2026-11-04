@@ -43,6 +43,8 @@ export type MovimentoDivida = {
   status_saida: StatusSaida
   data_caixa: string
   data_prevista: string | null
+  /** Mês a que a parcela pertence — é por ele que o cronograma é único. */
+  data_competencia: string | null
 }
 
 export const CATEGORIAS_ENTRADA: { value: CategoriaEntrada; label: string }[] = [
