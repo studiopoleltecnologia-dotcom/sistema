@@ -4,11 +4,18 @@ import { fmtCentavos } from '../../lib/dinheiro'
 import { cn } from '../../components/ui/cn'
 import { useProfessoras } from '../professoras/hooks/useProfessoras'
 import { FechamentoDetalhe } from './components/FechamentoDetalhe'
+import { PrevisaoFolha } from './components/PrevisaoFolha'
 import { useFechamentosMes, useHistorico, usePagamentoMes } from './hooks/useFechamento'
 import { valorEfetivoFolha } from './regras'
 
-type Vista = 'folha' | 'historico'
-const VISTAS = ['folha', 'historico'] as const satisfies readonly Vista[]
+type Vista = 'folha' | 'previsao' | 'historico'
+const VISTAS = ['folha', 'previsao', 'historico'] as const satisfies readonly Vista[]
+
+const ROTULO_VISTA: Record<Vista, string> = {
+  folha: 'Folha do mês',
+  previsao: 'Previsão',
+  historico: 'Histórico',
+}
 
 const mesAtual = () => {
   const h = new Date()
@@ -66,7 +73,7 @@ export function FechamentoPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
-          {(['folha', 'historico'] as Vista[]).map((v) => (
+          {VISTAS.map((v) => (
             <button
               key={v}
               onClick={() => setVista(v)}
@@ -75,7 +82,7 @@ export function FechamentoPage() {
                 vista === v ? 'bg-white text-brand-700 shadow-sm' : 'text-neutral-500 hover:text-neutral-800',
               )}
             >
-              {v === 'folha' ? 'Folha do mês' : 'Histórico'}
+              {ROTULO_VISTA[v]}
             </button>
           ))}
         </div>
@@ -170,6 +177,8 @@ export function FechamentoPage() {
             seguinte.
           </p>
         </>
+      ) : vista === 'previsao' ? (
+        <PrevisaoFolha />
       ) : (
         <Historico />
       )}
