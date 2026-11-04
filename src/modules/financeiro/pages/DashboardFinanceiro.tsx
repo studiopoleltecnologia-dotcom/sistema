@@ -157,19 +157,30 @@ export function DashboardFinanceiro() {
     está olhando o mês em que ela deveria ter sido paga.
   */
   const periodoContemHoje = contemMes(periodo, hoje.slice(0, 7))
+  const venceNoRecorte = (venc: string | null) =>
+    venc != null &&
+    (contemMes(periodo, venc.slice(0, 7)) || (periodoContemHoje && venc < hoje))
+
   const aPagarPeriodo = (contasAPagar ?? [])
-    .filter((c) => {
-      const venc = c.vencimento ?? ''
-      return contemMes(periodo, venc.slice(0, 7)) || (periodoContemHoje && venc < hoje)
-    })
+    .filter((c) => venceNoRecorte(c.vencimento))
     .reduce((s, c) => s + (c.valor_centavos ?? 0), 0)
 
-  // O que ainda ENTRA no recorte: as entradas previstas já vêm filtradas
-  // por período de `useEntradas`.
-  const aReceberPeriodo = previstas.reduce((s, e) => s + e.valor_centavos, 0)
+  /*
+    O que ainda ENTRA no recorte, pela MESMA regra.
+
+    ⚠️ `previstas` não está limitada ao período: `listarEntradas` traz
+    `status.eq.prevista` sem recorte de data, de propósito (a tela de
+    Entradas quer ver tudo que está em aberto). Somar isso aqui fazia a
+    equação misturar "a pagar do mês" com "a receber de sempre" — e o
+    saldo do fim do mês saía otimista, porque entrava receita que só cai
+    nos meses seguintes.
+  */
+  const aReceberPeriodo = previstas
+    .filter((e) => venceNoRecorte(e.data_prevista ?? e.data_caixa))
+    .reduce((s, e) => s + e.valor_centavos, 0)
 
   // Fecha a equação com os mesmos três números que vão para a tela.
-  const sobraPeriodo = saldoAtual + aReceberPeriodo - aPagarPeriodo
+  const saldoFimPeriodo = saldoAtual + aReceberPeriodo - aPagarPeriodo
 
   const pctMei = mei?.percentual_limite ?? 0
   const nivelMei = nivelAlertaMei(pctMei)
@@ -223,10 +234,10 @@ export function DashboardFinanceiro() {
   const alertas: { icon: typeof TriangleAlert; texto: string; tom: 'danger' | 'warning'; to: string }[] = []
   if (saldoAtual < 0)
     alertas.push({ icon: Wallet, texto: `Caixa negativo em ${fmtCentavos(saldoAtual)}`, tom: 'danger', to: 'fluxo' })
-  else if (sobraPeriodo < 0)
+  else if (saldoFimPeriodo < 0)
     alertas.push({
       icon: Wallet,
-      texto: `Caixa fica negativo em ${fmtCentavos(sobraPeriodo)} depois de pagar o que vence em ${rotuloPeriodo(periodo)}`,
+      texto: `Caixa fica negativo em ${fmtCentavos(saldoFimPeriodo)} depois de pagar o que vence em ${rotuloPeriodo(periodo)}`,
       tom: 'warning',
       to: 'saidas',
     })
@@ -292,7 +303,7 @@ export function DashboardFinanceiro() {
         atual={saldoAtual}
         aReceber={aReceberPeriodo}
         aPagar={aPagarPeriodo}
-        previsto={sobraPeriodo}
+        previsto={saldoFimPeriodo}
         periodo={rotuloPeriodo(periodo)}
       />
 

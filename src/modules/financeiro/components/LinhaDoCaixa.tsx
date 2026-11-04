@@ -37,7 +37,7 @@ export function LinhaDoCaixa({
   const termos = [
     { op: '+', label: `a receber em ${periodo}`, valor: aReceber, forte: false },
     { op: '−', label: `a pagar em ${periodo}`, valor: aPagar, forte: false },
-    { op: '=', label: `sobra em ${periodo}`, valor: previsto, forte: true },
+    { op: '=', label: `saldo no fim de ${periodo}`, valor: previsto, forte: true },
   ]
 
   return (
