@@ -1,32 +1,43 @@
 import { Wallet } from 'lucide-react'
 import { cn } from '../../../components/ui/cn'
 import { fmtCentavos } from '../../../lib/dinheiro'
-import type { SaldoCaixa } from '../types'
 
 /**
  * O herói do Resumo: as quatro primeiras perguntas de quem abre o Financeiro
  * — quanto temos, quanto ainda entra, quanto ainda sai, quanto sobra — como
  * UMA equação, não como quatro cards soltos.
  *
- * Os termos saem inteiros de `vw_saldo_caixa`, e é de propósito: a view
- * calcula `saldo_projetado` exatamente como
- * `saldo_atual + previstas − saidas_previstas − recorrentes_pendentes`.
- * Somar de novo aqui no front abriria espaço para a conta não fechar na tela.
+ * ⚠️ Os três termos são DO PERÍODO escolhido; o saldo de cima, não — ele é
+ * um fato de hoje, não um recorte.
  *
- * "Em aberto" e não "no mês": a view não filtra por período, então os valores
- * são o total pendente. Rotular de outro jeito seria mentira.
+ * Antes os termos vinham de `vw_saldo_caixa`, que não filtra período: "a
+ * pagar" somava TUDO que está em aberto, inclusive parcela de dívida com
+ * vencimento a um ano dali. Ao lado de um título "Saldo disponível hoje" e
+ * de um seletor de mês, o número lia-se como "o que sai neste mês" e era
+ * quatro vezes maior que isso — o que tornava a tela inútil justamente para
+ * a pergunta que ela existe para responder.
+ *
+ * A conta fecha porque quem chama calcula `previsto` a partir dos mesmos
+ * três números que passa aqui, e não de uma segunda fonte.
  */
-export function LinhaDoCaixa({ saldo }: { saldo?: SaldoCaixa | null }) {
-  const atual = saldo?.saldo_atual_centavos ?? 0
-  const aReceber = saldo?.previsto_em_aberto_centavos ?? 0
-  const aPagar =
-    (saldo?.saidas_previstas_centavos ?? 0) + (saldo?.recorrentes_pendentes_mes_centavos ?? 0)
-  const previsto = saldo?.saldo_projetado_centavos ?? 0
-
+export function LinhaDoCaixa({
+  atual,
+  aReceber,
+  aPagar,
+  previsto,
+  periodo,
+}: {
+  atual: number
+  aReceber: number
+  aPagar: number
+  previsto: number
+  /** Rótulo do recorte, ex.: "nov/26" — vai no nome de cada termo. */
+  periodo: string
+}) {
   const termos = [
-    { op: '+', label: 'a receber', valor: aReceber, forte: false },
-    { op: '−', label: 'a pagar', valor: aPagar, forte: false },
-    { op: '=', label: 'previsto', valor: previsto, forte: true },
+    { op: '+', label: `a receber em ${periodo}`, valor: aReceber, forte: false },
+    { op: '−', label: `a pagar em ${periodo}`, valor: aPagar, forte: false },
+    { op: '=', label: `sobra em ${periodo}`, valor: previsto, forte: true },
   ]
 
   return (

@@ -4242,6 +4242,7 @@ export type Database = {
           bucket: string | null
           categoria: string | null
           categoria_id: string | null
+          chave: string | null
           competencia: string | null
           descricao: string | null
           divida_id: string | null
