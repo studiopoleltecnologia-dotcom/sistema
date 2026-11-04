@@ -37,10 +37,10 @@ import {
   deslocarMes,
   ehMesUnico,
   mesAtual,
-  contemMes,
   periodoMes,
   qtdMeses,
   rotuloPeriodo,
+  venceNoRecorte,
   type Periodo,
 } from '../periodo'
 import {
@@ -156,13 +156,8 @@ export function DashboardFinanceiro() {
     período inclui hoje — conta atrasada não pode sumir só porque a pessoa
     está olhando o mês em que ela deveria ter sido paga.
   */
-  const periodoContemHoje = contemMes(periodo, hoje.slice(0, 7))
-  const venceNoRecorte = (venc: string | null) =>
-    venc != null &&
-    (contemMes(periodo, venc.slice(0, 7)) || (periodoContemHoje && venc < hoje))
-
   const aPagarPeriodo = (contasAPagar ?? [])
-    .filter((c) => venceNoRecorte(c.vencimento))
+    .filter((c) => venceNoRecorte(periodo, c.vencimento, hoje))
     .reduce((s, c) => s + (c.valor_centavos ?? 0), 0)
 
   /*
@@ -176,7 +171,7 @@ export function DashboardFinanceiro() {
     nos meses seguintes.
   */
   const aReceberPeriodo = previstas
-    .filter((e) => venceNoRecorte(e.data_prevista ?? e.data_caixa))
+    .filter((e) => venceNoRecorte(periodo, e.data_prevista ?? e.data_caixa, hoje))
     .reduce((s, e) => s + e.valor_centavos, 0)
 
   // Fecha a equação com os mesmos três números que vão para a tela.

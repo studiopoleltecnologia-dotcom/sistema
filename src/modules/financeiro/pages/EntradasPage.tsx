@@ -22,7 +22,7 @@ import { cn } from '../../../components/ui/cn'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
-import { mesAtual, periodoMes, type Periodo } from '../periodo'
+import { mesAtual, periodoMes, venceNoRecorte, type Periodo } from '../periodo'
 import { LINHA_BASE, STATUS_FIN, type StatusFin } from '../statusVisual'
 import {
   useAtualizarEntrada,
@@ -84,12 +84,28 @@ export function EntradasPage() {
   const confirmar = useConfirmar()
 
   const hoje = hojeISO()
+  /*
+    Recebida e cancelada já vêm recortadas pela consulta (por data de
+    caixa e por competência). A PREVISTA não: `listarEntradas` pede
+    `status.eq.prevista` sem limite de data, porque a conta atrasada de
+    um mês anterior precisa continuar alcançável.
+
+    Quem decide se ela entra nesta tela é o recorte — a mesma regra de
+    Saídas, agora numa função só (`venceNoRecorte`). Sem isso, abrir
+    dezembro mostrava as mensalidades de novembro que ninguém marcou
+    como recebidas, e o "A receber" do topo somava os dois meses.
+  */
   const linhas = useMemo(
     () =>
       (entradas ?? [])
+        .filter(
+          (e) =>
+            e.status !== 'prevista' ||
+            venceNoRecorte(periodo, e.data_prevista ?? e.data_caixa, hoje),
+        )
         .map((e) => ({ e, vis: statusEntradaVis(e, hoje) }))
         .sort((a, b) => (b.e.data_caixa ?? b.e.data_prevista ?? '').localeCompare(a.e.data_caixa ?? a.e.data_prevista ?? '')),
-    [entradas, hoje],
+    [entradas, hoje, periodo],
   )
 
   const soma = (v: StatusEntradaVis) => linhas.filter((l) => l.vis === v).reduce((s, l) => s + l.e.valor_centavos, 0)
