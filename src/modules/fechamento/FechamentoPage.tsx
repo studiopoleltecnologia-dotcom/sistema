@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAbaUrl } from '../../lib/aba'
+import { useMesUrl } from '../../lib/selecao'
 import { fmtCentavos } from '../../lib/dinheiro'
 import { cn } from '../../components/ui/cn'
 import { useProfessoras } from '../professoras/hooks/useProfessoras'
@@ -17,16 +18,17 @@ const ROTULO_VISTA: Record<Vista, string> = {
   historico: 'Histórico',
 }
 
-const mesAtual = () => {
-  const h = new Date()
-  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`
-}
-
 const inputCls =
   'rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 outline-none transition focus:border-brand-500'
 
 export function FechamentoPage() {
-  const [competencia, setCompetencia] = useState(mesAtual)
+  /*
+    A competência mora na URL e na sessão, não em `useState`: escolher
+    um mês, ir a outra tela e voltar devolvia a folha ao mês corrente —
+    e o risco não é o clique perdido, é conferir pagamento do mês errado
+    achando que é o mês escolhido. Mesmo mecanismo da aba, ao lado.
+  */
+  const [competencia, setCompetencia] = useMesUrl('fechamento:competencia')
   const [vista, setVista] = useAbaUrl(VISTAS, 'folha')
   const [selecionada, setSelecionada] = useState<string | null>(null)
 
