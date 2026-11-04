@@ -189,13 +189,19 @@ export async function desativarRecorrente(id: string) {
  * recorrente. Por isso mudar o valor de um mês passa por aqui — é preciso
  * materializar a saída para ter o que editar.
  *
- * `valorCentavos` troca o valor **só deste mês**; o modelo recorrente
- * continua com o valor de sempre, que é o certo para "a internet veio mais
- * cara em novembro". Mudar o valor de todo mês é editar a conta fixa.
+ * `ajuste` troca valor, descrição ou vencimento **só deste mês**; o modelo
+ * recorrente continua como está, que é o certo para "a internet veio mais
+ * cara em novembro". Mudar todo mês é editar a conta fixa.
  *
  * `comoPrevista` faz a saída nascer em "A pagar" em vez de já paga (o
  * default da coluna é `paga`, porque o caminho comum deste lançamento é o
  * botão "Marcar como pago").
+ *
+ * ⚠️ `data_caixa` fica ancorada no MÊS da competência mesmo quando o
+ * vencimento ajustado cai noutro dia, e o vencimento de verdade vai em
+ * `data_prevista`. É `data_caixa` que a `vw_contas_a_pagar` usa para saber
+ * que a recorrente do mês já foi lançada: ancorada, a projeção some como
+ * deve; seguindo a data nova, a conta reapareceria projetada E lançada.
  */
 export async function lancarRecorrente(args: {
   recorrente: {
@@ -206,18 +212,19 @@ export async function lancarRecorrente(args: {
     dia_vencimento: number
   }
   mes: string
-  valorCentavos?: number
+  ajuste?: { valorCentavos?: number; descricao?: string; data?: string }
   comoPrevista?: boolean
 }) {
   const dia = String(args.recorrente.dia_vencimento).padStart(2, '0')
-  const vencimento = `${args.mes}-${dia}`
+  const doMes = `${args.mes}-${dia}`
+  const vencimento = args.ajuste?.data ?? doMes
   const { data, error } = await requireSupabase()
     .from('saidas_financeiras')
     .insert({
-      descricao: args.recorrente.descricao,
-      valor_centavos: args.valorCentavos ?? args.recorrente.valor_centavos,
+      descricao: args.ajuste?.descricao ?? args.recorrente.descricao,
+      valor_centavos: args.ajuste?.valorCentavos ?? args.recorrente.valor_centavos,
       categoria_id: args.recorrente.categoria_id,
-      data_caixa: vencimento,
+      data_caixa: args.comoPrevista ? doMes : vencimento,
       data_competencia: `${args.mes}-01`,
       recorrente_id: args.recorrente.id,
       ...(args.comoPrevista
@@ -455,31 +462,28 @@ export async function registrarPagamentoDivida(args: {
 }
 
 /**
- * Cronograma: cada parcela nasce como saída 'prevista' no mês dela, então
- * aparece sozinha em Saídas → Dívidas → A pagar, sem cadastro duplicado.
+ * Grava o cronograma de uma dívida: cada parcela é uma saída 'prevista' no
+ * mês dela, então aparece sozinha em Saídas → Dívidas → A pagar, sem
+ * cadastro duplicado.
+ *
+ * **Substitui o cronograma previsto inteiro** — é por isso que é uma RPC e
+ * não um insert. Mover o cronograma um mês para a frente esbarraria no
+ * índice único (uma parcela prevista por mês) no meio do caminho, deixando
+ * metade das parcelas movidas. Dentro da função do banco é uma transação
+ * só: ou o cronograma novo entra inteiro, ou o antigo fica como estava.
+ *
+ * Parcela paga não entra nessa conta e não é tocada.
  */
-export async function programarParcelasDivida(args: {
+export async function salvarCronogramaDivida(args: {
   dividaId: string
   descricao: string
-  parcelas: { mes: string; valorCentavos: number }[]
+  parcelas: { data: string; valorCentavos: number }[]
 }) {
-  const categoriaId = await categoriaDivida()
-  const { error } = await requireSupabase().from('saidas_financeiras').insert(
-    args.parcelas.map((p) => ({
-      descricao: args.descricao,
-      valor_centavos: p.valorCentavos,
-      categoria_id: categoriaId,
-      divida_id: args.dividaId,
-      data_competencia: `${p.mes}-01`,
-      data_prevista: `${p.mes}-05`,
-      // data_caixa é NOT NULL: sem valor explícito viria current_date, o que
-      // faria a parcela de outubro parecer paga hoje em qualquer tela que
-      // ordene por ela. Enquanto 'prevista' o número é ignorado (as views
-      // filtram por status), mas fica coerente com o vencimento.
-      data_caixa: `${p.mes}-05`,
-      status_saida: 'prevista' as const,
-    })),
-  )
+  const { error } = await requireSupabase().rpc('substituir_cronograma_divida', {
+    p_divida_id: args.dividaId,
+    p_descricao: args.descricao,
+    p_parcelas: args.parcelas.map((p) => ({ data: p.data, valor_centavos: p.valorCentavos })),
+  })
   if (error) throw error
 }
 
