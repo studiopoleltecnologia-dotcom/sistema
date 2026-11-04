@@ -37,6 +37,7 @@ import {
   deslocarMes,
   ehMesUnico,
   mesAtual,
+  contemMes,
   periodoMes,
   qtdMeses,
   rotuloPeriodo,
@@ -50,6 +51,7 @@ import {
   useMrr,
   useSaidas,
   useSaidasPeriodo,
+  useContasAPagar,
   useSaldoCaixa,
 } from '../hooks/useFinanceiro'
 import { CATEGORIA_ENTRADA_LABEL, nivelAlertaMei, type CategoriaEntrada } from '../types'
@@ -130,6 +132,7 @@ export function DashboardFinanceiro() {
   const { data: config } = useConfigFinanceiro()
   const { data: entradas } = useEntradas(periodo)
   const { data: saidas } = useSaidas(periodo)
+  const { data: contasAPagar } = useContasAPagar()
   const { data: mixMensal } = useMixReceitaPeriodo(janela)
   const { data: saidasMensal } = useSaidasPeriodo(janela)
 
@@ -146,7 +149,27 @@ export function DashboardFinanceiro() {
   const lucro = recebido - despesasPagas
 
   const saldoAtual = saldo?.saldo_atual_centavos ?? 0
-  const saldoProjetado = saldo?.saldo_projetado_centavos ?? 0
+
+  /*
+    O que ainda SAI no recorte escolhido. Mesma regra da tela de Saídas: o
+    que vence dentro do período, mais o que já está vencido quando o
+    período inclui hoje — conta atrasada não pode sumir só porque a pessoa
+    está olhando o mês em que ela deveria ter sido paga.
+  */
+  const periodoContemHoje = contemMes(periodo, hoje.slice(0, 7))
+  const aPagarPeriodo = (contasAPagar ?? [])
+    .filter((c) => {
+      const venc = c.vencimento ?? ''
+      return contemMes(periodo, venc.slice(0, 7)) || (periodoContemHoje && venc < hoje)
+    })
+    .reduce((s, c) => s + (c.valor_centavos ?? 0), 0)
+
+  // O que ainda ENTRA no recorte: as entradas previstas já vêm filtradas
+  // por período de `useEntradas`.
+  const aReceberPeriodo = previstas.reduce((s, e) => s + e.valor_centavos, 0)
+
+  // Fecha a equação com os mesmos três números que vão para a tela.
+  const sobraPeriodo = saldoAtual + aReceberPeriodo - aPagarPeriodo
 
   const pctMei = mei?.percentual_limite ?? 0
   const nivelMei = nivelAlertaMei(pctMei)
@@ -200,10 +223,10 @@ export function DashboardFinanceiro() {
   const alertas: { icon: typeof TriangleAlert; texto: string; tom: 'danger' | 'warning'; to: string }[] = []
   if (saldoAtual < 0)
     alertas.push({ icon: Wallet, texto: `Caixa negativo em ${fmtCentavos(saldoAtual)}`, tom: 'danger', to: 'fluxo' })
-  else if (saldoProjetado < 0)
+  else if (sobraPeriodo < 0)
     alertas.push({
       icon: Wallet,
-      texto: `Caixa fica negativo em ${fmtCentavos(saldoProjetado)} depois de pagar o que está em aberto`,
+      texto: `Caixa fica negativo em ${fmtCentavos(sobraPeriodo)} depois de pagar o que vence em ${rotuloPeriodo(periodo)}`,
       tom: 'warning',
       to: 'saidas',
     })
@@ -265,7 +288,13 @@ export function DashboardFinanceiro() {
       )}
 
       {/* Nível 1 — o herói. */}
-      <LinhaDoCaixa saldo={saldo} />
+      <LinhaDoCaixa
+        atual={saldoAtual}
+        aReceber={aReceberPeriodo}
+        aPagar={aPagarPeriodo}
+        previsto={sobraPeriodo}
+        periodo={rotuloPeriodo(periodo)}
+      />
 
       {/* Nível 2 — desempenho do recorte escolhido. */}
       <div>
