@@ -4656,6 +4656,20 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_previsao_folha_professora: {
+        Row: {
+          ate: string | null
+          confianca: string | null
+          desde: string | null
+          meses_considerados: number | null
+          meses_no_historico: number | null
+          nome: string | null
+          previsto_centavos: number | null
+          professora_id: string | null
+          variacao_pct: number | null
+        }
+        Relationships: []
+      }
       vw_pagamento_professoras: {
         Row: {
           alunas_presentes: number | null
@@ -5278,7 +5292,11 @@ export type Database = {
         Returns: Json
       }
       substituir_cronograma_divida: {
-        Args: { p_divida_id: string; p_descricao: string; p_parcelas: Json }
+        Args: { p_descricao: string; p_divida_id: string; p_parcelas: Json }
+        Returns: number
+      }
+      prever_folha_professoras: {
+        Args: { p_meses?: number }
         Returns: number
       }
       conciliar_wellhub: {

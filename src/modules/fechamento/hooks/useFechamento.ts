@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   adicionarAjuste,
+  gerarPrevisaoFolha,
+  listarPrevisaoFolha,
   aprovarFechamento,
   listarFechamentosMes,
   listarHistorico,
@@ -77,5 +79,29 @@ export function useHistorico(filtros: { professoraId?: string; ano?: string }) {
   return useQuery({
     queryKey: ['fech-historico', filtros.professoraId ?? '', filtros.ano ?? ''],
     queryFn: () => listarHistorico(filtros),
+  })
+}
+
+/** A previsão de cada professora, com a base da conta à mostra. */
+export function usePrevisaoFolha() {
+  return useQuery({ queryKey: ['fech-previsao'], queryFn: listarPrevisaoFolha })
+}
+
+/**
+ * Recalcular relança as saídas previstas no Financeiro, então invalida
+ * também as queries de saídas e de contas a pagar — senão a tela de Saídas
+ * segue mostrando os valores antigos até alguém recarregar a página.
+ */
+export function useGerarPrevisaoFolha() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (meses?: number) => gerarPrevisaoFolha(meses),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['fech-previsao'] })
+      qc.invalidateQueries({ queryKey: ['fech-mes'] })
+      qc.invalidateQueries({ queryKey: ['saidas'] })
+      qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
+      qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
+    },
   })
 }

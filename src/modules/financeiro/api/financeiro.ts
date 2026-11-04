@@ -182,6 +182,22 @@ export async function desativarRecorrente(id: string) {
 }
 
 /**
+ * O dia de vencimento dentro de um mês 'YYYY-MM', caindo no último dia
+ * quando o mês não tem aquele dia — conta fixa do dia 31 vence em 28 de
+ * fevereiro (29 em ano bissexto).
+ *
+ * É o espelho de `vencimento_no_mes()` no banco. Sem isto, `${mes}-31` em
+ * fevereiro viraria '2027-02-31', que o Postgres recusa: o lançamento
+ * falharia na data, não no valor, e a mensagem não ajudaria ninguém.
+ */
+function vencimentoNoMes(mes: string, dia: number): string {
+  const [ano, m] = mes.split('-').map(Number)
+  const ultimoDia = new Date(ano, m, 0).getDate() // dia 0 do mês seguinte
+  const escolhido = Math.min(Math.max(dia || 1, 1), ultimoDia)
+  return `${mes}-${String(escolhido).padStart(2, '0')}`
+}
+
+/**
  * Lança a recorrente como saída do mês de referência (1 clique).
  *
  * Enquanto não é lançada, a conta do mês **não existe como linha**: ela é
@@ -215,8 +231,7 @@ export async function lancarRecorrente(args: {
   ajuste?: { valorCentavos?: number; descricao?: string; data?: string }
   comoPrevista?: boolean
 }) {
-  const dia = String(args.recorrente.dia_vencimento).padStart(2, '0')
-  const doMes = `${args.mes}-${dia}`
+  const doMes = vencimentoNoMes(args.mes, args.recorrente.dia_vencimento)
   const vencimento = args.ajuste?.data ?? doMes
   const { data, error } = await requireSupabase()
     .from('saidas_financeiras')
