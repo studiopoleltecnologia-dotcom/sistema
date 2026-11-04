@@ -140,6 +140,7 @@ const SECOES: Secao[] = [
         subs: [
           { to: '/financeiro', label: 'Resumo' },
           { to: '/financeiro/entradas', label: 'Entradas' },
+          { to: '/financeiro/previsao', label: 'Previsão de mensalidades' },
           { to: '/financeiro/saidas', label: 'Saídas' },
           { to: '/financeiro/fluxo', label: 'Fluxo de caixa' },
           { to: '/financeiro/dividas', label: 'Dívidas' },

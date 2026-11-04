@@ -7,6 +7,7 @@ import {
   arquivarSolicitacaoCancelamento,
   cancelarAssinatura,
   concederCreditos,
+  definirCobrancaExterna,
   confirmarCancelamentoPlano,
   listarSolicitacoesPendentes,
   encerrarTurmaFixa,
@@ -16,6 +17,7 @@ import {
   listarTurmasDoCliente,
   marcarInadimplente,
   matricular,
+  matricularAlunoDeFora,
   matricularTurmaFixa,
   renovarCiclo,
   trocarTurmaFixa,
@@ -104,7 +106,27 @@ function useInvalidarMatriculas() {
     qc.invalidateQueries({ queryKey: ['ocupacao-periodo'] })
     qc.invalidateQueries({ queryKey: ['solicitacoes-cancelamento'] })
     qc.invalidateQueries({ queryKey: ['dash-cancelamentos'] })
+    // A previsão de mensalidades é derivada das matrículas ativas.
+    qc.invalidateQueries({ queryKey: ['previsao-mensalidades'] })
   }
+}
+
+/** Cadastro de aluno que já pagava antes do sistema (gestão). */
+export function useMatricularAlunoDeFora() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({
+    mutationFn: matricularAlunoDeFora,
+    onSuccess: invalidar,
+  })
+}
+
+export function useDefinirCobrancaExterna() {
+  const invalidar = useInvalidarMatriculas()
+  return useMutation({
+    mutationFn: (a: { matriculaId: string; externa: boolean }) =>
+      definirCobrancaExterna(a.matriculaId, a.externa),
+    onSuccess: invalidar,
+  })
 }
 
 /** Pedidos de cancelamento feitos pelo portal, ainda sem resposta. */

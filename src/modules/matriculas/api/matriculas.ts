@@ -73,6 +73,47 @@ export async function matricular(
   return data
 }
 
+/**
+ * Aluno que já pagava antes do sistema.
+ *
+ * Não passa pela contratação (solicitação → aprovação → confirmação de
+ * pagamento): não há pagamento a confirmar aqui, o aluno já paga há
+ * meses por fora. Cria a matrícula no ciclo que ele já está vivendo,
+ * para a previsão cair no dia certo.
+ *
+ * `cobrancaExterna` (padrão no banco: true) é o que impede o cron de
+ * emitir cobrança e mandar link de pagamento para quem já paga.
+ */
+export async function matricularAlunoDeFora(args: {
+  clienteId: string
+  produtoId: string
+  /** Primeiro dia do ciclo que está correndo agora (ISO). */
+  dataInicio: string
+  turmaIds?: string[]
+  cobrancaExterna?: boolean
+  justificativa?: string
+}) {
+  const { data, error } = await requireSupabase().rpc('matricular_aluno_de_fora', {
+    p_cliente: args.clienteId,
+    p_plano: args.produtoId,
+    p_data_inicio: args.dataInicio,
+    p_turmas: args.turmaIds && args.turmaIds.length > 0 ? args.turmaIds : undefined,
+    p_cobranca_externa: args.cobrancaExterna ?? true,
+    p_justificativa: args.justificativa,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Liga/desliga a cobrança pelo sistema de uma matrícula que já existe. */
+export async function definirCobrancaExterna(matriculaId: string, externa: boolean) {
+  const { error } = await requireSupabase().rpc('definir_cobranca_externa', {
+    p_matricula: matriculaId,
+    p_externa: externa,
+  })
+  if (error) throw error
+}
+
 export async function matricularTurmaFixa(
   clienteId: string,
   produtoId: string,

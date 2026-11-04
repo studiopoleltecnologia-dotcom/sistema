@@ -1,7 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Button } from '../../../components/ui/Button'
+import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
 import { Select } from '../../../components/ui/Select'
+import { useMinhaFuncao } from '../../../lib/funcao'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { useClientes } from '../../clientes/hooks/useClientes'
 import { useProdutos } from '../../produtos/hooks/useProdutos'
@@ -13,6 +15,7 @@ import {
   type Produto,
 } from '../../produtos/types'
 import { useSolicitarContratacao } from '../hooks/useContratacoes'
+import { useMatricularAlunoDeFora } from '../hooks/useMatriculas'
 import { NovoAlunoRapido } from './NovoAlunoRapido'
 import { SeletorTurmaFixa } from './SeletorTurmaFixa'
 
@@ -46,7 +49,9 @@ export function MatriculaForm({
 }) {
   const { data: clientes } = useClientes()
   const { data: produtos } = useProdutos()
+  const { data: funcao } = useMinhaFuncao()
   const matricular = useSolicitarContratacao()
+  const importar = useMatricularAlunoDeFora()
 
   const [clienteId, setClienteId] = useState(clienteFixo?.id ?? '')
   const [produtoId, setProdutoId] = useState('')
@@ -66,6 +71,16 @@ export function MatriculaForm({
   */
   const [justificativa, setJustificativa] = useState('')
   const [pedeJustificativa, setPedeJustificativa] = useState(false)
+  /*
+    Modo "já era aluno": cadastra a assinatura que já existe lá fora, em
+    vez de abrir uma contratação a pagar. Só a gestão vê e usa — decidir
+    que um aluno não é cobrado pelo sistema é decisão de dinheiro (§5.2),
+    e o banco recusa de qualquer forma.
+  */
+  const [jaEraAluno, setJaEraAluno] = useState(false)
+  const [dataInicio, setDataInicio] = useState('')
+  const [cobrancaExterna, setCobrancaExterna] = useState(true)
+  const ehGestao = funcao === 'gestao'
 
   /*
     Três listas, não uma. Os planos antigos do Wix e o plano interno da
@@ -94,6 +109,30 @@ export function MatriculaForm({
       )
     }
 
+    function aoFalhar(e: unknown) {
+      const msg = (e as Error).message
+      setErro(msg)
+      // O banco devolve esta frase quando a gestão pode excepcionar
+      // mas não escreveu o motivo. É o gatilho para abrir o campo.
+      if (msg.includes('informe a justificativa')) setPedeJustificativa(true)
+    }
+
+    if (jaEraAluno) {
+      if (!dataInicio) return setErro('Informe o primeiro dia do ciclo atual do aluno.')
+      importar.mutate(
+        {
+          clienteId,
+          produtoId: produto.id,
+          dataInicio,
+          turmaIds: ehTurmaFixa ? turmaIds : [],
+          cobrancaExterna,
+          justificativa: justificativa.trim() || undefined,
+        },
+        { onSuccess: onFechar, onError: aoFalhar },
+      )
+      return
+    }
+
     matricular.mutate(
       {
         clienteId,
@@ -101,22 +140,40 @@ export function MatriculaForm({
         turmaIds: ehTurmaFixa ? turmaIds : [],
         justificativa: justificativa.trim() || undefined,
       },
-      {
-        onSuccess: onFechar,
-        onError: (e) => {
-          const msg = (e as Error).message
-          setErro(msg)
-          // O banco devolve esta frase quando a gestão pode excepcionar
-          // mas não escreveu o motivo. É o gatilho para abrir o campo.
-          if (msg.includes('informe a justificativa')) setPedeJustificativa(true)
-        },
-      },
+      { onSuccess: onFechar, onError: aoFalhar },
     )
   }
 
   return (
-    <Modal title="Nova contratação" onFechar={onFechar} size={ehTurmaFixa ? 'lg' : 'md'}>
+    <Modal
+      title={jaEraAluno ? 'Cadastrar aluno que já pagava' : 'Nova contratação'}
+      onFechar={onFechar}
+      size={ehTurmaFixa ? 'lg' : 'md'}
+    >
       <form onSubmit={submeter} className="flex flex-col gap-4">
+        {/*
+          Fica no topo porque muda o significado de tudo o que vem
+          abaixo: com ele ligado não há pagamento a confirmar, e a data
+          deixa de ser "hoje".
+        */}
+        {ehGestao && (
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-neutral-200 bg-neutral-50/70 px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={jaEraAluno}
+              onChange={(e) => {
+                setJaEraAluno(e.target.checked)
+                setErro(null)
+              }}
+              className="mt-0.5 accent-brand-600"
+            />
+            <span className="text-xs leading-relaxed text-neutral-600">
+              <b className="text-neutral-800">Já era aluno antes do sistema.</b> Cria a matrícula
+              direto, no ciclo que ele já está vivendo — sem abrir contratação a pagar.
+            </span>
+          </label>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className={labelCls}>Aluno *</label>
@@ -202,6 +259,50 @@ export function MatriculaForm({
           </div>
         </div>
 
+        {jaEraAluno && (
+          <div className="flex flex-col gap-3 rounded-md border border-brand-200 bg-brand-50/60 px-3 py-3">
+            <div>
+              <label className={labelCls}>Primeiro dia do ciclo atual *</label>
+              <Input
+                type="date"
+                value={dataInicio}
+                onChange={(e) => {
+                  setDataInicio(e.target.value)
+                  setErro(null)
+                }}
+                className="max-w-[12rem]"
+              />
+              <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
+                O dia em que o aluno pagou o mês que está correndo. É ele que define a data de
+                renovação — e, portanto, o dia em que a receita entra na previsão. Precisa ser de
+                um ciclo que ainda não terminou.
+              </p>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-2.5 border-t border-brand-200/70 pt-3">
+              <input
+                type="checkbox"
+                checked={cobrancaExterna}
+                onChange={(e) => setCobrancaExterna(e.target.checked)}
+                className="mt-0.5 accent-brand-600"
+              />
+              <span className="text-xs leading-relaxed text-neutral-600">
+                <b className="text-neutral-800">Não cobrar por aqui.</b> A cobrança continua como
+                está hoje (link na mão, transferência, dinheiro). O sistema prevê a receita e
+                renova o ciclo, mas não emite cobrança nem manda link — e não marca o aluno em
+                atraso, porque não tem como saber se entrou.
+              </span>
+            </label>
+
+            {!cobrancaExterna && (
+              <p className="rounded border border-warning-200 bg-warning-50 px-2.5 py-2 text-[11px] leading-relaxed text-warning-800">
+                Desmarcado, o sistema passa a cobrar este aluno: na próxima rodada diária ele
+                recebe um link de pagamento por e-mail.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* O optgroup separa, mas quem vê só a linha escolhida não lê o
             cabeçalho. O aviso repete o estado onde a decisão acontece. */}
         {produto?.status === 'legado' && (
@@ -257,10 +358,18 @@ export function MatriculaForm({
         {/* O que acontece ao enviar, dito antes de enviar. Era a dúvida
             da gestão: "apertou vender e o aluno já apareceu matriculado —
             e o pagamento?". Agora não aparece, e a tela diz por quê. */}
-        {produto && (produto.preco_centavos ?? 0) > 0 && (
+        {produto && (produto.preco_centavos ?? 0) > 0 && !jaEraAluno && (
           <p className="rounded-md bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-600">
             A matrícula e os créditos saem quando o pagamento for confirmado. Até lá, a
             contratação fica em <b>Matrículas → Contratações</b>.
+          </p>
+        )}
+
+        {produto && (produto.preco_centavos ?? 0) > 0 && jaEraAluno && (
+          <p className="rounded-md bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-600">
+            A matrícula e os créditos saem na hora. A mensalidade do ciclo atual entra em
+            <b> Entradas</b> como prevista, para dar baixa quando o dinheiro entrar; os ciclos
+            seguintes aparecem em <b>Financeiro → Previsão de mensalidades</b>.
           </p>
         )}
 
@@ -291,15 +400,20 @@ export function MatriculaForm({
           </Button>
           <Button
             type="submit"
-            loading={matricular.isPending}
+            loading={matricular.isPending || importar.isPending}
             disabled={
               !clienteId ||
               !produto ||
               (ehTurmaFixa && faltam !== 0) ||
+              (jaEraAluno && !dataInicio) ||
               (pedeJustificativa && justificativa.trim().length === 0)
             }
           >
-            {pedeJustificativa ? 'Autorizar e registrar' : 'Registrar contratação'}
+            {pedeJustificativa
+              ? 'Autorizar e registrar'
+              : jaEraAluno
+                ? 'Cadastrar matrícula'
+                : 'Registrar contratação'}
           </Button>
         </div>
       </form>

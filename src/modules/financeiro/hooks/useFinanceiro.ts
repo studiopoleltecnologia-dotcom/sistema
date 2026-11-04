@@ -17,6 +17,7 @@ import {
   lancarRecorrente,
   listarCategoriasSaida,
   listarContasAPagar,
+  listarPrevisaoMensalidades,
   listarDividas,
   listarDreCompetencia,
   listarEntradas,
@@ -136,6 +137,13 @@ export function useDreCompetencia(periodo: Periodo) {
 
 export function useContasAPagar() {
   return useQuery({ queryKey: ['contas-a-pagar'], queryFn: listarContasAPagar })
+}
+
+export function usePrevisaoMensalidades() {
+  return useQuery({
+    queryKey: ['previsao-mensalidades'],
+    queryFn: listarPrevisaoMensalidades,
+  })
 }
 
 export function useCriarEntrada() {

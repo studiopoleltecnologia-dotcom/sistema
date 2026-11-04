@@ -38,7 +38,15 @@ type Grupo = {
 
 const GRUPOS: Grupo[] = [
   { to: '.', label: 'Resumo', rotas: [''] },
-  { to: 'entradas', label: 'Entradas', rotas: ['entradas'] },
+  {
+    to: 'entradas',
+    label: 'Entradas',
+    rotas: ['entradas', 'previsao'],
+    subs: [
+      { to: 'entradas', label: 'Lançamentos' },
+      { to: 'previsao', label: 'Previsão de mensalidades' },
+    ],
+  },
   { to: 'saidas', label: 'Saídas', rotas: ['saidas'] },
   { to: 'fluxo', label: 'Fluxo de caixa', rotas: ['fluxo'] },
   { to: 'dividas', label: 'Dívidas', rotas: ['dividas'] },
