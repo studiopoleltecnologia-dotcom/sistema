@@ -23,7 +23,7 @@ import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { useClientes } from '../../clientes/hooks/useClientes'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
-import { mesAtual, periodoMes, venceNoRecorte, type Periodo } from '../periodo'
+import { contemMes, mesAtual, periodoMes, venceNoRecorte, type Periodo } from '../periodo'
 import { LINHA_BASE, STATUS_FIN, type StatusFin } from '../statusVisual'
 import {
   useAtualizarEntrada,
@@ -78,6 +78,8 @@ export function EntradasPage() {
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoMes(mesAtual()))
   const [filtro, setFiltro] = useState<Filtro>('todas')
   const [formAberto, setFormAberto] = useState(false)
+  /** Explica um salto de período que a tela deu por conta própria (ver `aoCriar`). */
+  const [aviso, setAviso] = useState<string | null>(null)
 
   const { data: entradas, isLoading } = useEntradas(periodo)
   /*
@@ -128,6 +130,46 @@ export function EntradasPage() {
 
   const visiveis = filtro === 'todas' ? linhas : linhas.filter((l) => l.vis === filtro)
 
+  /*
+    O lançamento recém-criado pode não pertencer ao mês que está aberto.
+
+    Cada status entra na tela por uma data diferente: recebida pela data
+    de caixa (é o que a consulta filtra), prevista pelo vencimento (é o
+    que `venceNoRecorte` decide). Então lançar o repasse Wellhub de
+    novembro, que só cai em 15/12, cria uma linha de DEZEMBRO — e quem
+    estava olhando novembro via o modal fechar e nada aparecer, como se
+    o lançamento tivesse sumido.
+
+    A linha não passa a aparecer nos dois meses de propósito: o mesmo
+    dinheiro contaria duas vezes no "A receber". Em vez disso a tela vai
+    até ela — troca o período e diz por quê. O filtro de status também
+    cede, senão a linha nova continuaria escondida atrás de um chip.
+  */
+  function aoCriar(nova: Entrada) {
+    setFormAberto(false)
+    const vis = statusEntradaVis(nova, hoje)
+    if (filtro !== 'todas' && filtro !== vis) setFiltro('todas')
+
+    const recorte = nova.status === 'prevista' ? (nova.data_prevista ?? nova.data_caixa) : nova.data_caixa
+    const aparece =
+      nova.status === 'prevista'
+        ? venceNoRecorte(periodo, recorte, hoje)
+        : !!recorte && contemMes(periodo, recorte.slice(0, 7))
+    if (aparece || !recorte) return
+
+    setPeriodo(periodoMes(recorte.slice(0, 7)))
+    setAviso(
+      `${fmtCentavos(nova.valor_centavos)} ${
+        nova.status === 'prevista' ? `vence ${fmtData(recorte)}` : `entrou no caixa em ${fmtData(recorte)}`
+      } — mostrando ${mesAno(recorte)}, o mês em que esse lançamento aparece.`,
+    )
+  }
+
+  function trocarPeriodo(p: Periodo) {
+    setAviso(null)
+    setPeriodo(p)
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -139,8 +181,14 @@ export function EntradasPage() {
             Nova entrada
           </Button>
         }
-        filtros={<SeletorPeriodo periodo={periodo} onChange={setPeriodo} />}
+        filtros={<SeletorPeriodo periodo={periodo} onChange={trocarPeriodo} />}
       />
+
+      {aviso && (
+        <p className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 text-sm text-brand-700">
+          {aviso}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Recebido" value={fmtCentavos(soma('recebida'))} icon={Banknote} tone="success" hint={`${conta('recebida')} lançamento(s)`} />
@@ -206,7 +254,7 @@ export function EntradasPage() {
         </ul>
       )}
 
-      {formAberto && <NovaEntradaModal onFechar={() => setFormAberto(false)} />}
+      {formAberto && <NovaEntradaModal onFechar={() => setFormAberto(false)} aoCriar={aoCriar} />}
       {confirmar.dialogo}
     </div>
   )
@@ -308,7 +356,13 @@ function LinhaEntrada({
 
 const labelCls = 'mb-1 block text-xs font-medium text-neutral-500'
 
-function NovaEntradaModal({ onFechar }: { onFechar: () => void }) {
+function NovaEntradaModal({
+  onFechar,
+  aoCriar,
+}: {
+  onFechar: () => void
+  aoCriar: (nova: Entrada) => void
+}) {
   const criar = useCriarEntrada()
   const hoje = hojeISO()
   const [descricao, setDescricao] = useState('')
@@ -316,6 +370,19 @@ function NovaEntradaModal({ onFechar }: { onFechar: () => void }) {
   const [categoria, setCategoria] = useState<CategoriaEntrada>('mensalista')
   const [recebida, setRecebida] = useState(true)
   const [data, setData] = useState(hoje)
+  /*
+    null = "siga a regra do canal".
+
+    A data de recebimento era um default invisível: em Wellhub/ClassPass
+    o sistema põe o dia 15 do mês seguinte à competência (regra de
+    repasse, CLAUDE.md §12.6) e é ELA que decide em que mês a linha
+    aparece. Quem quer receber em 15/12 precisa ver 15/12 antes de
+    lançar — e poder corrigir, porque repasse atrasa e competência de
+    fechamento nem sempre é o mês cheio.
+  */
+  const [previstaManual, setPrevistaManual] = useState<string | null>(null)
+  const ehRepasse = categoria === 'wellhub' || categoria === 'classpass'
+  const prevista = previstaManual ?? (ehRepasse ? previsaoWellhub(data) : data)
 
   function lancar(ev: FormEvent) {
     ev.preventDefault()
@@ -329,13 +396,9 @@ function NovaEntradaModal({ onFechar }: { onFechar: () => void }) {
         status: recebida ? 'recebida' : 'prevista',
         data_competencia: data,
         data_caixa: recebida ? data : null,
-        data_prevista: recebida
-          ? null
-          : categoria === 'wellhub' || categoria === 'classpass'
-            ? previsaoWellhub(data)
-            : data,
+        data_prevista: recebida ? null : prevista,
       },
-      { onSuccess: onFechar },
+      { onSuccess: aoCriar },
     )
   }
 
@@ -376,6 +439,21 @@ function NovaEntradaModal({ onFechar }: { onFechar: () => void }) {
             <input type="checkbox" checked={recebida} onChange={(ev) => setRecebida(ev.target.checked)} className="accent-brand-600" />
             Já recebido (entra no caixa)
           </label>
+          {!recebida && (
+            <div>
+              <label className={labelCls}>Previsão de recebimento</label>
+              <Input
+                type="date"
+                value={prevista}
+                onChange={(ev) => setPrevistaManual(ev.target.value)}
+              />
+              <p className="mt-1 text-xs text-neutral-400">
+                {ehRepasse
+                  ? 'Repasse cai no dia 15 do mês seguinte à competência — ajuste se for diferente.'
+                  : 'É esta data que define em qual mês o lançamento aparece.'}
+              </p>
+            </div>
+          )}
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onFechar} className="rounded-md px-3 py-1.5 text-sm text-neutral-500 transition hover:text-neutral-800">
