@@ -16,8 +16,9 @@ import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { ContasFixasModal } from '../components/ContasFixas'
 import { ListaAPagar, type BucketKey, type ItemAPagar } from '../components/ListaAPagar'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
+import { usePeriodo } from '../usePeriodo'
 import { DataEditavel, TextoEditavel, ValorEditavel } from '../components/CamposEditaveis'
-import { mesAtual, periodoMes, venceNoRecorte, type Periodo } from '../periodo'
+import { venceNoRecorte } from '../periodo'
 import {
   useAtualizarSaida,
   useCategoriasSaida,
@@ -62,7 +63,7 @@ const CHIP_GRUPO: Record<GrupoSaida, ChipTom> = {
  * despesa (fica fora do DRE).
  */
 export function SaidasPage() {
-  const [periodo, setPeriodo] = useState<Periodo>(() => periodoMes(mesAtual()))
+  const [periodo, setPeriodo] = usePeriodo()
   const [modo, setModo] = useState<'lista' | 'calendario'>('lista')
   const [novaSaida, setNovaSaida] = useState<{ tipo: TipoSaida } | null>(null)
   // null = fechado; { nova: true } = abre já no formulário (vindo do "+").

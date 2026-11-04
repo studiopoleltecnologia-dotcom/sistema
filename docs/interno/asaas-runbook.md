@@ -125,7 +125,48 @@ durante a homologação:
 ```bash
 supabase functions deploy asaas-cobranca --project-ref nhoircibjcxsakjimisp
 supabase functions deploy asaas-webhook  --project-ref nhoircibjcxsakjimisp
+supabase functions deploy asaas-previsao --project-ref nhoircibjcxsakjimisp
 ```
+
+## 5.1 A previsão de receita (desde 04/11/2026)
+
+A **previsão de mensalidades passou a sair do Asaas**: quem cobra é o
+gateway, então é a conta dele que vale. Quem lê é a Edge Function
+`asaas-previsao`, que junta duas coisas e grava em `previsoes_asaas`:
+
+| Pedaço | De onde | O que é |
+|---|---|---|
+| cobrança pendente | `GET /payments?status=PENDING` | já emitida lá, com data e valor — não é estimativa |
+| ciclo projetado | `GET /subscriptions?status=ACTIVE` + `nextDueDate` | o que a assinatura ainda vai gerar (supõe que ninguém cancela) |
+
+O mês que já tem cobrança emitida **não** recebe projeção da mesma
+assinatura — senão o mesmo dinheiro contaria duas vezes, e o Asaas
+pré-gera a cobrança do próximo ciclo bem antes de `nextDueDate`
+alcançá-lo.
+
+Pontos de operação:
+
+- **Mesma chave, nada novo a configurar.** A função usa
+  `ASAAS_API_KEY`/`ASAAS_API_BASE` já descritas na seção 1. Ambiente sem
+  a chave devolve `503` e a tela mostra a mensagem — DEV fica inerte de
+  propósito (§14.4).
+- **Cron `sincronizar-previsao-asaas`, 8h**, via Vault, igual a
+  `emitir-cobrancas`. Sem `project_url`/`anon_key` no Vault, não roda.
+  A gestão também tem o botão **Atualizar do Asaas** na tela.
+- **A previsão é editável** e a edição ganha prioridade sobre o
+  gateway: linha com `editado_em` não é sobrescrita pela sincronização.
+  "Voltar ao Asaas" (`redefinir_previsao_asaas`) desfaz.
+- **Quem paga por fora do gateway não aparece.** Decisão da gestão em
+  04/11/2026: previsão com duas fontes seria dois números discordando.
+  Enquanto a migração para o Asaas não terminar, a previsão é menor que
+  a receita real, e a tela diz isso.
+- **O vínculo com o aluno** sai de `clientes.asaas_customer_id`; quando
+  está vazio, a função tenta CPF e depois e-mail, e grava o id no
+  cadastro ao acertar. O que não casar aparece como "não vinculado" com
+  um botão para ligar à mão (`vincular_previsao_cliente`).
+- ⚠️ As assinaturas criadas **à mão no painel** não têm
+  `externalReference`, então não há como ligá-las a uma matrícula —
+  só à pessoa. Assinatura criada pelo sistema não tem esse problema.
 
 ## 6. Homologar no sandbox
 
