@@ -22,8 +22,12 @@ import { cn } from '../../../components/ui/cn'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { useClientes } from '../../clientes/hooks/useClientes'
+import { DataEditavel, TextoEditavel, ValorEditavel } from '../components/CamposEditaveis'
+import { LinhaPrevisaoEditavel } from '../components/LinhaPrevisao'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
-import { contemMes, mesAtual, periodoMes, venceNoRecorte, type Periodo } from '../periodo'
+import { usePeriodo } from '../usePeriodo'
+import { usePrevisaoDoPeriodo } from '../hooks/usePrevisao'
+import { contemMes, periodoMes, rotuloPeriodo, venceNoRecorte, type Periodo } from '../periodo'
 import { LINHA_BASE, STATUS_FIN, type StatusFin } from '../statusVisual'
 import {
   useAtualizarEntrada,
@@ -75,13 +79,14 @@ function previsaoWellhub(competencia: string): string {
 }
 
 export function EntradasPage() {
-  const [periodo, setPeriodo] = useState<Periodo>(() => periodoMes(mesAtual()))
+  const [periodo, setPeriodo] = usePeriodo()
   const [filtro, setFiltro] = useState<Filtro>('todas')
   const [formAberto, setFormAberto] = useState(false)
   /** Explica um salto de período que a tela deu por conta própria (ver `aoCriar`). */
   const [aviso, setAviso] = useState<string | null>(null)
 
   const { data: entradas, isLoading } = useEntradas(periodo)
+  const { data: previsaoDoPeriodo } = usePrevisaoDoPeriodo(periodo)
   /*
     O nome do aluno na linha.
 
@@ -130,6 +135,12 @@ export function EntradasPage() {
 
   const visiveis = filtro === 'todas' ? linhas : linhas.filter((l) => l.vis === filtro)
 
+  // A previsão do gateway que cai neste recorte. As ocultas ficam de
+  // fora: "não vai entrar" é decisão já tomada pela gestão, e mostrá-la
+  // aqui reabriria a discussão em cada mês.
+  const previsao = (previsaoDoPeriodo ?? []).filter((l) => !l.oculto)
+  const totalPrevisao = previsao.reduce((s, l) => s + l.valor_centavos, 0)
+
   /*
     O lançamento recém-criado pode não pertencer ao mês que está aberto.
 
@@ -145,23 +156,29 @@ export function EntradasPage() {
     até ela — troca o período e diz por quê. O filtro de status também
     cede, senão a linha nova continuaria escondida atrás de um chip.
   */
-  function aoCriar(nova: Entrada) {
-    setFormAberto(false)
-    const vis = statusEntradaVis(nova, hoje)
-    if (filtro !== 'todas' && filtro !== vis) setFiltro('todas')
-
-    const recorte = nova.status === 'prevista' ? (nova.data_prevista ?? nova.data_caixa) : nova.data_caixa
+  function levarAte(status: Entrada['status'], recorte: string | null, valorCentavos: number) {
     const aparece =
-      nova.status === 'prevista'
+      status === 'prevista'
         ? venceNoRecorte(periodo, recorte, hoje)
         : !!recorte && contemMes(periodo, recorte.slice(0, 7))
     if (aparece || !recorte) return
 
     setPeriodo(periodoMes(recorte.slice(0, 7)))
     setAviso(
-      `${fmtCentavos(nova.valor_centavos)} ${
-        nova.status === 'prevista' ? `vence ${fmtData(recorte)}` : `entrou no caixa em ${fmtData(recorte)}`
+      `${fmtCentavos(valorCentavos)} ${
+        status === 'prevista' ? `vence ${fmtData(recorte)}` : `entrou no caixa em ${fmtData(recorte)}`
       } — mostrando ${mesAno(recorte)}, o mês em que esse lançamento aparece.`,
+    )
+  }
+
+  function aoCriar(nova: Entrada) {
+    setFormAberto(false)
+    const vis = statusEntradaVis(nova, hoje)
+    if (filtro !== 'todas' && filtro !== vis) setFiltro('todas')
+    levarAte(
+      nova.status,
+      nova.status === 'prevista' ? (nova.data_prevista ?? nova.data_caixa) : nova.data_caixa,
+      nova.valor_centavos,
     )
   }
 
@@ -218,6 +235,29 @@ export function EntradasPage() {
               e={e}
               vis={vis}
               aluna={e.cliente_id ? (nomePorCliente.get(e.cliente_id) ?? null) : null}
+              onValor={(centavos) => atualizar.mutate({ id: e.id, patch: { valor_centavos: centavos } })}
+              onDescricao={(texto) => atualizar.mutate({ id: e.id, patch: { descricao: texto || null } })}
+              /*
+                A data que a linha mostra é a que a decide de mês (ver
+                `levarAte`): vencimento na prevista, caixa na recebida,
+                competência na cancelada. Corrigir o vencimento de uma
+                prevista pode tirá-la do mês aberto — então a tela vai
+                atrás dela, em vez de a linha sumir na frente de quem
+                acabou de digitar.
+              */
+              onData={(iso) => {
+                if (vis === 'cancelada') {
+                  atualizar.mutate({ id: e.id, patch: { data_competencia: iso } })
+                  return
+                }
+                if (vis === 'recebida') {
+                  atualizar.mutate({ id: e.id, patch: { data_caixa: iso } })
+                  levarAte('recebida', iso, e.valor_centavos)
+                  return
+                }
+                atualizar.mutate({ id: e.id, patch: { data_prevista: iso } })
+                levarAte('prevista', iso, e.valor_centavos)
+              }}
               onRecebi={() => atualizar.mutate({ id: e.id, patch: { status: 'recebida', data_caixa: hoje } })}
               onCancelar={() => atualizar.mutate({ id: e.id, patch: { status: 'cancelada' } })}
               // Volta para "a receber": limpa a data de caixa (o dinheiro não
@@ -254,6 +294,41 @@ export function EntradasPage() {
         </ul>
       )}
 
+      {/*
+        A previsão do Asaas, no mesmo recorte.
+
+        Ela fica num bloco à parte, com total próprio, e NÃO entra nos
+        cards acima — nem no "A receber". Não é birra de arquitetura: a
+        linha de previsão é uma cobrança que existe no gateway, não um
+        lançamento nosso; somá-la ao "a receber" inflaria o saldo do mês,
+        que é o erro que a revisão da equação do caixa já corrigiu uma
+        vez. Quando o pagamento entra, o webhook cria a entrada de
+        verdade e a linha sai daqui sozinha.
+      */}
+      {previsao.length > 0 && (
+        <section className="flex flex-col gap-2 border-t border-neutral-100 pt-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-neutral-800">
+              Previsão do Asaas
+              <span className="font-normal text-neutral-400"> · {rotuloPeriodo(periodo)}</span>
+            </h2>
+            <span className="text-sm font-semibold tabular-nums text-neutral-700">
+              {fmtCentavos(totalPrevisao)}
+            </span>
+          </div>
+          <p className="max-w-3xl text-xs leading-relaxed text-neutral-400">
+            O que o gateway ainda vai cobrar neste recorte — fora dos cards acima, porque não é
+            caixa nem "a receber". Valor, descrição e data são editáveis aqui mesmo, e a correção
+            sobrevive à sincronização. Quem paga por fora do Asaas não aparece.
+          </p>
+          <ul className="divide-y divide-neutral-100">
+            {previsao.map((l) => (
+              <LinhaPrevisaoEditavel key={l.id} l={l} compacta />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {formAberto && <NovaEntradaModal onFechar={() => setFormAberto(false)} aoCriar={aoCriar} />}
       {confirmar.dialogo}
     </div>
@@ -264,6 +339,9 @@ function LinhaEntrada({
   e,
   vis,
   aluna,
+  onValor,
+  onDescricao,
+  onData,
   onRecebi,
   onCancelar,
   onReabrir,
@@ -273,18 +351,23 @@ function LinhaEntrada({
   vis: StatusEntradaVis
   /** Nome do aluno, quando a entrada tem dono. Null em receita sem pessoa. */
   aluna: string | null
+  onValor: (centavos: number) => void
+  onDescricao: (texto: string) => void
+  onData: (iso: string) => void
   onRecebi: () => void
   onCancelar: () => void
   onReabrir: () => void
   onExcluir: () => void
 }) {
   const info = STATUS_INFO[vis]
-  const dataRotulo =
-    vis === 'recebida'
-      ? `recebido ${fmtData(e.data_caixa)}`
-      : vis === 'cancelada'
-        ? `comp. ${fmtData(e.data_competencia)}`
-        : `vence ${fmtData(e.data_prevista)}`
+  /*
+    Qual data a linha mostra e edita, por status — a mesma que a consulta
+    (ou `venceNoRecorte`) usa para recortar o mês, senão a pessoa
+    corrigiria uma data e a linha pularia de mês sem explicação.
+  */
+  const dataDaLinha =
+    vis === 'recebida' ? e.data_caixa : vis === 'cancelada' ? e.data_competencia : e.data_prevista
+  const rotuloData = vis === 'recebida' ? 'recebido' : vis === 'cancelada' ? 'comp.' : 'vence'
 
   // Repasse Wellhub/ClassPass cai num mês mas é operação do mês anterior —
   // sinalizar isso na própria linha (antes só existia numa tela separada).
@@ -298,9 +381,16 @@ function LinhaEntrada({
 
   return (
     <li className={cn(LINHA_BASE, tokens.barra)}>
-      <span className={cn('w-24 shrink-0 font-semibold tabular-nums', tokens.valor)}>
-        {fmtCentavos(e.valor_centavos)}
-      </span>
+      <ValorEditavel
+        valor={e.valor_centavos}
+        onSalvar={onValor}
+        className={tokens.valor}
+        dica={
+          e.matricula_id
+            ? 'Valor desta mensalidade. Corrigir aqui vale para o caixa e para o teto MEI; a renovação do próximo ciclo usa o preço do plano.'
+            : 'Clique para corrigir o valor'
+        }
+      />
       <Badge variant={tokens.badge}>{info.label}</Badge>
       <span className="hidden shrink-0 text-xs text-neutral-400 sm:inline">
         {CATEGORIA_ENTRADA_LABEL[e.categoria]}
@@ -308,17 +398,42 @@ function LinhaEntrada({
       {/* O nome vem primeiro e em peso maior: é por ele que se procura
           alguém numa lista de mensalidades. O plano fica ao lado, mais
           claro, porque responde "qual" e não "de quem". */}
-      <span className="flex-1 truncate">
-        {aluna && <span className="font-medium text-neutral-800">{aluna}</span>}
-        {aluna && e.descricao && <span className="text-neutral-300"> · </span>}
-        <span className="text-neutral-500">{e.descricao}</span>
-      </span>
+      {/* O nome do aluno não é editável aqui: ele vem de `clientes` pelo
+          `cliente_id`, e mudá-lo seria renomear a pessoa a partir de uma
+          linha de caixa. Só a descrição do lançamento se edita. */}
+      {aluna && (
+        <span className="shrink-0 truncate font-medium text-neutral-800">
+          {aluna}
+          <span className="text-neutral-300"> · </span>
+        </span>
+      )}
+      <TextoEditavel valor={e.descricao ?? ''} onSalvar={onDescricao} className="text-neutral-500" />
       {competenciaDiferente && (
         <span className="hidden shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500 sm:inline">
           competência {mesAno(e.data_competencia!)}
         </span>
       )}
-      <span className="hidden shrink-0 text-xs text-neutral-400 md:inline">{dataRotulo}</span>
+      <div className="hidden shrink-0 md:block">
+        {dataDaLinha ? (
+          <DataEditavel
+            valor={dataDaLinha}
+            onSalvar={onData}
+            rotulo={rotuloData}
+            dica={
+              vis === 'recebida'
+                ? 'Clique para corrigir a data em que o dinheiro entrou'
+                : vis === 'cancelada'
+                  ? 'Clique para corrigir a competência'
+                  : 'Clique para corrigir o vencimento'
+            }
+          />
+        ) : (
+          /* Prevista pode nascer sem vencimento (as duas colunas de data são
+             nullable). Aí não há data para clicar: oferece pôr uma, porque é
+             ela que tira a linha do limbo do "agora". */
+          <DataEditavel valor={hojeISO()} onSalvar={onData} rotulo="sem data —" dica="Definir o vencimento" />
+        )}
+      </div>
 
       {(vis === 'pendente' || vis === 'atrasada') && (
         <>
