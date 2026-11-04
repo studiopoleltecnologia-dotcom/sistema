@@ -1,7 +1,8 @@
 import { ChevronLeft, ChevronRight, Printer } from 'lucide-react'
 import { KpiCard } from '../../../components/ui/KpiCard'
 import { fmtCentavos } from '../../../lib/dinheiro'
-import { deslocarMes, mesAtual, periodoMes, rotuloPeriodo } from '../periodo'
+import { deslocarMes, periodoMes, rotuloPeriodo } from '../periodo'
+import { useMesUrl } from '../../../lib/selecao'
 import { useDreCompetencia } from '../hooks/useFinanceiro'
 import {
   CATEGORIA_ENTRADA_LABEL,
@@ -10,7 +11,6 @@ import {
   type CategoriaEntrada,
   type TipoSaida,
 } from '../types'
-import { useState } from 'react'
 
 type Linha = { rotulo: string; valor: number }
 type Grupo = { titulo: string; linhas: Linha[]; subtotal: number }
@@ -22,7 +22,10 @@ const rotuloExtenso = (ym: string) => {
 }
 
 export function DrePage() {
-  const [mes, setMes] = useState(mesAtual())
+  // Mesmo motivo do Fechamento e do Financeiro: o mês escolhido mora na
+  // URL e na sessão. Num DRE então é crítico — é a tela que se lê para
+  // decidir, e ler o mês errado sem perceber é o pior desfecho possível.
+  const [mes, setMes] = useMesUrl('dre:mes')
   const periodo = periodoMes(mes)
   const { data: dre } = useDreCompetencia(periodo)
 
