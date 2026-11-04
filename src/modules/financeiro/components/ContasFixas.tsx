@@ -176,7 +176,10 @@ function FormContaFixa({
       descricao: descricao.trim() || 'Despesa recorrente',
       valor_centavos: centavos,
       categoria_id: categoriaId,
-      dia_vencimento: Math.min(Math.max(Number(dia) || 1, 1), 28),
+      // 31 é o teto real desde 20261107120000: mês que não tem o dia usa o
+      // último (fevereiro no dia 31 = 28, ou 29 em ano bissexto), a mesma
+      // regra que `data_renovacao()` já aplica às assinaturas.
+      dia_vencimento: Math.min(Math.max(Number(dia) || 1, 1), 31),
       data_inicio: inicio,
       data_fim: fim || null,
       observacoes: observacoes.trim() || null,
@@ -217,9 +220,10 @@ function FormContaFixa({
             <Input
               type="number"
               min={1}
-              max={28}
+              max={31}
               value={dia}
               onChange={(ev) => setDia(ev.target.value)}
+              hint={Number(dia) > 28 ? 'Em fevereiro, cai no último dia' : undefined}
             />
           </div>
         </div>
