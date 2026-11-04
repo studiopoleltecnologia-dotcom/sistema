@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { lerSessao, gravarSessao } from '../../lib/selecao'
 import { contemMes, mesAtual, periodoMes, type Periodo } from './periodo'
 
 /**
@@ -39,37 +40,27 @@ function valido(inicio: string | null, fim: string | null): Periodo | null {
 }
 
 /*
-  `sessionStorage` pode lançar (aba privada, cookies de site bloqueados), e
-  nesse caso a tela precisa continuar funcionando — só deixa de lembrar.
+  A leitura e a escrita da sessão vêm de [lib/selecao.ts](../../lib/selecao.ts),
+  que é onde mora a regra (sessão e não localStorage, e o try/catch para a
+  aba privada). Aqui fica só o que é próprio do Financeiro: um PAR de
+  meses em vez de um valor só.
 */
-function lerSessao(): Periodo | null {
-  try {
-    const bruto = sessionStorage.getItem(CHAVE_SESSAO)
-    if (!bruto) return null
-    const [inicio, fim] = bruto.split('|')
-    return valido(inicio ?? null, fim ?? null)
-  } catch {
-    return null
-  }
-}
-
-function gravarSessao(p: Periodo) {
-  try {
-    sessionStorage.setItem(CHAVE_SESSAO, `${p.inicio}|${p.fim}`)
-  } catch {
-    /* sem memória de sessão: a tela segue, só não lembra */
-  }
+function lerPeriodoDaSessao(): Periodo | null {
+  const bruto = lerSessao(CHAVE_SESSAO)
+  if (!bruto) return null
+  const [inicio, fim] = bruto.split('|')
+  return valido(inicio ?? null, fim ?? null)
 }
 
 export function usePeriodo(): [Periodo, (p: Periodo) => void] {
   const [params, setParams] = useSearchParams()
 
   const periodo =
-    valido(params.get('de'), params.get('ate')) ?? lerSessao() ?? periodoMes(mesAtual())
+    valido(params.get('de'), params.get('ate')) ?? lerPeriodoDaSessao() ?? periodoMes(mesAtual())
 
   const setPeriodo = useCallback(
     (p: Periodo) => {
-      gravarSessao(p)
+      gravarSessao(CHAVE_SESSAO, `${p.inicio}|${p.fim}`)
       setParams(
         (atual) => {
           const novo = new URLSearchParams(atual)

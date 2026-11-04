@@ -11,6 +11,8 @@ import {
 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Tabs } from '../../../components/ui/Tabs'
+import { useAbaUrl } from '../../../lib/aba'
+import { useDiaUrl } from '../../../lib/selecao'
 import { cn } from '../../../components/ui/cn'
 import {
   useCategorias,
@@ -42,6 +44,7 @@ import { SalasModal } from './SalasModal'
 import { TurmaForm, type TurmaInicial } from './TurmaForm'
 
 type Visao = 'semana' | 'mes'
+const VISOES = ['semana', 'mes'] as const satisfies readonly Visao[]
 
 const DIAS_EXTENSO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
 
@@ -63,8 +66,14 @@ const DIAS_EXTENSO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta
  * 8 semanas continua nas Análises.
  */
 export function GradeHorarios() {
-  const [visao, setVisao] = useState<Visao>('semana')
-  const [dia, setDia] = useState(hojeISO())
+  /*
+    Visão e dia moram na URL e na sessão, não em `useState`. Navegar até
+    outra semana, abrir a ficha de um aluno e voltar jogava a grade de
+    volta em hoje — e com a semana errada na tela é fácil marcar presença
+    ou cancelar aula no dia que não era.
+  */
+  const [visao, setVisao] = useAbaUrl(VISOES, 'semana', 'visao')
+  const [dia, setDia] = useDiaUrl('agenda:dia')
   const [exibicao, alterarExibicao] = useExibicao()
   const [configAberta, setConfigAberta] = useState(false)
   const [categoriasAbertas, setCategoriasAbertas] = useState(false)
@@ -161,12 +170,16 @@ export function GradeHorarios() {
     })
   }
 
-  const navegar = (passo: number) =>
-    setDia((d) => {
-      if (visao === 'semana') return somarDias(d, passo * 7)
-      const base = inicioMes(d)
-      return passo > 0 ? fimMesExclusivo(base) : somarDias(base, -1)
-    })
+  // Valor, e não função: o dia agora vem da URL/sessão, onde não existe
+  // "estado anterior" para o React passar de volta. `dia` já é o atual.
+  const navegar = (passo: number) => {
+    if (visao === 'semana') {
+      setDia(somarDias(dia, passo * 7))
+      return
+    }
+    const base = inicioMes(dia)
+    setDia(passo > 0 ? fimMesExclusivo(base) : somarDias(base, -1))
+  }
 
   function abrirDia(dataISO: string) {
     setDia(dataISO)
