@@ -21,6 +21,7 @@ import { Select } from '../../../components/ui/Select'
 import { cn } from '../../../components/ui/cn'
 import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
+import { useClientes } from '../../clientes/hooks/useClientes'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
 import { mesAtual, periodoMes, venceNoRecorte, type Periodo } from '../periodo'
 import { LINHA_BASE, STATUS_FIN, type StatusFin } from '../statusVisual'
@@ -79,6 +80,20 @@ export function EntradasPage() {
   const [formAberto, setFormAberto] = useState(false)
 
   const { data: entradas, isLoading } = useEntradas(periodo)
+  /*
+    O nome do aluno na linha.
+
+    `cobrar_ciclo()` descreve a entrada pelo PLANO ("Plano Mensal - 1x na
+    semana — ciclo 1"), que é o certo para o extrato — mas com duas dezenas
+    de mensalistas no mesmo plano a lista vira vinte linhas idênticas, e
+    não dá para saber de quem é cada uma. O vínculo já existe em
+    `cliente_id`; só não estava na tela.
+  */
+  const { data: clientes } = useClientes()
+  const nomePorCliente = useMemo(
+    () => new Map((clientes ?? []).map((c) => [c.id, c.nome])),
+    [clientes],
+  )
   const atualizar = useAtualizarEntrada()
   const excluir = useExcluirEntrada()
   const confirmar = useConfirmar()
@@ -154,6 +169,7 @@ export function EntradasPage() {
               key={e.id}
               e={e}
               vis={vis}
+              aluna={e.cliente_id ? (nomePorCliente.get(e.cliente_id) ?? null) : null}
               onRecebi={() => atualizar.mutate({ id: e.id, patch: { status: 'recebida', data_caixa: hoje } })}
               onCancelar={() => atualizar.mutate({ id: e.id, patch: { status: 'cancelada' } })}
               // Volta para "a receber": limpa a data de caixa (o dinheiro não
@@ -199,6 +215,7 @@ export function EntradasPage() {
 function LinhaEntrada({
   e,
   vis,
+  aluna,
   onRecebi,
   onCancelar,
   onReabrir,
@@ -206,6 +223,8 @@ function LinhaEntrada({
 }: {
   e: Entrada
   vis: StatusEntradaVis
+  /** Nome do aluno, quando a entrada tem dono. Null em receita sem pessoa. */
+  aluna: string | null
   onRecebi: () => void
   onCancelar: () => void
   onReabrir: () => void
@@ -238,7 +257,14 @@ function LinhaEntrada({
       <span className="hidden shrink-0 text-xs text-neutral-400 sm:inline">
         {CATEGORIA_ENTRADA_LABEL[e.categoria]}
       </span>
-      <span className="flex-1 truncate text-neutral-500">{e.descricao}</span>
+      {/* O nome vem primeiro e em peso maior: é por ele que se procura
+          alguém numa lista de mensalidades. O plano fica ao lado, mais
+          claro, porque responde "qual" e não "de quem". */}
+      <span className="flex-1 truncate">
+        {aluna && <span className="font-medium text-neutral-800">{aluna}</span>}
+        {aluna && e.descricao && <span className="text-neutral-300"> · </span>}
+        <span className="text-neutral-500">{e.descricao}</span>
+      </span>
       {competenciaDiferente && (
         <span className="hidden shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500 sm:inline">
           competência {mesAno(e.data_competencia!)}
