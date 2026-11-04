@@ -5,7 +5,7 @@ import { EmptyState } from '../../../components/ui/EmptyState'
 import { cn } from '../../../components/ui/cn'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { LINHA_BASE, STATUS_FIN, statusDoBucket } from '../statusVisual'
-import { ValorEditavel } from './ValorEditavel'
+import { DataEditavel, TextoEditavel, ValorEditavel } from './CamposEditaveis'
 
 export type BucketKey = 'atrasada' | 'hoje' | 'semana' | 'mes' | 'depois'
 
@@ -18,9 +18,11 @@ export type ItemAPagar = {
   competencia: string | null
   bucket: BucketKey
   acao: () => void
-  /** Grava um valor novo para esta conta. Ver ValorEditavel. */
+  /** Grava um valor novo para esta conta. Ver CamposEditaveis. */
   aoEditarValor: (centavos: number) => void
-  /** Explica onde o valor editado vai parar, quando não é óbvio. */
+  aoEditarDescricao: (texto: string) => void
+  aoEditarVencimento: (iso: string) => void
+  /** Explica onde a edição vai parar, quando não é óbvio. */
   dicaValor?: string
 }
 
@@ -136,15 +138,29 @@ function Linhas({ itens }: { itens: ItemAPagar[] }) {
               dica={i.dicaValor}
             />
             <Badge variant="neutral">{i.categoria}</Badge>
-            <span className="flex-1 truncate text-neutral-500">{i.descricao}</span>
+            <TextoEditavel
+              valor={i.descricao === '—' ? '' : i.descricao}
+              onSalvar={i.aoEditarDescricao}
+              className="text-neutral-500"
+              dica={i.dicaValor ? 'Clique para mudar a descrição só deste mês' : undefined}
+            />
             {competenciaDiferente && (
               <span className="hidden shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500 sm:inline">
                 competência {mesAno(i.competencia!)}
               </span>
             )}
-            <span className="hidden shrink-0 text-xs text-neutral-400 sm:inline">
-              vence {i.venc.split('-').reverse().join('/')}
-            </span>
+            <div className="hidden sm:block">
+              <DataEditavel
+                valor={i.venc}
+                onSalvar={i.aoEditarVencimento}
+                rotulo="vence"
+                dica={
+                  i.dicaValor
+                    ? 'Clique para mudar o vencimento só deste mês'
+                    : 'Clique para mudar o vencimento'
+                }
+              />
+            </div>
             <Button size="sm" variant="secondary" onClick={i.acao} title="Marcar como pago">
               <CheckCircle2 className="size-3.5" />
               <span className="hidden sm:inline">Marcar como pago</span>

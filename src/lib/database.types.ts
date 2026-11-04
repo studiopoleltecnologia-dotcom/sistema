@@ -5277,6 +5277,10 @@ export type Database = {
         Args: { p_competencia: string; p_linhas: Json; p_data_caixa?: string }
         Returns: Json
       }
+      substituir_cronograma_divida: {
+        Args: { p_divida_id: string; p_descricao: string; p_parcelas: Json }
+        Returns: number
+      }
       conciliar_wellhub: {
         Args: {
           p_data_caixa?: string

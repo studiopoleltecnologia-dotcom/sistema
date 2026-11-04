@@ -31,7 +31,7 @@ import {
   obterMei,
   obterMrr,
   obterSaldoCaixa,
-  programarParcelasDivida,
+  salvarCronogramaDivida,
   registrarPagamentoDivida,
   reverterPagamentoSaida,
 } from '../api/financeiro'
@@ -307,7 +307,7 @@ export function useRegistrarPagamentoDivida() {
   return useMutation({ mutationFn: registrarPagamentoDivida, onSuccess: invalidar })
 }
 
-export function useProgramarParcelasDivida() {
+export function useSalvarCronogramaDivida() {
   const invalidar = useInvalidarDivida()
-  return useMutation({ mutationFn: programarParcelasDivida, onSuccess: invalidar })
+  return useMutation({ mutationFn: salvarCronogramaDivida, onSuccess: invalidar })
 }

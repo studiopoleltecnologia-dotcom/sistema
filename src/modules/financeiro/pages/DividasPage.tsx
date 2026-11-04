@@ -25,7 +25,7 @@ import {
   useAtualizarDivida,
   useCriarDivida,
   useDividas,
-  useProgramarParcelasDivida,
+  useSalvarCronogramaDivida,
   useRegistrarPagamentoDivida,
 } from '../hooks/useFinanceiro'
 
@@ -752,7 +752,22 @@ function PagamentoModal({
   )
 }
 
-/** Cronograma: N parcelas a partir de um mês. Cada uma vira saída prevista. */
+/** Data local em ISO (YYYY-MM-DD). toISOString() usaria UTC e podia voltar um dia. */
+function iso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * O cronograma de parcelas de uma dívida — criado e EDITADO aqui, em bloco.
+ *
+ * Abre já carregado com o que existe: cada parcela prevista vira uma linha
+ * com a data e o valor dela. Salvar substitui o cronograma previsto inteiro
+ * (uma transação só, no banco), então mudar 12 datas é mudar 12 campos e
+ * salvar — e não apagar 12 lançamentos na mão.
+ *
+ * Parcela já paga não aparece aqui e não é tocada: cronograma é previsão, e
+ * dinheiro que saiu não é mais previsão.
+ */
 function ParcelasModal({
   credor,
   opcoes,
@@ -762,40 +777,78 @@ function ParcelasModal({
   opcoes: DividaComSaldo[]
   onFechar: () => void
 }) {
-  const programar = useProgramarParcelasDivida()
+  const salvarCronograma = useSalvarCronogramaDivida()
   const [dividaId, setDividaId] = useState(opcoes[0]?.id ?? '')
-  const [linhas, setLinhas] = useState(() => [{ mes: new Date().toISOString().slice(0, 7), valor: '' }])
-
   const [erro, setErro] = useState<string | null>(null)
 
   const alvo = opcoes.find((d) => d.id === dividaId) ?? opcoes[0]
   const falta = alvo ? Math.max(alvo.valor_centavos - alvo.pago_centavos, 0) : 0
-  const soma = linhas.reduce((s, l) => s + (parseCentavos(l.valor) ?? 0), 0)
 
-  /**
-   * Os meses que já têm parcela prevista. Sem isto a tela programa por
-   * cima: foi assim que o parcelamento do Mercado Pago acabou com duas
-   * parcelas em cada mês, e o valor dobrado aparecendo em Saídas.
-   */
-  const jaAgendados = useMemo(() => {
-    const meses = new Map<string, number>()
-    for (const m of alvo?.movimentos ?? []) {
-      if (m.status_saida !== 'prevista') continue
-      const mes = (m.data_competencia ?? '').slice(0, 7)
-      if (mes) meses.set(mes, (meses.get(mes) ?? 0) + m.valor_centavos)
-    }
-    return meses
+  /** As parcelas previstas da dívida escolhida, como linhas editáveis. */
+  const doBanco = useMemo(() => {
+    const previstas = (alvo?.movimentos ?? [])
+      .filter((m) => m.status_saida === 'prevista')
+      .map((m) => ({
+        data: (m.data_prevista ?? m.data_caixa).slice(0, 10),
+        valor: (m.valor_centavos / 100).toFixed(2).replace('.', ','),
+      }))
+      .sort((a, b) => a.data.localeCompare(b.data))
+    return previstas.length > 0
+      ? previstas
+      : [{ data: new Date().toISOString().slice(0, 10), valor: '' }]
   }, [alvo])
 
-  function alterar(i: number, campo: 'mes' | 'valor', v: string) {
+  const [linhas, setLinhas] = useState(doBanco)
+  // Trocar de empréstimo no seletor troca o cronograma que está na tela.
+  const [carregadoDe, setCarregadoDe] = useState(alvo?.id)
+  if (alvo?.id !== carregadoDe) {
+    setCarregadoDe(alvo?.id)
+    setLinhas(doBanco)
+    setErro(null)
+  }
+
+  const previstasNoBanco = (alvo?.movimentos ?? []).filter((m) => m.status_saida === 'prevista')
+  const soma = linhas.reduce((s, l) => s + (parseCentavos(l.valor) ?? 0), 0)
+
+  // Gerador: o caminho normal é "N parcelas iguais, todo mês no mesmo dia".
+  const [qtd, setQtd] = useState('12')
+  const [primeira, setPrimeira] = useState(() => new Date().toISOString().slice(0, 10))
+  const [valorCada, setValorCada] = useState('')
+
+  /**
+   * Mês sem o dia escolhido (29–31) cai no último dia do mês, em vez de
+   * vazar para o mês seguinte — que é como todo boleto se comporta, e o que
+   * mantém uma parcela por mês.
+   */
+  function gerar() {
+    const n = Math.min(Math.max(Number(qtd) || 0, 1), 120)
+    const [ano, mes, dia] = primeira.split('-').map(Number)
+    setLinhas(
+      Array.from({ length: n }, (_, i) => {
+        const base = new Date(ano, mes - 1 + i, 1)
+        const ultimoDia = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()
+        const d = new Date(base.getFullYear(), base.getMonth(), Math.min(dia, ultimoDia))
+        return { data: iso(d), valor: valorCada }
+      }),
+    )
+    setErro(null)
+  }
+
+  function alterar(i: number, campo: 'data' | 'valor', v: string) {
     setLinhas((ls) => ls.map((l, idx) => (idx === i ? { ...l, [campo]: v } : l)))
   }
 
   function adicionar() {
     const ultima = linhas[linhas.length - 1]
-    const [ano, mes] = ultima.mes.split('-').map(Number)
-    const prox = new Date(ano, mes, 1)
-    setLinhas((ls) => [...ls, { mes: prox.toISOString().slice(0, 7), valor: '' }])
+    const [ano, mes, dia] = (ultima?.data ?? new Date().toISOString().slice(0, 10))
+      .split('-')
+      .map(Number)
+    const base = new Date(ano, mes, 1)
+    const ultimoDia = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()
+    setLinhas((ls) => [
+      ...ls,
+      { data: iso(new Date(base.getFullYear(), base.getMonth(), Math.min(dia, ultimoDia))), valor: '' },
+    ])
   }
 
   function salvar(ev: FormEvent) {
@@ -803,44 +856,41 @@ function ParcelasModal({
     setErro(null)
     if (!alvo) return
 
-    const comMes = linhas.filter((l) => l.mes)
-    // Antes, linha sem valor era descartada em silêncio — e se todas
-    // fossem, a função saía sem gravar e sem avisar, fechando o modal como
-    // se tivesse dado certo. Era o "não está salvando" sem explicação.
-    if (comMes.some((l) => (parseCentavos(l.valor) ?? 0) <= 0)) {
-      setErro('Preencha o valor de todas as parcelas. Linha sem valor não é gravada.')
+    const comData = linhas.filter((l) => l.data)
+    // Linha sem valor já foi descartada em silêncio aqui, e o modal fechava
+    // como se tivesse gravado. Cada caso agora tem mensagem.
+    if (comData.some((l) => (parseCentavos(l.valor) ?? 0) <= 0)) {
+      setErro('Preencha o valor de todas as parcelas.')
       return
     }
-    const parcelas = comMes.map((l) => ({ mes: l.mes, valorCentavos: parseCentavos(l.valor) ?? 0 }))
-    if (parcelas.length === 0) {
-      setErro('Informe ao menos uma parcela, com mês e valor.')
-      return
-    }
-    const repetidos = parcelas.map((p) => p.mes).filter((m) => jaAgendados.has(m))
-    if (repetidos.length > 0) {
-      setErro(
-        `Já existe parcela programada para ${repetidos.join(', ')}. Programar de novo duplicaria o valor em Saídas.`,
-      )
+    const meses = comData.map((l) => l.data.slice(0, 7))
+    const repetido = meses.find((m, i) => meses.indexOf(m) !== i)
+    if (repetido) {
+      setErro(`Há duas parcelas em ${repetido}. O cronograma aceita uma por mês.`)
       return
     }
 
-    programar.mutate(
-      { dividaId: alvo.id, descricao: `Parcela — ${credor}`, parcelas },
+    salvarCronograma.mutate(
+      {
+        dividaId: alvo.id,
+        descricao: `Parcela — ${credor}`,
+        parcelas: comData.map((l) => ({ data: l.data, valorCentavos: parseCentavos(l.valor) ?? 0 })),
+      },
       {
         onSuccess: onFechar,
         onError: (e) =>
-          setErro(e instanceof Error ? e.message : 'Não foi possível programar as parcelas.'),
+          setErro(e instanceof Error ? e.message : 'Não foi possível salvar o cronograma.'),
       },
     )
   }
 
   return (
-    <Modal title={`Programar parcelas — ${credor}`} onFechar={onFechar}>
+    <Modal title={`Cronograma de parcelas — ${credor}`} onFechar={onFechar}>
       <form onSubmit={salvar}>
         <div className="mb-3 flex flex-col gap-3">
           {opcoes.length > 1 && (
             <Select
-              label="Parcelar qual empréstimo?"
+              label="Qual empréstimo?"
               value={dividaId}
               onChange={(ev) => setDividaId(ev.target.value)}
             >
@@ -852,49 +902,81 @@ function ParcelasModal({
             </Select>
           )}
           <p className="text-xs text-neutral-500">
-            Falta devolver <strong className="text-neutral-800">{fmtCentavos(falta)}</strong>. Cada parcela
-            aparece em Saídas → Dívidas no mês dela, como conta a pagar — ainda não é dinheiro que saiu.
+            Falta devolver <strong className="text-neutral-800">{fmtCentavos(falta)}</strong>. Cada
+            parcela aparece em Saídas → Dívidas no mês dela, como conta a pagar — ainda não é
+            dinheiro que saiu.
           </p>
 
-          {/* O cronograma que já existe, à vista. Sem isto não há como saber
-              que aquele mês já está agendado, e programar de novo duplica. */}
-          {jaAgendados.size > 0 && (
-            <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
-              <p className="text-xs font-medium text-neutral-700">
-                Já programado — {plural(jaAgendados.size, 'mês', 'meses')}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                {[...jaAgendados.entries()]
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([mes, valor]) => `${mes} · ${fmtCentavos(valor)}`)
-                  .join('  ·  ')}
-              </p>
+          {/* Gerador: o atalho para "todo mês no dia X, mesmo valor". */}
+          <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+            <p className="mb-2 text-xs font-medium text-neutral-700">Gerar parcelas mensais</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="w-20">
+                <label className={labelCls}>Quantas</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={qtd}
+                  onChange={(ev) => setQtd(ev.target.value)}
+                />
+              </div>
+              <div className="min-w-32 flex-1">
+                <label className={labelCls}>1º vencimento</label>
+                <Input type="date" value={primeira} onChange={(ev) => setPrimeira(ev.target.value)} />
+              </div>
+              <div className="w-28">
+                <label className={labelCls}>Valor de cada</label>
+                <Input
+                  value={valorCada}
+                  onChange={(ev) => setValorCada(ev.target.value)}
+                  placeholder="R$ 0,00"
+                />
+              </div>
+              <Button size="sm" type="button" variant="secondary" onClick={gerar}>
+                Gerar
+              </Button>
             </div>
-          )}
+            <p className="mt-1.5 text-[11px] text-neutral-400">
+              Substitui as linhas abaixo. Depois dá para ajustar uma a uma.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex max-h-72 flex-col gap-2 overflow-y-auto pr-1">
           {linhas.map((l, i) => (
             <div key={i} className="flex items-end gap-2">
               <div className="flex-1">
-                <label className={labelCls}>Mês</label>
-                <Input type="month" value={l.mes} onChange={(ev) => alterar(i, 'mes', ev.target.value)} />
+                {i === 0 && <label className={labelCls}>Vencimento</label>}
+                <Input
+                  type="date"
+                  value={l.data}
+                  onChange={(ev) => alterar(i, 'data', ev.target.value)}
+                />
               </div>
-              <div className="flex-1">
-                <label className={labelCls}>Valor</label>
-                <Input value={l.valor} onChange={(ev) => alterar(i, 'valor', ev.target.value)} placeholder="R$ 0,00" />
+              <div className="w-28">
+                {i === 0 && <label className={labelCls}>Valor</label>}
+                <Input
+                  value={l.valor}
+                  onChange={(ev) => alterar(i, 'valor', ev.target.value)}
+                  placeholder="R$ 0,00"
+                />
               </div>
-              {linhas.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setLinhas((ls) => ls.filter((_, idx) => idx !== i))}
-                  className="mb-1.5 rounded p-1 text-neutral-300 transition hover:text-danger-600"
-                >
-                  ✕
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setLinhas((ls) => ls.filter((_, idx) => idx !== i))}
+                title="Remover esta parcela"
+                className="mb-1.5 rounded p-1 text-neutral-300 transition hover:text-danger-600"
+              >
+                ✕
+              </button>
             </div>
           ))}
+          {linhas.length === 0 && (
+            <p className="text-xs text-neutral-400">
+              Nenhuma parcela. Salvar assim apaga o cronograma previsto.
+            </p>
+          )}
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -903,12 +985,23 @@ function ParcelasModal({
             Mais uma parcela
           </Button>
           <span
-            className={cn('ml-auto text-xs tabular-nums', soma > falta ? 'text-warning-700' : 'text-neutral-500')}
+            className={cn(
+              'ml-auto text-xs tabular-nums',
+              soma > falta ? 'text-warning-700' : 'text-neutral-500',
+            )}
           >
-            total {fmtCentavos(soma)}
+            {plural(linhas.length, 'parcela', 'parcelas')} · total {fmtCentavos(soma)}
             {soma > falta && ' — acima do saldo'}
           </span>
         </div>
+
+        {previstasNoBanco.length > 0 && (
+          <p className="mt-3 text-[11px] leading-snug text-neutral-400">
+            Salvar substitui o cronograma atual (
+            {plural(previstasNoBanco.length, 'parcela prevista', 'parcelas previstas')}). Parcela já
+            paga não entra nesta lista e não é alterada.
+          </p>
+        )}
 
         {erro && (
           <p className="mt-3 rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-xs text-danger-700">
@@ -924,8 +1017,8 @@ function ParcelasModal({
           >
             Cancelar
           </button>
-          <Button type="submit" loading={programar.isPending}>
-            Programar
+          <Button type="submit" loading={salvarCronograma.isPending}>
+            Salvar cronograma
           </Button>
         </div>
       </form>
