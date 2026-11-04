@@ -152,3 +152,26 @@ export async function salvarResumoFolha(args: {
     .eq('status', 'aberto')
   if (error) throw error
 }
+
+/**
+ * A previsão de pagamento de cada professora ativa, com a base da conta.
+ *
+ * Só aparece quem tem pelo menos um mês aprovado — professora recém
+ * cadastrada não tem de onde prever. A tela precisa dizer isso, senão o
+ * total da previsão parece a folha inteira quando na verdade é a folha de
+ * quem já tem histórico.
+ */
+export async function listarPrevisaoFolha() {
+  const { data, error } = await requireSupabase()
+    .from('vw_previsao_folha_professora')
+    .select('*')
+    .order('previsto_centavos', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+/** Recalcula e relança as previsões dos próximos `meses` meses. */
+export async function gerarPrevisaoFolha(meses = 3) {
+  const { error } = await requireSupabase().rpc('prever_folha_professoras', { p_meses: meses })
+  if (error) throw error
+}
