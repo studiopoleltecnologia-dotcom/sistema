@@ -232,6 +232,8 @@ export async function lancarRecorrente(args: {
   comoPrevista?: boolean
 }) {
   const doMes = vencimentoNoMes(args.mes, args.recorrente.dia_vencimento)
+  const hoje = new Date()
+  const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
   const vencimento = args.ajuste?.data ?? doMes
   const { data, error } = await requireSupabase()
     .from('saidas_financeiras')
@@ -239,7 +241,16 @@ export async function lancarRecorrente(args: {
       descricao: args.ajuste?.descricao ?? args.recorrente.descricao,
       valor_centavos: args.ajuste?.valorCentavos ?? args.recorrente.valor_centavos,
       categoria_id: args.recorrente.categoria_id,
-      data_caixa: args.comoPrevista ? doMes : vencimento,
+      /*
+        Marcar como pago grava o caixa HOJE, não no dia do vencimento: é
+        regime de caixa, e é o que o botão de quitar uma saída prevista já
+        fazia. Com contas projetadas meses à frente isso deixou de ser só
+        coerência — pagar dezembro adiantado precisa cair no caixa de
+        novembro, senão o fluxo mente sobre quando o dinheiro saiu.
+
+        Enquanto é previsão, a âncora continua sendo o mês da competência.
+      */
+      data_caixa: args.comoPrevista ? doMes : hojeISO,
       data_competencia: `${args.mes}-01`,
       recorrente_id: args.recorrente.id,
       ...(args.comoPrevista

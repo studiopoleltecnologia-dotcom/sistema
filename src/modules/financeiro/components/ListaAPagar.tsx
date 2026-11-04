@@ -10,6 +10,12 @@ import { DataEditavel, TextoEditavel, ValorEditavel } from './CamposEditaveis'
 export type BucketKey = 'atrasada' | 'hoje' | 'semana' | 'mes' | 'depois'
 
 export type ItemAPagar = {
+  /**
+   * Identifica a LINHA. A mesma conta fixa aparece uma vez por mês
+   * projetado, então uid=197609(carol) gid=197609 groups=197609 (o da recorrente) se repete — usar o id como
+   * chave de lista faria o React confundir dezembro com novembro.
+   */
+  chave: string
   id: string
   valor: number
   categoria: string
@@ -130,7 +136,7 @@ function Linhas({ itens }: { itens: ItemAPagar[] }) {
         const competenciaDiferente = !!i.competencia && i.competencia.slice(0, 7) !== i.venc.slice(0, 7)
         const status = STATUS_FIN[statusDoBucket(i.bucket)]
         return (
-          <li key={i.id} className={cn(LINHA_BASE, status.barra)}>
+          <li key={i.chave} className={cn(LINHA_BASE, status.barra)}>
             <ValorEditavel
               valor={i.valor}
               onSalvar={i.aoEditarValor}
