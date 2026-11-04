@@ -5,6 +5,7 @@ import { EmptyState } from '../../../components/ui/EmptyState'
 import { cn } from '../../../components/ui/cn'
 import { fmtCentavos } from '../../../lib/dinheiro'
 import { LINHA_BASE, STATUS_FIN, statusDoBucket } from '../statusVisual'
+import { ValorEditavel } from './ValorEditavel'
 
 export type BucketKey = 'atrasada' | 'hoje' | 'semana' | 'mes' | 'depois'
 
@@ -17,6 +18,10 @@ export type ItemAPagar = {
   competencia: string | null
   bucket: BucketKey
   acao: () => void
+  /** Grava um valor novo para esta conta. Ver ValorEditavel. */
+  aoEditarValor: (centavos: number) => void
+  /** Explica onde o valor editado vai parar, quando não é óbvio. */
+  dicaValor?: string
 }
 
 const BUCKETS: { key: BucketKey; label: string }[] = [
@@ -124,7 +129,12 @@ function Linhas({ itens }: { itens: ItemAPagar[] }) {
         const status = STATUS_FIN[statusDoBucket(i.bucket)]
         return (
           <li key={i.id} className={cn(LINHA_BASE, status.barra)}>
-            <span className={cn('w-24 shrink-0 font-semibold tabular-nums', status.valor)}>{fmtCentavos(i.valor)}</span>
+            <ValorEditavel
+              valor={i.valor}
+              onSalvar={i.aoEditarValor}
+              className={status.valor}
+              dica={i.dicaValor}
+            />
             <Badge variant="neutral">{i.categoria}</Badge>
             <span className="flex-1 truncate text-neutral-500">{i.descricao}</span>
             {competenciaDiferente && (
