@@ -2529,6 +2529,7 @@ export type Database = {
           ciclo_inicio_contrato: number
           ciclos_compromisso: number
           cliente_id: string
+          cobranca_externa: boolean
           creditos_total: number
           criada_em: string
           data_fim: string
@@ -2549,6 +2550,7 @@ export type Database = {
           ciclo_inicio_contrato?: number
           ciclos_compromisso?: number
           cliente_id: string
+          cobranca_externa?: boolean
           creditos_total: number
           criada_em?: string
           data_fim: string
@@ -2569,6 +2571,7 @@ export type Database = {
           ciclo_inicio_contrato?: number
           ciclos_compromisso?: number
           cliente_id?: string
+          cobranca_externa?: boolean
           creditos_total?: number
           criada_em?: string
           data_fim?: string
@@ -4657,6 +4660,21 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_previsao_mensalidades: {
+        Row: {
+          ciclo: number | null
+          cliente: string | null
+          cliente_id: string | null
+          cobranca_externa: boolean | null
+          matricula_id: string | null
+          mes: string | null
+          plano: string | null
+          status_matricula: string | null
+          valor_centavos: number | null
+          vencimento: string | null
+        }
+        Relationships: []
+      }
       vw_previsao_folha_professora: {
         Row: {
           ate: string | null
@@ -5164,6 +5182,10 @@ export type Database = {
       contrato_aceito: { Args: { p_solicitacao: string }; Returns: boolean }
       contrato_resumo: { Args: { p_solicitacao: string }; Returns: Json }
       contrato_tags: { Args: { p_produto: string }; Returns: string[] }
+      definir_cobranca_externa: {
+        Args: { p_externa: boolean; p_matricula: string }
+        Returns: undefined
+      }
       definir_autorizacao_imagem: {
         Args: { p_autoriza: boolean; p_cliente?: string }
         Returns: boolean
@@ -5484,6 +5506,17 @@ export type Database = {
       }
       matricular_produto: {
         Args: { p_cliente: string; p_justificativa?: string; p_plano: string }
+        Returns: string
+      }
+      matricular_aluno_de_fora: {
+        Args: {
+          p_cliente: string
+          p_cobranca_externa?: boolean
+          p_data_inicio: string
+          p_justificativa?: string
+          p_plano: string
+          p_turmas?: string[]
+        }
         Returns: string
       }
       matricular_turma_fixa: {

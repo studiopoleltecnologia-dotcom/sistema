@@ -17,7 +17,7 @@ import { ContasFixasModal } from '../components/ContasFixas'
 import { ListaAPagar, type BucketKey, type ItemAPagar } from '../components/ListaAPagar'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
 import { DataEditavel, TextoEditavel, ValorEditavel } from '../components/CamposEditaveis'
-import { contemMes, mesAtual, periodoMes, type Periodo } from '../periodo'
+import { mesAtual, periodoMes, venceNoRecorte, type Periodo } from '../periodo'
 import {
   useAtualizarSaida,
   useCategoriasSaida,
@@ -82,8 +82,6 @@ export function SaidasPage() {
   // para a lista ser puramente de apresentação.
   const pendentesPorGrupo = useMemo(() => {
     const m = new Map<GrupoSaida, ItemAPagar[]>(ORDEM_GRUPO_SAIDA.map((g) => [g, []]))
-    const periodoContemHoje = contemMes(periodo, hoje.slice(0, 7))
-
     /*
       "A pagar" vinha SEM filtro de período, enquanto o resto da tela
       respeitava o seletor. Para fixo e variável quase não se notava; para
@@ -91,14 +89,13 @@ export function SaidasPage() {
       card de um mês só — o total do grupo era o do empréstimo todo, não o
       do mês, e não havia como ler "quanto sai em novembro".
 
-      Vencido continua à vista quando se olha o mês corrente: esconder uma
-      conta atrasada é o oposto do que esta tela serve para fazer.
+      A regra (vence no período, ou já venceu e o período inclui hoje)
+      virou `venceNoRecorte` em periodo.ts, compartilhada com Entradas e
+      com o Resumo — três cópias dela eram três chances de as telas
+      discordarem sobre o mesmo mês.
     */
-    const dentroDoPeriodo = (venc: string) =>
-      contemMes(periodo, venc.slice(0, 7)) || (periodoContemHoje && venc < hoje)
-
     for (const p of aPagar ?? []) {
-      if (!dentroDoPeriodo(p.vencimento!)) continue
+      if (!venceNoRecorte(periodo, p.vencimento, hoje)) continue
       const grupo: GrupoSaida = p.divida_id ? 'divida' : grupoDoTipo(p.tipo)
       const daRecorrente = p.origem === 'recorrente'
       const modelo = {

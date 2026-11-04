@@ -57,6 +57,36 @@ export function contemMes(p: Periodo, ym: string): boolean {
   return ym >= p.inicio && ym <= p.fim
 }
 
+/**
+ * Esta conta a receber / a pagar pertence ao recorte escolhido?
+ *
+ * Vale para o que ainda não aconteceu — entrada prevista, conta a pagar
+ * —, onde a data que importa é o VENCIMENTO, não a de caixa (que não
+ * existe ainda).
+ *
+ * Duas partes, e a segunda é a que não é óbvia:
+ *
+ *  1. vence dentro do período → é do período;
+ *  2. já venceu E o período inclui hoje → também aparece. Esconder uma
+ *     conta atrasada de quem está olhando o mês corrente é o oposto do
+ *     que estas telas servem para fazer.
+ *
+ * O efeito do (2) ser condicionado a "o período inclui hoje": olhar
+ * dezembro NÃO arrasta o que ficou em aberto em novembro. Antes, a
+ * tela de Entradas trazia toda prevista sem recorte de data nenhum, e
+ * a mensalidade não recebida de novembro continuava no meio de
+ * dezembro — somando no "a receber" do mês errado.
+ *
+ * Sem vencimento (prevista sem data prevista nem data de caixa), a
+ * linha pertence ao "agora": aparece quando o período inclui hoje, e
+ * não polui mês futuro.
+ */
+export function venceNoRecorte(p: Periodo, venc: string | null, hoje: string): boolean {
+  const incluiHoje = contemMes(p, hoje.slice(0, 7))
+  if (venc == null) return incluiHoje
+  return contemMes(p, venc.slice(0, 7)) || (incluiHoje && venc < hoje)
+}
+
 /** Primeiro e último dia (ISO) do período — para filtrar por data_caixa. */
 export function limitesDoPeriodo(p: Periodo): { inicio: string; fim: string } {
   const [af, mf] = p.fim.split('-').map(Number)

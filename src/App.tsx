@@ -9,6 +9,7 @@ import { ClientesPage } from './modules/clientes/ClientesPage'
 import { FinanceiroLayout } from './modules/financeiro/FinanceiroLayout'
 import { DashboardFinanceiro } from './modules/financeiro/pages/DashboardFinanceiro'
 import { EntradasPage } from './modules/financeiro/pages/EntradasPage'
+import { PrevisaoMensalidadesPage } from './modules/financeiro/pages/PrevisaoMensalidadesPage'
 import { SaidasPage } from './modules/financeiro/pages/SaidasPage'
 import { FluxoPage } from './modules/financeiro/pages/FluxoPage'
 import { FiscalPage } from './modules/financeiro/pages/FiscalPage'
@@ -138,6 +139,7 @@ export default function App() {
                 >
                   <Route index element={<DashboardFinanceiro />} />
                   <Route path="entradas" element={<EntradasPage />} />
+                  <Route path="previsao" element={<PrevisaoMensalidadesPage />} />
                   <Route path="saidas" element={<SaidasPage />} />
                   <Route path="fluxo" element={<FluxoPage />} />
                   <Route path="dividas" element={<DividasPage />} />

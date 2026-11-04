@@ -410,6 +410,24 @@ export async function listarContasAPagar() {
 }
 
 /**
+ * Previsão de mensalidade dos próximos 12 meses, ciclo por ciclo.
+ *
+ * Não são entradas: a view projeta as renovações das assinaturas ativas
+ * sem gravar linha nenhuma, e exclui o ciclo que já tem entrada prevista
+ * (esse é "a receber" de verdade, e aparece em Entradas). Por isso a
+ * previsão NÃO entra na equação do Resumo — somar as duas contaria o
+ * mesmo dinheiro duas vezes.
+ */
+export async function listarPrevisaoMensalidades() {
+  const { data, error } = await requireSupabase()
+    .from('vw_previsao_mensalidades')
+    .select('*')
+    .order('vencimento')
+  if (error) throw error
+  return data
+}
+
+/**
  * Dívidas com o quanto já foi abatido e o extrato de cada uma. O total pago
  * é derivado das saídas (`divida_id`), nunca guardado numa coluna: assim o
  * saldo restante e o histórico não têm como divergir um do outro.
