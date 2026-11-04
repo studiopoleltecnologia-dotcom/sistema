@@ -12,13 +12,12 @@ import { SectionTitle } from '../../../components/ui/SectionTitle'
 import { Select } from '../../../components/ui/Select'
 import { Tabs } from '../../../components/ui/Tabs'
 import { cn } from '../../../components/ui/cn'
-import { fmtData } from '../../../lib/datas'
 import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
 import { ContasFixasModal } from '../components/ContasFixas'
 import { ListaAPagar, type BucketKey, type ItemAPagar } from '../components/ListaAPagar'
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
-import { ValorEditavel } from '../components/ValorEditavel'
-import { mesAtual, periodoMes, type Periodo } from '../periodo'
+import { DataEditavel, TextoEditavel, ValorEditavel } from '../components/CamposEditaveis'
+import { contemMes, mesAtual, periodoMes, type Periodo } from '../periodo'
 import {
   useAtualizarSaida,
   useCategoriasSaida,
@@ -83,7 +82,23 @@ export function SaidasPage() {
   // para a lista ser puramente de apresentação.
   const pendentesPorGrupo = useMemo(() => {
     const m = new Map<GrupoSaida, ItemAPagar[]>(ORDEM_GRUPO_SAIDA.map((g) => [g, []]))
+    const periodoContemHoje = contemMes(periodo, hoje.slice(0, 7))
+
+    /*
+      "A pagar" vinha SEM filtro de período, enquanto o resto da tela
+      respeitava o seletor. Para fixo e variável quase não se notava; para
+      dívidas, as 12 parcelas do parcelamento inteiro apareciam somadas no
+      card de um mês só — o total do grupo era o do empréstimo todo, não o
+      do mês, e não havia como ler "quanto sai em novembro".
+
+      Vencido continua à vista quando se olha o mês corrente: esconder uma
+      conta atrasada é o oposto do que esta tela serve para fazer.
+    */
+    const dentroDoPeriodo = (venc: string) =>
+      contemMes(periodo, venc.slice(0, 7)) || (periodoContemHoje && venc < hoje)
+
     for (const p of aPagar ?? []) {
+      if (!dentroDoPeriodo(p.vencimento!)) continue
       const grupo: GrupoSaida = p.divida_id ? 'divida' : grupoDoTipo(p.tipo)
       const daRecorrente = p.origem === 'recorrente'
       const modelo = {
@@ -116,15 +131,29 @@ export function SaidasPage() {
         */
         aoEditarValor: (centavos) =>
           daRecorrente
-            ? lancar.mutate({ recorrente: modelo, mes, valorCentavos: centavos, comoPrevista: true })
+            ? lancar.mutate({ recorrente: modelo, mes, ajuste: { valorCentavos: centavos }, comoPrevista: true })
             : atualizarSaida.mutate({ id: p.id!, patch: { valor_centavos: centavos } }),
+        aoEditarDescricao: (texto) =>
+          daRecorrente
+            ? lancar.mutate({ recorrente: modelo, mes, ajuste: { descricao: texto }, comoPrevista: true })
+            : atualizarSaida.mutate({ id: p.id!, patch: { descricao: texto || null } }),
+        /*
+          Só `data_prevista` muda. `data_caixa` segue sendo a âncora do mês
+          a que a conta pertence — é por ela que a view sabe que a
+          recorrente do mês já foi lançada, e é ela que vira a data real no
+          dia em que a conta for paga.
+        */
+        aoEditarVencimento: (iso) =>
+          daRecorrente
+            ? lancar.mutate({ recorrente: modelo, mes, ajuste: { data: iso }, comoPrevista: true })
+            : atualizarSaida.mutate({ id: p.id!, patch: { data_prevista: iso } }),
         dicaValor: daRecorrente
           ? 'Clique para mudar o valor só deste mês (a conta fixa continua como está)'
           : undefined,
       })
     }
     return m
-  }, [aPagar, hoje, atualizarSaida, lancar])
+  }, [aPagar, hoje, periodo, atualizarSaida, lancar])
 
   const pagasPorGrupo = useMemo(() => {
     const m = new Map<GrupoSaida, NonNullable<typeof saidas>>(ORDEM_GRUPO_SAIDA.map((g) => [g, []]))
@@ -292,16 +321,28 @@ export function SaidasPage() {
                           }
                         />
                         <Badge variant="neutral">{s.categoria?.nome}</Badge>
-                        <span className="flex-1 truncate text-neutral-500">
-                          {s.descricao}
-                          {s.recorrente_id && (
-                            <Repeat
-                              className="ml-1.5 inline-block size-3 text-brand-500"
-                              aria-label="De uma recorrência"
-                            />
-                          )}
-                        </span>
-                        <span className="hidden shrink-0 text-xs text-neutral-400 sm:inline">{fmtData(s.data_caixa)}</span>
+                        <TextoEditavel
+                          valor={s.descricao ?? ''}
+                          onSalvar={(texto) =>
+                            atualizarSaida.mutate({ id: s.id, patch: { descricao: texto || null } })
+                          }
+                          className="text-neutral-500"
+                        />
+                        {s.recorrente_id && (
+                          <Repeat
+                            className="size-3 shrink-0 text-brand-500"
+                            aria-label="De uma recorrência"
+                          />
+                        )}
+                        <div className="hidden sm:block">
+                          <DataEditavel
+                            valor={s.data_caixa}
+                            onSalvar={(iso) =>
+                              atualizarSaida.mutate({ id: s.id, patch: { data_caixa: iso } })
+                            }
+                            dica="Clique para corrigir a data em que o dinheiro saiu"
+                          />
+                        </div>
 
                         {/*
                           Reverter status e excluir são ações separadas de
