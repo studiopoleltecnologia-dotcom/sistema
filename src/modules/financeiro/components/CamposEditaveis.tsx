@@ -18,8 +18,21 @@ import { fmtCentavos, parseCentavos } from '../../../lib/dinheiro'
  * digitação é pior do que não deixar editar.
  */
 
+/*
+  O campo editável precisa PARECER editável antes do clique.
+
+  Só havia realce no hover do próprio campo — quem não passasse o mouse
+  exatamente em cima do número não tinha como saber que ele abre. A queixa
+  que chegou foi literalmente "não dá para editar valor e data", numa tela
+  em que os dois já eram editáveis.
+
+  Agora o sublinhado tracejado acende quando o mouse entra na LINHA (o
+  `group` vem de LINHA_BASE), mostrando de uma vez todos os campos que
+  aquela linha aceita mudar. Em repouso a tela continua limpa.
+*/
 const BOTAO_BASE =
-  'shrink-0 rounded px-1 text-left transition hover:bg-white hover:ring-1 hover:ring-neutral-300'
+  'shrink-0 rounded px-1 text-left transition border-b border-dashed border-transparent ' +
+  'group-hover:border-neutral-300 hover:border-transparent hover:bg-white hover:ring-1 hover:ring-neutral-300'
 
 export function ValorEditavel({
   valor,
