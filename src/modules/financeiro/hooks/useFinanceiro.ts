@@ -26,12 +26,15 @@ import {
   listarRecorrentes,
   listarReserva,
   listarSaidas,
+  listarSaidasPuladas,
   listarSaidasMensal,
   listarSaidasPeriodo,
   obterConfig,
   obterMei,
   obterMrr,
   obterSaldoCaixa,
+  pularMesContaFixa,
+  retomarSaidaPulada,
   salvarCronogramaDivida,
   registrarPagamentoDivida,
   reverterPagamentoSaida,
@@ -58,6 +61,7 @@ function useInvalidarFinanceiro() {
     qc.invalidateQueries({ queryKey: ['saldo-caixa'] })
     qc.invalidateQueries({ queryKey: ['dre-competencia'] })
     qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
+    qc.invalidateQueries({ queryKey: ['saidas-puladas'] })
   }
 }
 
@@ -238,6 +242,25 @@ export function useDesativarRecorrente() {
       qc.invalidateQueries({ queryKey: ['contas-a-pagar'] })
     },
   })
+}
+
+/** Os meses pulados do período — a seção "Pulado neste mês" de Saídas. */
+export function useSaidasPuladas(periodo: Periodo) {
+  return useQuery({
+    queryKey: ['saidas-puladas', periodo.inicio, periodo.fim],
+    queryFn: () => listarSaidasPuladas(periodo),
+  })
+}
+
+/** "Este mês não tem" — ver `pularMesContaFixa`. */
+export function usePularMesContaFixa() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({ mutationFn: pularMesContaFixa, onSuccess: invalidar })
+}
+
+export function useRetomarSaidaPulada() {
+  const invalidar = useInvalidarFinanceiro()
+  return useMutation({ mutationFn: retomarSaidaPulada, onSuccess: invalidar })
 }
 
 export function useLancarRecorrente() {
