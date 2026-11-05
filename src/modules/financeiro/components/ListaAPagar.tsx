@@ -1,4 +1,4 @@
-import { CheckCircle2 } from 'lucide-react'
+import { CalendarOff, CheckCircle2 } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { EmptyState } from '../../../components/ui/EmptyState'
@@ -28,6 +28,12 @@ export type ItemAPagar = {
   aoEditarValor: (centavos: number) => void
   aoEditarDescricao: (texto: string) => void
   aoEditarVencimento: (iso: string) => void
+  /**
+   * Tira a conta DESTE mês, sem mexer nos outros ("em dezembro não tem
+   * Marketing"). Ausente onde pular seria errado — parcela de dívida, que
+   * é o cronograma da aba Dívidas que manda.
+   */
+  aoPular?: () => void
   /** Explica onde a edição vai parar, quando não é óbvio. */
   dicaValor?: string
 }
@@ -171,6 +177,20 @@ function Linhas({ itens }: { itens: ItemAPagar[] }) {
               <CheckCircle2 className="size-3.5" />
               <span className="hidden sm:inline">Marcar como pago</span>
             </Button>
+            {/*
+              Ícone, e não um segundo botão com texto: pular é raro ao lado
+              de "marcar como pago", que é o gesto de todo mês. Dois botões
+              do mesmo tamanho fariam a linha disputar a atenção.
+            */}
+            {i.aoPular && (
+              <button
+                onClick={i.aoPular}
+                title="Este mês não tem — tira a conta só deste mês"
+                className="ml-1 shrink-0 rounded p-1 text-neutral-300 transition hover:bg-warning-50 hover:text-warning-700"
+              >
+                <CalendarOff className="size-3.5" />
+              </button>
+            )}
           </li>
         )
       })}

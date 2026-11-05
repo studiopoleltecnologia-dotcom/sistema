@@ -263,6 +263,95 @@ export async function lancarRecorrente(args: {
   return data
 }
 
+/**
+ * Pula a conta fixa NESTE mês — "em dezembro não tem Marketing".
+ *
+ * Não é desativar a conta fixa (isso mataria todos os meses) nem encurtar
+ * a vigência (`data_fim` encerra dali em diante). É um buraco de um mês
+ * só, e por isso mora na saída do mês, não no modelo recorrente.
+ *
+ * O buraco é uma saída `cancelada`: ela ocupa a competência — então a
+ * projeção some, pelo `not exists` de `vw_contas_a_pagar` — e nenhuma das
+ * views financeiras a conta (DRE, saídas mensais, saldo). É reversível
+ * por `retomarSaidaPulada`, que só devolve o status.
+ *
+ * Quando o mês já virou linha de verdade (o valor foi corrigido antes, ou
+ * é a previsão da folha), é um update — inserir uma segunda linha na
+ * mesma competência o índice único recusa, e com razão.
+ */
+export async function pularMesContaFixa(args: {
+  recorrente: {
+    id: string
+    descricao: string
+    valor_centavos: number
+    categoria_id: string
+    dia_vencimento: number
+  }
+  mes: string
+  /** Preenchido quando a linha já é uma saída prevista no banco. */
+  saidaId?: string | null
+}) {
+  const sb = requireSupabase()
+  if (args.saidaId) {
+    const { data, error } = await sb
+      .from('saidas_financeiras')
+      .update({ status_saida: 'cancelada' })
+      .eq('id', args.saidaId)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  const venc = vencimentoNoMes(args.mes, args.recorrente.dia_vencimento)
+  const { data, error } = await sb
+    .from('saidas_financeiras')
+    .insert({
+      descricao: args.recorrente.descricao,
+      valor_centavos: args.recorrente.valor_centavos,
+      categoria_id: args.recorrente.categoria_id,
+      data_caixa: venc,
+      data_prevista: venc,
+      data_competencia: `${args.mes}-01`,
+      recorrente_id: args.recorrente.id,
+      status_saida: 'cancelada',
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/** Desfaz o "pular": a conta volta para "A pagar", no mesmo mês. */
+export async function retomarSaidaPulada(id: string) {
+  const { data, error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .update({ status_saida: 'prevista' })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Os meses pulados do período. Filtra por COMPETÊNCIA, não por data de
+ * caixa: "pulado em dezembro" é uma afirmação sobre dezembro, e a conta
+ * pulada nunca teve data de caixa de verdade.
+ */
+export async function listarSaidasPuladas(periodo: Periodo) {
+  const { inicio, fim } = limitesDoPeriodo(periodo)
+  const { data, error } = await requireSupabase()
+    .from('saidas_financeiras')
+    .select('*, categoria:categorias_saida(*)')
+    .eq('status_saida', 'cancelada')
+    .gte('data_competencia', inicio)
+    .lte('data_competencia', fim)
+    .order('data_competencia')
+  if (error) throw error
+  return data
+}
+
 export async function listarCategoriasSaida() {
   const { data, error } = await requireSupabase()
     .from('categorias_saida')

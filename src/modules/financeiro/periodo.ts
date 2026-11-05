@@ -106,6 +106,21 @@ function rotuloMes(ym: string): string {
   return `${MESES_CURTO[mes - 1]}/${String(ano).slice(2)}`
 }
 
+const MESES_EXTENSO = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+]
+
+/**
+ * 'YYYY-MM' por extenso ("dezembro de 2026"). Para frase corrida — numa
+ * confirmação, "sai de dez/26" se lê como código; "sai de dezembro de
+ * 2026" se lê como aviso.
+ */
+export function mesPorExtenso(ym: string): string {
+  const [ano, mes] = ym.split('-').map(Number)
+  return `${MESES_EXTENSO[mes - 1]} de ${ano}`
+}
+
 /** Rótulo curto e humano do período (ex.: "jul/26" ou "fev/26 – jul/26"). */
 export function rotuloPeriodo(p: Periodo): string {
   return ehMesUnico(p) ? rotuloMes(p.inicio) : `${rotuloMes(p.inicio)} – ${rotuloMes(p.fim)}`
