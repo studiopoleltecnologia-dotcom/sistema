@@ -4331,6 +4331,7 @@ export type Database = {
           divida_id: string | null
           id: string | null
           origem: string | null
+          recorrente_id: string | null
           tipo: string | null
           valor_centavos: number | null
           vencimento: string | null

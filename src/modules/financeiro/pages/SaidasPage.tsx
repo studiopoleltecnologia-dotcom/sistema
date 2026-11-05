@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { CalendarClock, Pencil, Plus, Repeat, RotateCcw, Trash2, TrendingDown, TriangleAlert, Wallet } from 'lucide-react'
+import { CalendarClock, CalendarOff, Pencil, Plus, Repeat, RotateCcw, Trash2, TrendingDown, TriangleAlert, Undo2, Wallet } from 'lucide-react'
 import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
@@ -18,7 +18,7 @@ import { ListaAPagar, type BucketKey, type ItemAPagar } from '../components/List
 import { SeletorPeriodo } from '../components/SeletorPeriodo'
 import { usePeriodo } from '../usePeriodo'
 import { DataEditavel, TextoEditavel, ValorEditavel } from '../components/CamposEditaveis'
-import { venceNoRecorte } from '../periodo'
+import { ehMesUnico, mesPorExtenso, venceNoRecorte } from '../periodo'
 import {
   useAtualizarSaida,
   useCategoriasSaida,
@@ -27,8 +27,11 @@ import {
   useCriarSaida,
   useExcluirSaida,
   useLancarRecorrente,
+  usePularMesContaFixa,
+  useRetomarSaidaPulada,
   useReverterPagamentoSaida,
   useSaidas,
+  useSaidasPuladas,
 } from '../hooks/useFinanceiro'
 import { LINHA_BASE, STATUS_FIN } from '../statusVisual'
 import {
@@ -71,12 +74,29 @@ export function SaidasPage() {
 
   const { data: saidas, isLoading } = useSaidas(periodo)
   const { data: aPagar } = useContasAPagar()
+  const { data: puladas } = useSaidasPuladas(periodo)
   const excluir = useExcluirSaida()
   const confirmar = useConfirmar()
   const reverter = useReverterPagamentoSaida()
   const atualizarSaida = useAtualizarSaida()
   const lancar = useLancarRecorrente()
+  const pular = usePularMesContaFixa()
+  const retomar = useRetomarSaidaPulada()
   const hoje = hojeISO()
+
+  /*
+    Gravação de saída falhava em silêncio: o valor voltava sozinho ao que
+    era e a tela não dizia nada, o que se lê como "não dá para editar".
+    Acontecia de verdade — o índice único das recorrentes era por mês de
+    CAIXA, então quem pagasse um mês adiantado travava o mês anterior com
+    um 23505 que ninguém via (corrigido em 20261115120000).
+
+    Erro de escrita agora aparece. Um aviso só, do primeiro que falhar:
+    são ações de uma linha por vez.
+  */
+  const erro = [pular, retomar, lancar, atualizarSaida, excluir, reverter]
+    .map((m) => m.error)
+    .find(Boolean)
 
   // "A pagar" de todos os grupos vem de uma consulta só; o mapeamento para
   // a ação de pagar (lançar recorrente x quitar saída prevista) mora aqui
@@ -146,13 +166,50 @@ export function SaidasPage() {
           daRecorrente
             ? lancar.mutate({ recorrente: modelo, mes, ajuste: { data: iso }, comoPrevista: true })
             : atualizarSaida.mutate({ id: p.id!, patch: { data_prevista: iso } }),
+        /*
+          Pular só faz sentido em conta fixa: ou a projeção (`recorrente`),
+          ou o mês dela que já virou linha porque alguém corrigiu o valor.
+          Parcela de dívida fica de fora de propósito — tirar uma parcela
+          é mexer no cronograma, e isso é da aba Dívidas.
+
+          A previsão avulsa (a folha das professoras, por exemplo) também
+          fica de fora: ali não há "este mês não tem", há uma previsão
+          errada, e o caminho é corrigir o valor ou excluir a previsão.
+        */
+        aoPular:
+          daRecorrente || p.recorrente_id
+            ? () =>
+                confirmar.pedir({
+                  titulo: 'Este mês não tem esta conta?',
+                  tom: 'arquivar',
+                  textoConfirmar: 'Pular este mês',
+                  descricao: (
+                    <>
+                      <b>
+                        {p.descricao || p.categoria} — {fmtCentavos(p.valor_centavos!)}
+                      </b>{' '}
+                      sai de {mesPorExtenso(mes)} e para de contar no caixa projetado.
+                      <br />
+                      Os outros meses continuam como estão, e dá para voltar atrás
+                      em “Pulado neste mês”.
+                    </>
+                  ),
+                  aoConfirmar: async () => {
+                    await pular.mutateAsync({
+                      recorrente: { ...modelo, id: p.recorrente_id ?? p.id! },
+                      mes,
+                      saidaId: daRecorrente ? null : p.id,
+                    })
+                  },
+                })
+            : undefined,
         dicaValor: daRecorrente
           ? 'Clique para mudar o valor só deste mês (a conta fixa continua como está)'
           : undefined,
       })
     }
     return m
-  }, [aPagar, hoje, periodo, atualizarSaida, lancar])
+  }, [aPagar, hoje, periodo, atualizarSaida, lancar, pular, confirmar])
 
   const pagasPorGrupo = useMemo(() => {
     const m = new Map<GrupoSaida, NonNullable<typeof saidas>>(ORDEM_GRUPO_SAIDA.map((g) => [g, []]))
@@ -162,6 +219,22 @@ export function SaidasPage() {
     }
     return m
   }, [saidas])
+
+  /*
+    Mês pulado não some da tela, só sai das contas. Some seria pior do que
+    não poder pular: a conta desapareceria sem rastro e ninguém saberia
+    que o buraco foi uma decisão — nem como desfazê-la.
+  */
+  const puladasPorGrupo = useMemo(() => {
+    const m = new Map<GrupoSaida, NonNullable<typeof puladas>>(
+      ORDEM_GRUPO_SAIDA.map((g) => [g, []]),
+    )
+    for (const s of puladas ?? []) {
+      const grupo: GrupoSaida = s.divida_id ? 'divida' : grupoDoTipo(s.categoria?.tipo)
+      m.get(grupo)!.push(s)
+    }
+    return m
+  }, [puladas])
 
   const somaPagas = (g: GrupoSaida) => (pagasPorGrupo.get(g) ?? []).reduce((s, x) => s + x.valor_centavos, 0)
   const somaPendentes = (g: GrupoSaida) => (pendentesPorGrupo.get(g) ?? []).reduce((s, x) => s + x.valor, 0)
@@ -247,11 +320,18 @@ export function SaidasPage() {
         Clique em qualquer valor para corrigi-lo — previsto ou já pago.
       </p>
 
+      {erro && (
+        <p className="rounded-lg border border-danger-300 bg-danger-50 px-3 py-2 text-sm text-danger-700">
+          Não deu para gravar: {erro.message}
+        </p>
+      )}
+
       {isLoading && <p className="text-sm text-neutral-400">Carregando…</p>}
 
       {ORDEM_GRUPO_SAIDA.map((grupo) => {
         const pendentes = pendentesPorGrupo.get(grupo) ?? []
         const pagas = pagasPorGrupo.get(grupo) ?? []
+        const pulados = puladasPorGrupo.get(grupo) ?? []
         return (
           <CardColapsavel
             key={grupo}
@@ -386,7 +466,51 @@ export function SaidasPage() {
                 </Secao>
               )}
 
-              {pendentes.length === 0 && pagas.length === 0 && (
+              {pulados.length > 0 && (
+                <div>
+                  <SectionTitle cor="text-neutral-400">
+                    {ehMesUnico(periodo) ? 'Pulado neste mês' : 'Pulado no período'}
+                  </SectionTitle>
+                  <ul className="flex flex-col gap-1.5">
+                    {pulados.map((s) => (
+                      <li key={s.id} className={cn(LINHA_BASE, STATUS_FIN.cancelado.barra)}>
+                        <span
+                          className={cn(
+                            'w-24 shrink-0 font-semibold tabular-nums',
+                            STATUS_FIN.cancelado.valor,
+                          )}
+                        >
+                          {fmtCentavos(s.valor_centavos)}
+                        </span>
+                        <Badge variant="neutral">{s.categoria?.nome}</Badge>
+                        <span className="min-w-0 flex-1 truncate text-neutral-400">
+                          {s.descricao || '—'}
+                        </span>
+                        {/*
+                          O mês vem escrito na linha: com um período de
+                          vários meses, "pulado" sem data não diz qual
+                          buraco é qual.
+                        */}
+                        <span className="hidden shrink-0 items-center gap-1 text-xs text-neutral-400 sm:flex">
+                          <CalendarOff className="size-3.5" />
+                          {mesPorExtenso(s.data_competencia.slice(0, 7))}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => retomar.mutate(s.id)}
+                          title="Voltar a cobrar esta conta neste mês"
+                        >
+                          <Undo2 className="size-3.5" />
+                          <span className="hidden sm:inline">Voltar a cobrar</span>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {pendentes.length === 0 && pagas.length === 0 && pulados.length === 0 && (
                 <p className="text-sm text-neutral-400">Nada neste período.</p>
               )}
 
