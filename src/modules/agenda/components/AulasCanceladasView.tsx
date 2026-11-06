@@ -45,7 +45,8 @@ const hhmm = (h: string | null | undefined) => (h ?? '').slice(0, 5)
  * Cancelar aqui não é "cancelar os agendamentos um por um": o banco
  * encerra a fila, devolve o crédito de quem agendou (sem olhar o prazo de
  * 4h, que é regra do aluno), dá reposição a quem tem turma fixa e avisa
- * cada pessoa por e-mail. A equipe vê antes quem vai ser atingido.
+ * cada pessoa por e-mail — aluno, professora e gestão (06/11/2026). A
+ * equipe vê antes quem vai ser atingido.
  */
 export function AulasCanceladasView() {
   const hoje = hojeISO()
@@ -74,7 +75,8 @@ export function AulasCanceladasView() {
         <>
           {t?.modalidade} de {rotuloData(c.data)} às {hhmm(t?.horario)} volta a aceitar agendamento.
           Quem já foi avisado <strong>não</strong> é reagendado sozinho: os créditos devolvidos e as
-          reposições de turma fixa continuam com os alunos.
+          reposições de turma fixa continuam com os alunos. Os avisados do cancelamento e a professora
+          recebem e-mail da volta.
         </>
       ),
       aoConfirmar: async () => {
@@ -88,7 +90,7 @@ export function AulasCanceladasView() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-neutral-500">
           Aula que não vai acontecer. Ao cancelar, quem agendou recebe o crédito de volta, quem tem
-          turma fixa ganha uma reposição e todos são avisados por e-mail.
+          turma fixa ganha uma reposição, e aluno, professora e gestão são avisados por e-mail.
         </p>
         <Button onClick={() => { setFeito(null); setAberto(true) }}>
           <CalendarX2 className="size-4" />
@@ -106,7 +108,7 @@ export function AulasCanceladasView() {
         <EmptyState
           icon={CalendarX2}
           title="Nenhuma aula cancelada daqui para frente"
-          description="Quando a professora tiver um imprevisto, num feriado ou se a turma não fechar o mínimo, cancele por aqui — os alunos são avisados na hora."
+          description="Quando a professora tiver um imprevisto, num feriado ou se a turma não fechar o mínimo, cancele por aqui — os alunos e a professora são avisados na hora."
         />
       )}
 
@@ -273,7 +275,7 @@ function CancelarAulasModal({
       {
         onSuccess: (n) =>
           onFechar(
-            `${n} aula(s) de ${rotuloData(data)} cancelada(s). Os alunos atingidos foram avisados por e-mail.`,
+            `${n} aula(s) de ${rotuloData(data)} cancelada(s). Alunos atingidos e professora avisados por e-mail.`,
           ),
         onError: (e) => setErro((e as { message?: string })?.message ?? 'Não foi possível cancelar.'),
       },

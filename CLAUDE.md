@@ -493,13 +493,35 @@ alunos não atingido, outro (exige recado).
   não restaura agendamentos nem recolhe reposições.
 - Reserva feita pelo app (Wellhub/ClassPass) é cancelada aqui, mas **não**
   no app — a tela avisa a equipe (backlog A20).
+- **Quem é avisado (06/11/2026, `20261116120000`):** o aluno já era; agora
+  a **professora** e a **gestão** (sino) também, e **reabrir avisa de volta**
+  os três — antes reabrir não falava com ninguém, e a vaga ficava oferecida
+  a quem não sabia que ela existia.
+  - O aviso é **por chamada, não por aula**: no feriado a equipe cancela o
+    dia inteiro, e seis e-mails seguidos é o jeito mais rápido de alguém
+    parar de ler. O `ref` de dedup é o id do primeiro cancelamento da
+    chamada. Quem cancelou não recebe o aviso do que acabou de fazer.
+  - `quorum` não acende o sino de equipe: o cron já manda o
+    `aula_cancelada_quorum`, que leva a conta de alunos e o caminho de
+    reabrir. A professora, sim — é o cancelamento que mais a afeta.
+  - **A lista de quem avisar na reabertura sai do `ref` dos e-mails de
+    cancelamento** (`aula-cancelada:<cancelamento>:<cliente>`). Não dá para
+    re-derivar: a fila foi encerrada, os agendamentos cancelados e o assento
+    fixo pode ter trocado de aluno. A fila de e-mails não tem expurgo e
+    reabrir só é possível em aula futura, então o retrato está sempre lá.
+  - ⚠️ **Professora sem e-mail não recebe nada** e `enfileirar_email()`
+    descarta destinatário vazio em silêncio — e nenhuma das 11 tem e-mail
+    (backlog G1). Por isso o aviso da gestão leva o **nome de quem ficou de
+    fora** ("Avise à mão: …"); sem essa linha o recurso falharia sem
+    ninguém notar.
 
 ### 9.10 Avisos da equipe: o sino (05/10/2026)
 
-`20261014120000_notificacoes.sql`. O ERP tem filas que esperam resposta
-(contratação, cancelamento, pausa, convidado, aula cancelada por quórum,
+`20261014120000_notificacoes.sql`. O ERP tem filas que esperam resposta (contratação, cancelamento, pausa, convidado, aula cancelada por quórum,
 cobrança vencida) e, até então, a única forma de saber era e-mail para
-todas as sócias de gestão, sempre.
+todas as sócias de gestão, sempre. Em 06/11/2026 entraram
+`aula_cancelada_equipe` e `aula_reaberta_equipe` (§9.9) — duas linhas no
+catálogo, nenhuma linha de código nova no sino.
 
 - **O catálogo manda:** `tipos_notificacao` lista os avisos que são **da
   equipe**. Tipo listado lá vira sino; tipo de fora continua só e-mail.
