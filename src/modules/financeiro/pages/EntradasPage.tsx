@@ -380,7 +380,7 @@ function LinhaEntrada({
   const tokens = STATUS_FIN[info.status]
 
   return (
-    <li className={cn(LINHA_BASE, tokens.barra)}>
+    <li className={cn(LINHA_BASE, tokens.barra, tokens.fundo)}>
       <ValorEditavel
         valor={e.valor_centavos}
         onSalvar={onValor}

@@ -21,6 +21,9 @@ const MATRICULAS_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=canc
 // A fila de pedidos de contratação — é desta aba que a gestão aprova a vaga.
 const CONTRATACOES_ERP = 'https://sistema.studiopolel.com.br/#/matriculas?aba=contratacoes'
 const AGENDA_ERP = 'https://sistema.studiopolel.com.br/#/agenda'
+const AGENDA_CANCELADAS = 'https://sistema.studiopolel.com.br/#/agenda?aba=canceladas'
+// O portal da professora mora num caminho, não num hash (CLAUDE.md §5.1).
+const PORTAL_PROF = 'https://sistema.studiopolel.com.br/portalequipe/'
 const MATRICULAS_PAUSAS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=pausas'
 const MATRICULAS_CONVIDADOS = 'https://sistema.studiopolel.com.br/#/matriculas?aba=convidados'
 const MATRICULAS_EM_ABERTO = 'https://sistema.studiopolel.com.br/#/matriculas?aba=em_aberto'
@@ -75,6 +78,16 @@ function layout(titulo: string, corpo: string, cta?: { texto: string; url: strin
 
 type Dados = Record<string, unknown>
 type Render = { assunto: string; html: string } | null
+
+// A lista de aulas de um aviso em lote. No feriado a equipe cancela o dia
+// inteiro numa chamada, e o aviso sai UM por pessoa com as aulas dentro —
+// seis e-mails seguidos é o jeito mais rápido de alguém parar de ler.
+const listaDeAulas = (aulas: Dados[]): string =>
+  aulas.length === 0
+    ? ''
+    : `<table style="border-collapse:collapse;font-size:14px;line-height:1.5">${aulas
+        .map((a) => `<tr><td style="padding:3px 14px 3px 0;color:#928aa6">${hhmm(a.horario as string)}</td><td style="padding:3px 0;color:#241f33">${esc(a.modalidade)}</td></tr>`)
+        .join('')}</table>`
 
 function render(tipo: string, d: Dados): Render {
   const nome = primeiroNome(d.nome as string)
@@ -293,6 +306,122 @@ function render(tipo: string, d: Dados): Render {
           `Oi, ${esc(nome)}. A aula de <strong style="color:#241f33">${esc(modalidade)}</strong> de ${quando} foi cancelada pelo estúdio (${esc(d.motivo)}).${recado}<br><br>
            ${consequencia}<br><br>Sentimos pelo transtorno.`,
           { texto: 'Ver agenda', url: `${PORTAL}/agenda` }),
+      }
+    }
+    // Aula cancelada — A PROFESSORA. Ela é a única pessoa que sai de casa
+    // por causa dessa aula, e até 06/11/2026 ninguém a avisava: o
+    // cancelamento falava com fila, agendados e turma fixa, e passava
+    // direto por ela. Vale também para o cancelamento por quórum, que é o
+    // que mais a afeta — roda sozinho, 4h antes.
+    case 'aula_cancelada_professora': {
+      const aulas = (d.aulas as Dados[]) ?? []
+      const uma = aulas.length <= 1
+      const recado = d.mensagem ? `<br><br><em>“${esc(d.mensagem)}”</em>` : ''
+      return {
+        assunto: uma
+          ? `Aula cancelada — ${esc(aulas[0]?.modalidade ?? modalidade)} · ${data}`
+          : `${aulas.length} aulas canceladas — ${data}`,
+        html: layout(uma ? 'Sua aula foi cancelada' : 'Suas aulas foram canceladas',
+          `Oi, ${esc(nome)}. ${uma ? 'A aula abaixo' : `As ${aulas.length} aulas abaixo`} de ${data} ${uma ? 'foi cancelada' : 'foram canceladas'} (${esc(d.motivo)}) — <strong style="color:#241f33">você não precisa vir${uma ? '' : ' nesses horários'}</strong>.${recado}<br><br>
+           ${listaDeAulas(aulas)}<br>
+           Os alunos já foram avisados e tiveram o crédito devolvido. Qualquer dúvida, fale com a gente.`,
+          { texto: 'Abrir meu portal', url: PORTAL_PROF }),
+      }
+    }
+    // Aula cancelada — A GESTÃO (sino). O de quórum já existia; o
+    // cancelamento feito à mão não chegava a ninguém. Quem cancelou não
+    // recebe o aviso do que acabou de fazer (ver a migration).
+    case 'aula_cancelada_equipe': {
+      const aulas = (d.aulas as Dados[]) ?? []
+      const n = (d.total_aulas as number) ?? aulas.length
+      const quem = d.nome ? esc(primeiroNome(d.nome as string)) : 'Alguém da equipe'
+      const recado = d.mensagem ? `<br><em>“${esc(d.mensagem)}”</em>` : ''
+      const app = (d.app as number) ?? 0
+      // Professora sem e-mail cadastrado não é avisada, e `enfileirar_email`
+      // descarta destinatário vazio em silêncio (backlog G1). Dizer isso aqui
+      // é o que impede o aviso de falhar sem ninguém notar: quem lê este
+      // e-mail é quem pode mandar a mensagem à mão.
+      const semEmail = (d.professoras_sem_email as string[]) ?? []
+      const alerta = semEmail.length === 0
+        ? ''
+        : `<br><br><strong style="color:#241f33">Avise à mão:</strong> ${semEmail.map((p) => esc(p)).join(', ')} ${semEmail.length === 1 ? 'não tem' : 'não têm'} e-mail cadastrado no sistema e <strong>não ${semEmail.length === 1 ? 'foi avisada' : 'foram avisadas'}</strong>.`
+      const linha = (rotulo: string, valor: unknown) =>
+        `<tr><td style="padding:3px 12px 3px 0;color:#928aa6">${rotulo}</td><td style="padding:3px 0;color:#241f33">${esc(valor)}</td></tr>`
+      return {
+        assunto: n === 1 ? `Aula cancelada — ${esc(d.turma)}` : `${n} aulas canceladas — ${data}`,
+        html: layout(n === 1 ? 'Aula cancelada' : `${n} aulas canceladas`,
+          `<strong style="color:#241f33">${quem}</strong> cancelou ${n === 1 ? 'uma aula' : `${n} aulas`} de ${data} no sistema (${esc(d.motivo)}).${recado}<br><br>
+           ${listaDeAulas(aulas)}<br>
+           <table style="border-collapse:collapse;font-size:14px;line-height:1.5">
+             ${linha('Agendamentos cancelados', d.agendamentos)}
+             ${linha('Créditos devolvidos', d.creditos)}
+             ${linha('Reposições de turma fixa', d.reposicoes)}
+             ${linha('Lista de espera encerrada', d.fila)}
+           </table>
+           ${app > 0
+             ? `<br><strong style="color:#241f33">Atenção:</strong> ${app} ${app === 1 ? 'reserva veio' : 'reservas vieram'} do aplicativo parceiro. O cancelamento aqui <strong>não</strong> remove a reserva no app — isso é no Portal do Parceiro.`
+             : ''}${alerta}
+           <br><br>Cancelou por engano, ou o imprevisto se resolveu? Reabra em <strong>Agenda → Aulas canceladas</strong>.`,
+          { texto: 'Abrir a Agenda', url: AGENDA_CANCELADAS }),
+      }
+    }
+    // Aula reaberta. Até 06/11/2026 reabrir não avisava ninguém: o aluno
+    // seguia achando que não tem aula, e a vaga reaberta ficava oferecida
+    // para quem não sabia que ela existia. A frase que importa é a mesma
+    // para todo mundo — o agendamento NÃO voltou sozinho.
+    case 'aula_reaberta': {
+      const situacao = d.situacao as string
+      let consequencia =
+        'O crédito está no seu saldo e a vaga está aberta — agende de novo pelo app se quiser fazer essa aula.'
+      if (situacao === 'turma_fixa') {
+        consequencia =
+          'Sua vaga de turma fixa continua sendo sua: é só aparecer. O crédito de reposição que você recebeu fica com você, para usar em outra aula.'
+      } else if (situacao === 'fila') {
+        consequencia =
+          'A lista de espera foi encerrada quando a aula caiu. Agende pelo app se houver vaga, ou entre na fila de novo.'
+      } else if (situacao === 'app') {
+        consequencia =
+          'Sua reserva tinha sido feita pelo aplicativo parceiro, e ela não voltou junto — reserve por lá novamente.'
+      }
+      return {
+        assunto: `Aula reaberta — ${modalidade} · ${data}`,
+        html: layout('A aula voltou a acontecer',
+          `Oi, ${esc(nome)}! A aula de <strong style="color:#241f33">${esc(modalidade)}</strong> de ${data} às ${hora}, que havia sido cancelada, <strong>vai acontecer</strong>.<br><br>
+           ${consequencia}`,
+          { texto: 'Ver agenda', url: `${PORTAL}/agenda` }),
+      }
+    }
+    case 'aula_reaberta_professora': {
+      const avisados = (d.avisados as number) ?? 0
+      return {
+        assunto: `Aula reaberta — ${modalidade} · ${data}`,
+        html: layout('Sua aula voltou',
+          `Oi, ${esc(nome)}. A aula de <strong style="color:#241f33">${esc(modalidade)}</strong> de ${data} às ${hora}, que havia sido cancelada, <strong>vai acontecer</strong> — conte com ela de novo na sua agenda.<br><br>
+           ${avisados > 0
+             ? `${avisados} ${avisados === 1 ? 'aluno foi avisado' : 'alunos foram avisados'} da volta, mas o agendamento de ninguém foi restaurado automaticamente: a turma pode chegar com nomes diferentes dos de antes.`
+             : 'Ninguém estava agendado quando a aula caiu, então a vaga está inteira aberta.'}`,
+          { texto: 'Abrir meu portal', url: PORTAL_PROF }),
+      }
+    }
+    case 'aula_reaberta_equipe': {
+      const avisados = (d.avisados as number) ?? 0
+      const quem = d.nome ? esc(primeiroNome(d.nome as string)) : 'Alguém da equipe'
+      // Professora sem e-mail cadastrado não é avisada, e `enfileirar_email`
+      // descarta destinatário vazio em silêncio (backlog G1). Dizer isso aqui
+      // é o que impede o aviso de falhar sem ninguém notar: quem lê este
+      // e-mail é quem pode mandar a mensagem à mão.
+      const semEmail = (d.professoras_sem_email as string[]) ?? []
+      const alerta = semEmail.length === 0
+        ? ''
+        : `<br><br><strong style="color:#241f33">Avise à mão:</strong> ${semEmail.map((p) => esc(p)).join(', ')} ${semEmail.length === 1 ? 'não tem' : 'não têm'} e-mail cadastrado no sistema e <strong>não ${semEmail.length === 1 ? 'foi avisada' : 'foram avisadas'}</strong>.`
+      return {
+        assunto: `Aula reaberta — ${esc(d.turma)}`,
+        html: layout('Aula reaberta',
+          `<strong style="color:#241f33">${quem}</strong> reabriu a aula de <strong style="color:#241f33">${esc(d.turma)}</strong> de ${dataCompleta(d.data as string)}, que havia sido cancelada (${esc(d.motivo)}).<br><br>
+           A vaga voltou a ser oferecida. ${avisados > 0
+             ? `${avisados} ${avisados === 1 ? 'aluno soube' : 'alunos souberam'} do cancelamento e ${avisados === 1 ? 'recebeu' : 'receberam'} o aviso da volta — mas nenhum agendamento foi restaurado, e a reposição dada à turma fixa fica com o aluno.`
+             : 'Ninguém havia sido avisado do cancelamento.'}${alerta}`,
+          { texto: 'Abrir a Agenda', url: AGENDA_CANCELADAS }),
       }
     }
     // ---- Contratação ----

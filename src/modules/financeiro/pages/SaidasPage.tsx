@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { CalendarClock, CalendarOff, Pencil, Plus, Repeat, RotateCcw, Trash2, TrendingDown, TriangleAlert, Undo2, Wallet } from 'lucide-react'
+import { CalendarClock, CalendarOff, CheckCircle2, Clock, Pencil, Plus, Repeat, RotateCcw, Trash2, TrendingDown, TriangleAlert, Undo2, Wallet, type LucideIcon } from 'lucide-react'
 import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
@@ -167,22 +167,26 @@ export function SaidasPage() {
             ? lancar.mutate({ recorrente: modelo, mes, ajuste: { data: iso }, comoPrevista: true })
             : atualizarSaida.mutate({ id: p.id!, patch: { data_prevista: iso } }),
         /*
-          Pular só faz sentido em conta fixa: ou a projeção (`recorrente`),
-          ou o mês dela que já virou linha porque alguém corrigiu o valor.
-          Parcela de dívida fica de fora de propósito — tirar uma parcela
-          é mexer no cronograma, e isso é da aba Dívidas.
+          "Tirar esta linha daqui" é um gesto só na tela, mas duas coisas
+          diferentes no banco — e o diálogo é que conta qual.
 
-          A previsão avulsa (a folha das professoras, por exemplo) também
-          fica de fora: ali não há "este mês não tem", há uma previsão
-          errada, e o caminho é corrigir o valor ou excluir a previsão.
+          Conta fixa (a projeção, ou o mês dela que já virou linha porque
+          alguém corrigiu o valor): não há o que apagar sem matar todos os
+          meses, então some só DESTE mês, reversível em "Pulado neste mês".
+          Para acabar de vez, é em Contas fixas.
+
+          Qualquer outra previsão — a folha de uma professora, uma parcela
+          programada, uma saída prevista lançada à mão — é uma linha de
+          verdade: some do banco. Nenhuma delas tinha saída até aqui: a
+          previsão errada ficava na tela até alguém pagá-la.
         */
-        aoPular:
+        aoExcluir:
           daRecorrente || p.recorrente_id
             ? () =>
                 confirmar.pedir({
-                  titulo: 'Este mês não tem esta conta?',
+                  titulo: `Tirar esta conta de ${mesPorExtenso(mes)}?`,
                   tom: 'arquivar',
-                  textoConfirmar: 'Pular este mês',
+                  textoConfirmar: 'Tirar deste mês',
                   descricao: (
                     <>
                       <b>
@@ -191,7 +195,8 @@ export function SaidasPage() {
                       sai de {mesPorExtenso(mes)} e para de contar no caixa projetado.
                       <br />
                       Os outros meses continuam como estão, e dá para voltar atrás
-                      em “Pulado neste mês”.
+                      em “Pulado neste mês”. Para a conta parar de aparecer em todo
+                      mês, é em <b>Contas fixas</b>.
                     </>
                   ),
                   aoConfirmar: async () => {
@@ -202,14 +207,39 @@ export function SaidasPage() {
                     })
                   },
                 })
-            : undefined,
+            : () =>
+                confirmar.pedir({
+                  titulo: 'Excluir esta conta a pagar?',
+                  descricao: (
+                    <>
+                      <b>
+                        {p.descricao || p.categoria} — {fmtCentavos(p.valor_centavos!)}
+                      </b>{' '}
+                      deixa de existir e sai do caixa projetado.
+                      {p.divida_id ? (
+                        <>
+                          <br />
+                          É uma <b>parcela programada</b>: o cronograma da dívida fica
+                          com um mês a menos, e reprogramar é na aba <b>Dívidas</b>.
+                        </>
+                      ) : (
+                        <>
+                          <br />
+                          Se a conta existe mas o valor está errado, clique no valor
+                          para corrigi-lo em vez de excluir.
+                        </>
+                      )}
+                    </>
+                  ),
+                  aoConfirmar: () => excluir.mutateAsync(p.id!),
+                }),
         dicaValor: daRecorrente
           ? 'Clique para mudar o valor só deste mês (a conta fixa continua como está)'
           : undefined,
       })
     }
     return m
-  }, [aPagar, hoje, periodo, atualizarSaida, lancar, pular, confirmar])
+  }, [aPagar, hoje, periodo, atualizarSaida, lancar, pular, excluir, confirmar])
 
   const pagasPorGrupo = useMemo(() => {
     const m = new Map<GrupoSaida, NonNullable<typeof saidas>>(ORDEM_GRUPO_SAIDA.map((g) => [g, []]))
@@ -315,9 +345,15 @@ export function SaidasPage() {
         O valor editável só se anuncia no hover, e hover não ensina nada a
         quem não passou o mouse ali. Uma linha diz o que a tela ganhou.
       */}
-      <p className="-mb-2 flex items-center gap-1.5 text-xs text-neutral-400">
-        <Pencil className="size-3" />
-        Clique em qualquer valor para corrigi-lo — previsto ou já pago.
+      <p className="-mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-400">
+        <span className="flex items-center gap-1.5">
+          <Pencil className="size-3" />
+          Clique no valor, na descrição ou na data para corrigir — previsto ou já pago.
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Trash2 className="size-3" />
+          A lixeira tira a linha da lista.
+        </span>
       </p>
 
       {erro && (
@@ -369,7 +405,7 @@ export function SaidasPage() {
               </div>
             }
           >
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-6">
               {/*
                 Seção vazia não é desenhada. Com os três grupos abertos, a
                 tela chegava a mostrar seis títulos e até quatro caixas de
@@ -377,16 +413,37 @@ export function SaidasPage() {
                 de fato importavam no mês.
               */}
               {pendentes.length > 0 && (
-                <Secao titulo="A pagar" total={somaPendentes(grupo)} cor="text-warning-700">
+                <Secao
+                  titulo="A pagar"
+                  total={somaPendentes(grupo)}
+                  cor="text-warning-700"
+                  icone={Clock}
+                  quantidade={pendentes.length}
+                >
                   <ListaAPagar itens={pendentes} modo={modo} />
                 </Secao>
               )}
 
               {pagas.length > 0 && (
-                <Secao titulo="Pago" total={somaPagas(grupo)} cor="text-success-700">
+                <Secao
+                  titulo="Pago"
+                  total={somaPagas(grupo)}
+                  cor="text-success-700"
+                  icone={CheckCircle2}
+                  quantidade={pagas.length}
+                >
                   <ul className="flex flex-col gap-1.5">
                     {pagas.map((s) => (
-                      <li key={s.id} className={cn(LINHA_BASE, STATUS_FIN.pago.barra)}>
+                      <li
+                        key={s.id}
+                        className={cn(LINHA_BASE, STATUS_FIN.pago.barra, STATUS_FIN.pago.fundo)}
+                      >
+                        {/* Ver ListaAPagar: o ✓ é o que diferencia pago de
+                            a pagar sem depender de ler o título da seção. */}
+                        <CheckCircle2
+                          className={cn('size-4 shrink-0', STATUS_FIN.pago.tinta)}
+                          aria-label="pago"
+                        />
                         <ValorEditavel
                           valor={s.valor_centavos}
                           onSalvar={(centavos) =>
@@ -469,11 +526,28 @@ export function SaidasPage() {
               {pulados.length > 0 && (
                 <div>
                   <SectionTitle cor="text-neutral-400">
-                    {ehMesUnico(periodo) ? 'Pulado neste mês' : 'Pulado no período'}
+                    <span className="flex items-center gap-1.5">
+                      <CalendarOff className="size-3.5" />
+                      {ehMesUnico(periodo) ? 'Pulado neste mês' : 'Pulado no período'}
+                      <span className="font-normal normal-case tracking-normal text-neutral-400">
+                        · {pulados.length}
+                      </span>
+                    </span>
                   </SectionTitle>
                   <ul className="flex flex-col gap-1.5">
                     {pulados.map((s) => (
-                      <li key={s.id} className={cn(LINHA_BASE, STATUS_FIN.cancelado.barra)}>
+                      <li
+                        key={s.id}
+                        className={cn(
+                          LINHA_BASE,
+                          STATUS_FIN.cancelado.barra,
+                          STATUS_FIN.cancelado.fundo,
+                        )}
+                      >
+                        <CalendarOff
+                          className={cn('size-4 shrink-0', STATUS_FIN.cancelado.tinta)}
+                          aria-label="pulado"
+                        />
                         <span
                           className={cn(
                             'w-24 shrink-0 font-semibold tabular-nums',
@@ -491,8 +565,7 @@ export function SaidasPage() {
                           vários meses, "pulado" sem data não diz qual
                           buraco é qual.
                         */}
-                        <span className="hidden shrink-0 items-center gap-1 text-xs text-neutral-400 sm:flex">
-                          <CalendarOff className="size-3.5" />
+                        <span className="hidden shrink-0 text-xs text-neutral-400 sm:inline">
                           {mesPorExtenso(s.data_competencia.slice(0, 7))}
                         </span>
                         <Button
@@ -544,21 +617,38 @@ export function SaidasPage() {
   )
 }
 
+/**
+ * Um bloco de status dentro do card do grupo ("A pagar", "Pago").
+ *
+ * O título ganhou ícone e contagem porque a separação era só um texto
+ * pequeno entre duas listas de linhas quase iguais: com o card aberto, a
+ * fronteira entre o que saiu e o que ainda vai sair passava batida.
+ */
 function Secao({
   titulo,
   total,
   cor,
+  icone: Icone,
+  quantidade,
   children,
 }: {
   titulo: string
   total: number
   cor: string
+  icone: LucideIcon
+  quantidade: number
   children: React.ReactNode
 }) {
   return (
     <div>
       <SectionTitle cor={cor} direita={fmtCentavos(total)}>
-        {titulo}
+        <span className="flex items-center gap-1.5">
+          <Icone className="size-3.5" />
+          {titulo}
+          <span className="font-normal normal-case tracking-normal text-neutral-400">
+            · {quantidade}
+          </span>
+        </span>
       </SectionTitle>
       {children}
     </div>

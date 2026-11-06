@@ -1,4 +1,4 @@
-import { CalendarOff, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Trash2 } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { EmptyState } from '../../../components/ui/EmptyState'
@@ -29,11 +29,15 @@ export type ItemAPagar = {
   aoEditarDescricao: (texto: string) => void
   aoEditarVencimento: (iso: string) => void
   /**
-   * Tira a conta DESTE mês, sem mexer nos outros ("em dezembro não tem
-   * Marketing"). Ausente onde pular seria errado — parcela de dívida, que
-   * é o cronograma da aba Dívidas que manda.
+   * Tira esta linha da lista. O que isso significa depende da origem — a
+   * conta fixa some só deste mês, a previsão avulsa é apagada —, e quem
+   * explica a diferença é o diálogo de confirmação montado na SaidasPage.
+   *
+   * Toda linha tem: antes só a conta fixa oferecia "pular", então uma
+   * previsão lançada errada (a folha de uma professora, uma estimativa que
+   * não existe mais) ficava presa na tela até ser paga.
    */
-  aoPular?: () => void
+  aoExcluir: () => void
   /** Explica onde a edição vai parar, quando não é óbvio. */
   dicaValor?: string
 }
@@ -141,8 +145,16 @@ function Linhas({ itens }: { itens: ItemAPagar[] }) {
       {itens.map((i) => {
         const competenciaDiferente = !!i.competencia && i.competencia.slice(0, 7) !== i.venc.slice(0, 7)
         const status = STATUS_FIN[statusDoBucket(i.bucket)]
+        const Icone = status.icone
         return (
-          <li key={i.chave} className={cn(LINHA_BASE, status.barra)}>
+          <li key={i.chave} className={cn(LINHA_BASE, status.barra, status.fundo)}>
+            {/*
+              O status abre a linha, antes do valor. Cor sozinha não basta:
+              numa lista com pago e a pagar embaixo um do outro, a faixa de
+              4px é o único sinal, e ela não sobrevive a um olhar rápido
+              nem a quem confunde as duas cores.
+            */}
+            <Icone className={cn('size-4 shrink-0', status.tinta)} aria-label={status.rotulo} />
             <ValorEditavel
               valor={i.valor}
               onSalvar={i.aoEditarValor}
@@ -178,19 +190,22 @@ function Linhas({ itens }: { itens: ItemAPagar[] }) {
               <span className="hidden sm:inline">Marcar como pago</span>
             </Button>
             {/*
-              Ícone, e não um segundo botão com texto: pular é raro ao lado
-              de "marcar como pago", que é o gesto de todo mês. Dois botões
-              do mesmo tamanho fariam a linha disputar a atenção.
+              Ícone, e não um segundo botão com texto: excluir é raro ao
+              lado de "marcar como pago", que é o gesto de todo mês. Dois
+              botões do mesmo tamanho fariam a linha disputar a atenção.
+
+              Uma lixeira só, para qualquer origem. A versão anterior tinha
+              um calendário riscado que aparecia só em conta fixa, e nada
+              nas demais — quem procurava "como tiro isto daqui" não achava
+              gesto nenhum na maioria das linhas.
             */}
-            {i.aoPular && (
-              <button
-                onClick={i.aoPular}
-                title="Este mês não tem — tira a conta só deste mês"
-                className="ml-1 shrink-0 rounded p-1 text-neutral-300 transition hover:bg-warning-50 hover:text-warning-700"
-              >
-                <CalendarOff className="size-3.5" />
-              </button>
-            )}
+            <button
+              onClick={i.aoExcluir}
+              title="Tirar esta conta da lista"
+              className="ml-1 shrink-0 rounded p-1 text-neutral-300 transition hover:bg-danger-50 hover:text-danger-600"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
           </li>
         )
       })}
