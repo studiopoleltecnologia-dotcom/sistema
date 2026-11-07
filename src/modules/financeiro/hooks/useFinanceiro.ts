@@ -12,6 +12,7 @@ import {
   criarReservaMovimento,
   criarSaida,
   desativarRecorrente,
+  excluirDividas,
   excluirEntrada,
   excluirSaida,
   lancarRecorrente,
@@ -37,6 +38,7 @@ import {
   retomarSaidaPulada,
   salvarCronogramaDivida,
   registrarPagamentoDivida,
+  renomearCredor,
   reverterPagamentoSaida,
 } from '../api/financeiro'
 import type { Periodo } from '../periodo'
@@ -341,4 +343,20 @@ export function useRegistrarPagamentoDivida() {
 export function useSalvarCronogramaDivida() {
   const invalidar = useInvalidarDivida()
   return useMutation({ mutationFn: salvarCronogramaDivida, onSuccess: invalidar })
+}
+
+/**
+ * Renomear não mexe em dinheiro, mas o nome do credor entra na descrição
+ * das saídas lançadas por esta tela ("Abatimento — Carol"). Invalidar o
+ * financeiro inteiro evita Saídas continuar exibindo o nome antigo.
+ */
+export function useRenomearCredor() {
+  const invalidar = useInvalidarDivida()
+  return useMutation({ mutationFn: renomearCredor, onSuccess: invalidar })
+}
+
+/** Apaga as saídas junto com a dívida — caixa, DRE e contas a pagar mudam. */
+export function useExcluirDividas() {
+  const invalidar = useInvalidarDivida()
+  return useMutation({ mutationFn: excluirDividas, onSuccess: invalidar })
 }
