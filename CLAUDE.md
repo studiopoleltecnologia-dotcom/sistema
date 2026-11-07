@@ -537,6 +537,14 @@ catálogo, nenhuma linha de código nova no sino.
 - Público = `emails_gestao()` (função = gestão). Levar à secretária é uma
   linha ali, mas é decisão de produto — ela resolve convidado e check-in
   pendente, então faz sentido quando pedirem.
+- **`aula_cancelada_quorum` saiu do e-mail em 07/11/2026** e ficou só no
+  sino (`20261118120000`). Enquanto a agenda estiver no Wix, a conferência
+  de quórum lê **zero agendados** e cancela a grade inteira: foram 25 aulas
+  e 70 e-mails em cinco dias, todas elas acontecendo normalmente. ⚠️ O cron
+  **continua ligado** — a decisão da gestão foi calar o aviso, não parar o
+  cancelamento. Até o agendamento ser do ERP, a aba Agenda → canceladas
+  enche sozinha e `recusar_aula_cancelada` barraria quem tentasse reservar
+  pelo portal.
 
 ### 9.11 O regulamento oficial, e onde cada número mora
 
