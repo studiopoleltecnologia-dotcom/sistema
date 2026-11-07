@@ -640,3 +640,34 @@ export async function atualizarDivida(id: string, patch: DividaUpdate) {
   if (error) throw error
   return data
 }
+
+/**
+ * Troca o nome da pessoa em vários empréstimos de uma vez.
+ *
+ * O card de Dívidas é agrupado pelo texto de `credor`, então o nome É a
+ * identidade da pessoa — corrigi-lo em um empréstimo só partiria o card em
+ * dois. Por isso recebe os ids do card inteiro.
+ *
+ * Renomear para um nome que já existe funde os dois cards, de propósito:
+ * é como se conserta "carol " e "Carol" terem virado duas pessoas.
+ */
+export async function renomearCredor(args: { ids: string[]; credor: string }) {
+  const { error } = await requireSupabase()
+    .from('dividas')
+    .update({ credor: args.credor })
+    .in('id', args.ids)
+  if (error) throw error
+}
+
+/**
+ * Apaga empréstimos junto com as parcelas e os pagamentos deles.
+ *
+ * É RPC porque não dá para fazer em duas chamadas: a FK é
+ * `on delete set null`, então apagar só a dívida deixaria as saídas órfãs
+ * — e sem `divida_id` elas deixam de ser devolução de capital e entram no
+ * DRE como despesa. Ver `20261117120000_dividas_excluir.sql`.
+ */
+export async function excluirDividas(ids: string[]) {
+  const { error } = await requireSupabase().rpc('excluir_dividas', { p_ids: ids })
+  if (error) throw error
+}

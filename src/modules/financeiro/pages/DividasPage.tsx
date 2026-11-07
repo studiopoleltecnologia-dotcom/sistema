@@ -4,12 +4,15 @@ import {
   CheckCircle2,
   ChevronDown,
   HandCoins,
+  Pencil,
   Plus,
   RotateCcw,
+  Trash2,
   Wallet,
 } from 'lucide-react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
+import { useConfirmar } from '../../../components/ui/ConfirmarAcao'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { Input } from '../../../components/ui/Input'
 import { KpiCard } from '../../../components/ui/KpiCard'
@@ -25,6 +28,8 @@ import {
   useAtualizarDivida,
   useCriarDivida,
   useDividas,
+  useExcluirDividas,
+  useRenomearCredor,
   useSalvarCronogramaDivida,
   useRegistrarPagamentoDivida,
 } from '../hooks/useFinanceiro'
@@ -133,6 +138,8 @@ export function DividasPage() {
   const [verQuitadas, setVerQuitadas] = useState(false)
 
   const credores = useMemo(() => agruparPorCredor(dividas ?? []), [dividas])
+  /** Nomes já usados: alimenta o datalist de criar e de editar. */
+  const nomes = useMemo(() => credores.map((c) => c.nome), [credores])
   const devendo = useMemo(() => credores.filter((c) => !c.tudoQuitado), [credores])
   const quitados = useMemo(() => credores.filter((c) => c.tudoQuitado), [credores])
 
@@ -224,7 +231,7 @@ export function DividasPage() {
               </SectionTitle>
               <ul className="flex flex-col gap-3">
                 {devendo.map((c) => (
-                  <CardCredor key={c.nome} credor={c} />
+                  <CardCredor key={c.nome} credor={c} nomes={nomes} />
                 ))}
               </ul>
             </section>
@@ -254,7 +261,7 @@ export function DividasPage() {
               {verQuitadas && (
                 <ul className="mt-3 flex flex-col gap-3">
                   {quitados.map((c) => (
-                    <CardCredor key={c.nome} credor={c} />
+                    <CardCredor key={c.nome} credor={c} nomes={nomes} />
                   ))}
                 </ul>
               )}
@@ -264,7 +271,7 @@ export function DividasPage() {
       )}
 
       {nova && (
-        <NovoEmprestimoModal nomesConhecidos={credores.map((c) => c.nome)} onFechar={() => setNova(false)} />
+        <NovoEmprestimoModal nomesConhecidos={nomes} onFechar={() => setNova(false)} />
       )}
     </div>
   )
@@ -275,10 +282,15 @@ export function DividasPage() {
  * aberto separa as três coisas que antes vinham misturadas num histórico
  * só: os empréstimos, as parcelas ainda por pagar e os pagamentos feitos.
  */
-function CardCredor({ credor: c }: { credor: Credor }) {
+function CardCredor({ credor: c, nomes }: { credor: Credor; nomes: string[] }) {
   const atualizar = useAtualizarDivida()
+  const excluir = useExcluirDividas()
+  const confirmar = useConfirmar()
   const [aberto, setAberto] = useState(false)
   const [pagando, setPagando] = useState(false)
+  const [renomeando, setRenomeando] = useState(false)
+  /** Empréstimo sendo corrigido no modal de edição (null = fechado). */
+  const [editando, setEditando] = useState<DividaComSaldo | null>(null)
   /** Lista de empréstimos candidatos do modal de parcelas (null = fechado). */
   const [programando, setProgramando] = useState<DividaComSaldo[] | null>(null)
 
@@ -307,6 +319,54 @@ function CardCredor({ credor: c }: { credor: Credor }) {
     [movimentos],
   )
 
+  /**
+   * Um diálogo só para os dois caminhos de exclusão — a pessoa inteira e um
+   * empréstimo avulso. O texto lista o que vai junto porque é isso que não
+   * é óbvio na tela: a parcela programada some de Saídas → A pagar, e o
+   * pagamento já feito sai do fluxo de caixa do mês em que saiu.
+   */
+  function pedirExclusao(lista: DividaComSaldo[]) {
+    const movs = lista.flatMap((d) => d.movimentos)
+    const previstas = movs.filter((m) => m.status_saida === 'prevista')
+    const pagas = movs.filter((m) => m.status_saida === 'paga')
+    const soma = (ms: typeof movs) => ms.reduce((s, m) => s + m.valor_centavos, 0)
+    const total = lista.reduce((s, d) => s + d.valor_centavos, 0)
+    const umSo = lista.length === 1
+
+    confirmar.pedir({
+      titulo: umSo ? 'Excluir este empréstimo?' : `Excluir tudo de ${c.nome}?`,
+      descricao: (
+        <>
+          <b>
+            {umSo
+              ? `${rotulo(lista[0])} — ${fmtCentavos(total)}`
+              : `${plural(lista.length, 'empréstimo', 'empréstimos')} de ${c.nome} — ${fmtCentavos(total)}`}
+          </b>{' '}
+          deixa de existir.
+          {previstas.length > 0 && (
+            <>
+              {' '}
+              {plural(previstas.length, 'parcela programada sai', 'parcelas programadas saem')} de
+              Saídas → A pagar ({fmtCentavos(soma(previstas))}).
+            </>
+          )}
+          {pagas.length > 0 && (
+            <>
+              <br />
+              <span className="font-medium text-danger-700">
+                {plural(pagas.length, 'pagamento já registrado', 'pagamentos já registrados')} (
+                {fmtCentavos(soma(pagas))}) {pagas.length === 1 ? 'sai' : 'saem'} junto do fluxo de
+                caixa.
+              </span>{' '}
+              Se o dinheiro foi mesmo devolvido, o caminho é “Marcar quitado”, não excluir.
+            </>
+          )}
+        </>
+      ),
+      aoConfirmar: () => excluir.mutateAsync(lista.map((d) => d.id)),
+    })
+  }
+
   return (
     <li
       className={cn(
@@ -325,6 +385,17 @@ function CardCredor({ credor: c }: { credor: Credor }) {
             <h3 className="font-display text-base font-bold uppercase tracking-wide text-neutral-900">
               {c.nome}
             </h3>
+            {/* O card é agrupado pelo texto do nome, então corrigir o nome é
+                corrigir a pessoa inteira — nunca um empréstimo só, que
+                partiria o card em dois. */}
+            <button
+              onClick={() => setRenomeando(true)}
+              title={`Corrigir o nome de ${c.nome}`}
+              aria-label={`Corrigir o nome de ${c.nome}`}
+              className="rounded p-1 text-neutral-300 transition hover:bg-neutral-100 hover:text-neutral-700"
+            >
+              <Pencil className="size-3.5" />
+            </button>
             {c.tudoQuitado ? (
               <Badge variant="success">quitado</Badge>
             ) : (
@@ -409,14 +480,34 @@ function CardCredor({ credor: c }: { credor: Credor }) {
             </Button>
           </>
         )}
-        <button
-          onClick={() => setAberto((a) => !a)}
-          aria-expanded={aberto}
-          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800"
-        >
-          <ChevronDown className={cn('size-3.5 transition-transform', aberto ? '' : '-rotate-90')} />
-          {aberto ? 'Ocultar detalhes' : 'Ver detalhes'}
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          {/* Excluir o card inteiro de uma vez: é o caso comum (a pessoa
+              costuma ter um empréstimo só, e quando tem vários foi tudo
+              cadastrado errado junto). Por empréstimo, a lixeira está em
+              cada linha dentro de "Ver detalhes". */}
+          <button
+            onClick={() => pedirExclusao(c.dividas)}
+            title={
+              c.dividas.length > 1
+                ? `Excluir os ${c.dividas.length} empréstimos de ${c.nome}`
+                : `Excluir o empréstimo de ${c.nome}`
+            }
+            aria-label={`Excluir ${c.nome}`}
+            className="rounded p-1.5 text-neutral-300 transition hover:bg-danger-50 hover:text-danger-600"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+          <button
+            onClick={() => setAberto((a) => !a)}
+            aria-expanded={aberto}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800"
+          >
+            <ChevronDown
+              className={cn('size-3.5 transition-transform', aberto ? '' : '-rotate-90')}
+            />
+            {aberto ? 'Ocultar detalhes' : 'Ver detalhes'}
+          </button>
+        </div>
       </div>
 
       {aberto && (
@@ -435,6 +526,8 @@ function CardCredor({ credor: c }: { credor: Credor }) {
                   atualizando={atualizar.isPending}
                   onQuitar={(quitada) => atualizar.mutate({ id: d.id, patch: { quitada } })}
                   onProgramar={() => setProgramando([d])}
+                  onEditar={() => setEditando(d)}
+                  onExcluir={() => pedirExclusao([d])}
                 />
               ))}
             </ul>
@@ -476,6 +569,17 @@ function CardCredor({ credor: c }: { credor: Credor }) {
       {programando && (
         <ParcelasModal credor={c.nome} opcoes={programando} onFechar={() => setProgramando(null)} />
       )}
+      {renomeando && (
+        <RenomearModal credor={c} nomes={nomes} onFechar={() => setRenomeando(false)} />
+      )}
+      {editando && (
+        <EditarEmprestimoModal
+          divida={editando}
+          nomes={nomes}
+          onFechar={() => setEditando(null)}
+        />
+      )}
+      {confirmar.dialogo}
     </li>
   )
 }
@@ -563,11 +667,15 @@ function LinhaEmprestimo({
   atualizando,
   onQuitar,
   onProgramar,
+  onEditar,
+  onExcluir,
 }: {
   divida: DividaComSaldo
   atualizando: boolean
   onQuitar: (quitada: boolean) => void
   onProgramar: () => void
+  onEditar: () => void
+  onExcluir: () => void
 }) {
   const falta = Math.max(d.valor_centavos - d.pago_centavos, 0)
 
@@ -619,6 +727,24 @@ function LinhaEmprestimo({
               'Marcar quitado'
             )}
           </Button>
+          {/* Corrigir e apagar ficam ao lado um do outro de propósito: quem
+              abre o detalhe procurando o erro de cadastro quer um dos dois. */}
+          <button
+            onClick={onEditar}
+            title="Corrigir valor, data, descrição ou de quem é este empréstimo"
+            aria-label={`Editar ${rotulo(d)}`}
+            className="rounded p-1 text-neutral-300 transition hover:bg-neutral-100 hover:text-neutral-700"
+          >
+            <Pencil className="size-3" />
+          </button>
+          <button
+            onClick={onExcluir}
+            title="Excluir só este empréstimo"
+            aria-label={`Excluir ${rotulo(d)}`}
+            className="rounded p-1 text-neutral-300 transition hover:bg-danger-50 hover:text-danger-600"
+          >
+            <Trash2 className="size-3" />
+          </button>
         </div>
       </div>
     </li>
@@ -1067,11 +1193,7 @@ function NovoEmprestimoModal({
               autoFocus
               required
             />
-            <datalist id="credores-conhecidos">
-              {nomesConhecidos.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
+            <DatalistCredores nomes={nomesConhecidos} />
             {nomesConhecidos.length > 0 && (
               <p className="mt-1 text-[11px] text-neutral-400">
                 Repita o mesmo nome de um empréstimo anterior para os dois ficarem no mesmo card.
@@ -1102,6 +1224,259 @@ function NovoEmprestimoModal({
           <Button type="submit" loading={criar.isPending}>
             <HandCoins className="size-4" />
             Registrar
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/**
+ * Os nomes já cadastrados, para o campo "quem emprestou" completar
+ * sozinho. Não é conveniência: o card é agrupado pelo TEXTO do nome, então
+ * digitar "carol" onde já existe "Carol" cria uma segunda pessoa.
+ */
+function DatalistCredores({ nomes }: { nomes: string[] }) {
+  return (
+    <datalist id="credores-conhecidos">
+      {nomes.map((n) => (
+        <option key={n} value={n} />
+      ))}
+    </datalist>
+  )
+}
+
+/**
+ * Corrigir o nome de quem emprestou — em TODOS os empréstimos dela.
+ *
+ * O card é agrupado pelo texto de `credor`: o nome é a identidade da
+ * pessoa aqui, não um rótulo decorativo. Renomear um empréstimo só
+ * partiria o card em dois, que é exatamente o acidente que esta tela
+ * precisa saber desfazer — por isso renomear para um nome que já existe
+ * funde os dois cards, e o modal avisa antes que é isso que vai acontecer.
+ */
+function RenomearModal({
+  credor: c,
+  nomes,
+  onFechar,
+}: {
+  credor: Credor
+  nomes: string[]
+  onFechar: () => void
+}) {
+  const renomear = useRenomearCredor()
+  const [nome, setNome] = useState(c.nome)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const limpo = nome.trim()
+  const mudou = limpo !== c.nome
+  const funde = mudou && nomes.some((n) => n.toLowerCase() === limpo.toLowerCase())
+
+  function salvar(ev: FormEvent) {
+    ev.preventDefault()
+    if (!limpo) return
+    if (!mudou) {
+      onFechar()
+      return
+    }
+    setErro(null)
+    renomear.mutate(
+      { ids: c.dividas.map((d) => d.id), credor: limpo },
+      {
+        onSuccess: onFechar,
+        onError: (e) => setErro(e instanceof Error ? e.message : 'Não foi possível renomear.'),
+      },
+    )
+  }
+
+  return (
+    <Modal title="Corrigir o nome" onFechar={onFechar} size="sm">
+      <form onSubmit={salvar}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className={labelCls}>Quem emprestou *</label>
+            <Input
+              list="credores-conhecidos"
+              value={nome}
+              onChange={(ev) => setNome(ev.target.value)}
+              autoFocus
+              required
+            />
+            <DatalistCredores nomes={nomes} />
+            <p className="mt-1 text-[11px] text-neutral-400">
+              Vale para {plural(c.dividas.length, 'empréstimo', 'empréstimos')} desta pessoa.
+            </p>
+          </div>
+
+          {funde && (
+            <p className="rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-[11px] text-warning-700">
+              Já existe <strong>{limpo}</strong> na lista. Os empréstimos vão passar para aquele
+              card — é o jeito de juntar a mesma pessoa que foi cadastrada duas vezes.
+            </p>
+          )}
+        </div>
+
+        {erro && (
+          <p className="mt-3 rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-xs text-danger-700">
+            {erro}
+          </p>
+        )}
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onFechar}
+            className="rounded-md px-3 py-1.5 text-sm text-neutral-500 transition hover:text-neutral-800"
+          >
+            Cancelar
+          </button>
+          <Button type="submit" loading={renomear.isPending}>
+            Salvar nome
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/**
+ * Corrigir um empréstimo que foi cadastrado errado.
+ *
+ * Mexe só no empréstimo — o que já foi pago continua onde está, porque
+ * pagamento é saída de caixa e não é propriedade da dívida. Trocar o valor
+ * de um empréstimo que já recebeu pagamento é permitido (é justamente o
+ * conserto de quem digitou o número errado), mas a tela avisa quando o
+ * valor novo fica abaixo do que já foi devolvido.
+ *
+ * "Quem emprestou" está aqui também: é como se move UM empréstimo para
+ * outra pessoa, sem levar os demais junto.
+ */
+function EditarEmprestimoModal({
+  divida: d,
+  nomes,
+  onFechar,
+}: {
+  divida: DividaComSaldo
+  nomes: string[]
+  onFechar: () => void
+}) {
+  const atualizar = useAtualizarDivida()
+  const [credor, setCredor] = useState(d.credor)
+  const [descricao, setDescricao] = useState(d.descricao ?? '')
+  const [valor, setValor] = useState((d.valor_centavos / 100).toFixed(2).replace('.', ','))
+  const [data, setData] = useState(d.criada_em.slice(0, 10))
+  const [erro, setErro] = useState<string | null>(null)
+
+  const centavos = parseCentavos(valor)
+
+  function salvar(ev: FormEvent) {
+    ev.preventDefault()
+    setErro(null)
+    if (!credor.trim()) {
+      setErro('O empréstimo precisa de alguém que emprestou.')
+      return
+    }
+    if (!centavos) {
+      setErro('O valor emprestado precisa ser maior que zero.')
+      return
+    }
+
+    atualizar.mutate(
+      {
+        id: d.id,
+        patch: {
+          credor: credor.trim(),
+          descricao: descricao.trim() || null,
+          valor_centavos: centavos,
+          // Só vai no patch se mudou: `criada_em` é timestamptz, e regravar
+          // a mesma data jogaria a hora para meia-noite à toa.
+          ...(data !== d.criada_em.slice(0, 10) ? { criada_em: data } : {}),
+        },
+      },
+      {
+        onSuccess: onFechar,
+        onError: (e) =>
+          setErro(e instanceof Error ? e.message : 'Não foi possível salvar as alterações.'),
+      },
+    )
+  }
+
+  return (
+    <Modal title="Editar empréstimo" onFechar={onFechar}>
+      <form onSubmit={salvar}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className={labelCls}>Quem emprestou *</label>
+            <Input
+              list="credores-conhecidos"
+              value={credor}
+              onChange={(ev) => setCredor(ev.target.value)}
+              required
+            />
+            <DatalistCredores nomes={nomes} />
+            {credor.trim() !== d.credor && credor.trim() !== '' && (
+              <p className="mt-1 text-[11px] text-warning-700">
+                Este empréstimo passa para o card de <strong>{credor.trim()}</strong>. Os outros de{' '}
+                {d.credor} ficam onde estão.
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <div className="min-w-32 flex-1">
+              <label className={labelCls}>Valor emprestado *</label>
+              <Input
+                value={valor}
+                onChange={(ev) => setValor(ev.target.value)}
+                placeholder="R$ 0,00"
+                autoFocus
+                required
+              />
+            </div>
+            <div className="min-w-36 flex-1">
+              <label className={labelCls}>Data do empréstimo</label>
+              <Input type="date" value={data} onChange={(ev) => setData(ev.target.value)} />
+            </div>
+          </div>
+
+          {d.pago_centavos > 0 && centavos != null && centavos < d.pago_centavos && (
+            <p className="rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-[11px] text-warning-700">
+              Já foram devolvidos {fmtCentavos(d.pago_centavos)} deste empréstimo — mais do que o
+              valor novo. O saldo vai ficar zerado.
+            </p>
+          )}
+
+          <div>
+            <label className={labelCls}>Do que se trata</label>
+            <Input
+              value={descricao}
+              onChange={(ev) => setDescricao(ev.target.value)}
+              placeholder="Ex.: Empréstimo para a reforma da sala 2"
+            />
+          </div>
+
+          <p className="text-[11px] text-neutral-400">
+            Os pagamentos e as parcelas programadas não mudam. Para mexer nelas, use “Programar
+            parcelas” ou a tela de Saídas.
+          </p>
+        </div>
+
+        {erro && (
+          <p className="mt-3 rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-xs text-danger-700">
+            {erro}
+          </p>
+        )}
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onFechar}
+            className="rounded-md px-3 py-1.5 text-sm text-neutral-500 transition hover:text-neutral-800"
+          >
+            Cancelar
+          </button>
+          <Button type="submit" loading={atualizar.isPending}>
+            Salvar alterações
           </Button>
         </div>
       </form>

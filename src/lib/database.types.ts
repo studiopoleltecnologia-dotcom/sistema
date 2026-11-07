@@ -5468,6 +5468,10 @@ export type Database = {
         Args: { p_descricao: string; p_divida_id: string; p_parcelas: Json }
         Returns: number
       }
+      excluir_dividas: {
+        Args: { p_ids: string[] }
+        Returns: Json
+      }
       prever_folha_professoras: {
         Args: { p_meses?: number }
         Returns: number
